@@ -1,0 +1,25 @@
+[package]
+name = "wapm-cli"
+version = "0.1.0"
+authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
+edition = "2018"
+repository = "https://github.com/wasmerio/wapm"
+description = "WebAssembly Package Manager CLI"
+license = "MIT"
+
+[dependencies]
+failure = "*"
+graphql_client = "0.7.0"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+reqwest = "^0.9.0"
+prettytable-rs = "0.7.0"
+structopt = "0.2.10"
+dotenv = "0.13.0"
+envy = "0.3.2"
+log = "0.4.3"
+env_logger = "0.5.10"
+
+[workspace]
+members = ["."]
