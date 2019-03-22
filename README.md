@@ -2,12 +2,18 @@
 
 The WebAssembly Package Manager CLI
 
-## Download Schema
+```
+wapm
+```
 
-Download the remote schema with:
+## Development
+
+### Update GraphQL Schema
+
+If the WAPM GraphQL server has been updated, update the GraphQL schema with:
 
 ```
 graphql get-schema -e dev
 ```
 
-Note: You will need graphql-cli installed for it `npm install -g graphql-cli`.
+_Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
