@@ -20,6 +20,8 @@ dotenv = "0.13.0"
 envy = "0.3.2"
 log = "0.4.3"
 env_logger = "0.5.10"
+toml = "0.4.10"
+toml-query = "0.8.0"
 
 [workspace]
 members = ["."]
