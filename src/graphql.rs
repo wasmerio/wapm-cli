@@ -3,6 +3,8 @@ use graphql_client::Response;
 use reqwest::Client;
 use serde;
 
+use super::config::Config;
+
 #[derive(Debug, Fail)]
 enum GraphQLError {
     #[fail(display = "{}", message)]
@@ -14,10 +16,15 @@ where
     for<'de> R: serde::Deserialize<'de>,
 {
     let client = Client::new();
+    let config = Config::from_file();
+
+    let registry_url = &config.registry.get_graphql_url();
+    // println!("REGISTRY {}", registry_url);
+
     let mut res = client
         // .post("https://registry.wapm.dev/graphql")
-        .post("http://localhost:8000/graphql")
-        // .bearer_auth("d43c74c2d78dbf9f15ec45afb55cc4666b774b25")
+        .post(registry_url)
+        .bearer_auth(&config.registry.token.unwrap_or("".to_string()))
         .json(&query)
         .send()?;
 

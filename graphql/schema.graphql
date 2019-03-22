@@ -1,5 +1,5 @@
-# source: https://registry.wapm.dev/graphql
-# timestamp: Thu Mar 21 2019 17:25:41 GMT-0700 (Pacific Daylight Time)
+# source: http://localhost:8000/graphql
+# timestamp: Fri Mar 22 2019 15:55:01 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -39,6 +39,7 @@ input ObtainJSONWebTokenInput {
 type ObtainJSONWebTokenPayload {
   token: String
   clientMutationId: String
+  refreshToken: String
 }
 
 type Package implements Node {
@@ -127,7 +128,7 @@ type Query {
 }
 
 input RefreshInput {
-  token: String!
+  refreshToken: String!
   clientMutationId: String
 }
 
@@ -135,6 +136,7 @@ type RefreshPayload {
   token: String
   payload: GenericScalar
   clientMutationId: String
+  refreshToken: String
 }
 
 input RegisterUserInput {

@@ -14,18 +14,34 @@ extern crate serde_derive;
 extern crate structopt;
 // #[macro_use]
 // extern crate prettytable;
+extern crate rpassword;
+extern crate toml;
 
 use structopt::StructOpt;
 
 mod commands;
 mod graphql;
+mod config;
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Debug)]
 enum Command {
     #[structopt(name = "whoami")]
     /// Prints the current user (if authed) in the stdout
     WhoAmI,
+
+    #[structopt(name = "login")]
+    /// Logins into wapm, saving the token locally for future commands
+    Login,
+
+    #[structopt(name = "logout")]
+    /// Remove the token for the registry
+    Logout,
+
+    #[structopt(name = "config")]
+    /// Config related subcommands
+    Config(commands::ConfigOpt),
 }
+
 
 fn main() -> Result<(), failure::Error> {
     // dotenv::dotenv().ok();
@@ -35,5 +51,8 @@ fn main() -> Result<(), failure::Error> {
     let args = Command::from_args();
     match args {
         Command::WhoAmI => commands::whoami(),
+        Command::Login => commands::login(),
+        Command::Logout => commands::logout(),
+        Command::Config(config) => commands::config(config),
     }
 }
