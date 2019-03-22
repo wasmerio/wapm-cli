@@ -27,7 +27,6 @@ enum Command {
     WhoAmI,
 }
 
-
 fn main() -> Result<(), failure::Error> {
     // dotenv::dotenv().ok();
     // env_logger::init();
@@ -35,8 +34,6 @@ fn main() -> Result<(), failure::Error> {
 
     let args = Command::from_args();
     match args {
-        Command::WhoAmI => {
-            commands::whoami()
-        }
+        Command::WhoAmI => commands::whoami(),
     }
 }
