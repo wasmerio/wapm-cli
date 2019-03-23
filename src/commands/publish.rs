@@ -34,6 +34,9 @@ pub fn publish() -> Result<(), failure::Error> {
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: name.to_string(),
         version: manifest.version,
+        description: manifest.description,
+        license: manifest.license,
+        readme: None,
         file_name: Some("module".to_string()),
     });
     let response: publish_package_mutation::ResponseData =

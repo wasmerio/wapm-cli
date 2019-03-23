@@ -1,4 +1,5 @@
 name = "simple"
-version = "0.0.3"
+version = "0.0.7"
+description = 'the simple package'
 source = "../target/wasm32-unknown-unknown/debug/simple.wasm"
 target = "simple_bundle.wasm"

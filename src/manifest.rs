@@ -18,6 +18,9 @@ static MANIFEST_FILE_NAME: &str = "Wapm.toml";
 pub struct Manifest {
     pub name: String,
     pub version: String,
+    pub description: String,
+    pub license: Option<String>,
+    pub readme: Option<String>,
     source: PathBuf,
     target: PathBuf,
     pub fs: Option<Table>,
