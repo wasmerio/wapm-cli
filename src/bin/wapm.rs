@@ -1,30 +1,5 @@
-// extern crate dotenv;
-// extern crate envy;
-#[macro_use]
-extern crate failure;
-extern crate graphql_client;
-#[macro_use]
-// extern crate log;
-// extern crate env_logger;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-extern crate structopt;
-// #[macro_use]
-// extern crate prettytable;
-extern crate rpassword;
-extern crate toml;
-extern crate dunce;
-
 use structopt::StructOpt;
-
-mod abi;
-mod commands;
-mod graphql;
-mod config;
-mod manifest;
+use wapm_cli::commands;
 
 #[derive(StructOpt, Debug)]
 enum Command {
@@ -52,7 +27,6 @@ enum Command {
     /// Publish a package
     Publish,
 }
-
 
 fn main() -> Result<(), failure::Error> {
     // dotenv::dotenv().ok();

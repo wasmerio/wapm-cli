@@ -1,13 +1,13 @@
-use std::error::Error as StdError;
-use std::io::{stdin, stdout};
-use std::result::Result as StdResult;
-use crate::graphql::execute_query;
-use std::io::prelude::*;                                                           
 use crate::config::Config;
+use crate::graphql::execute_query;
+use std::error::Error as StdError;
 use std::fs;
-use std::path::PathBuf;
-use std::io::copy;
 use std::fs::File;
+use std::io::copy;
+use std::io::prelude::*;
+use std::io::{stdin, stdout};
+use std::path::PathBuf;
+use std::result::Result as StdResult;
 
 use graphql_client::*;
 use reqwest;
@@ -20,7 +20,6 @@ pub struct AddOpt {
     package: String,
 }
 
-
 #[derive(Debug, Fail)]
 enum AddError {
     #[fail(display = "Package not found in the registry: {}", name)]
@@ -29,7 +28,6 @@ enum AddError {
     #[fail(display = "No package versions available for package {}", name)]
     NoVersionsAvailable { name: String },
 }
-
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -47,8 +45,13 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
     let response: get_package_query::ResponseData = execute_query(&q)?;
     match response.package {
         Some(package) => {
-            let last_version = package.last_version.ok_or(AddError::NoVersionsAvailable { name: name })?;
-            println!("Installing package {}@{}", package.name, last_version.version);
+            let last_version = package
+                .last_version
+                .ok_or(AddError::NoVersionsAvailable { name: name })?;
+            println!(
+                "Installing package {}@{}",
+                package.name, last_version.version
+            );
             let download_url = last_version.distribution.download_url;
             // println!("Downloading from url: {}", download_url);
             let mut response = reqwest::get(&download_url)?;
@@ -60,10 +63,8 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
             let mut dest = File::create(package_file_location)?;
             copy(&mut response, &mut dest)?;
             println!("Package added successfully to wapm_modules!")
-        },
-        None => {
-            return Err(AddError::PackageNotFound { name: name }.into())
         }
+        None => return Err(AddError::PackageNotFound { name: name }.into()),
     };
     Ok(())
 }

@@ -1,9 +1,9 @@
+use crate::config::Config;
+use crate::graphql::execute_query;
 use std::error::Error as StdError;
+use std::io::prelude::*;
 use std::io::{stdin, stdout};
 use std::result::Result as StdResult;
-use crate::graphql::execute_query;
-use std::io::prelude::*;                                                           
-use crate::config::Config;
 
 use graphql_client::*;
 
@@ -20,19 +20,20 @@ pub fn login() -> Result<(), failure::Error> {
     stdout().flush().ok().expect("Could not flush stdout");
 
     let buffer = &mut String::new();
-    stdin().read_line(buffer)?; 
+    stdin().read_line(buffer)?;
     let username = buffer.trim_right();
 
-    let password = rpassword::read_password_from_tty(Some("Password: ")).expect("Can't get password");
- 
+    let password =
+        rpassword::read_password_from_tty(Some("Password: ")).expect("Can't get password");
+
     let q = LoginMutation::build_query(login_mutation::Variables {
         username: username.to_string(),
-        password: password.to_string()
+        password: password.to_string(),
     });
     let response: login_mutation::ResponseData = execute_query(&q)?;
     let token = match response.token_auth {
         Some(token_auth) => token_auth.refresh_token,
-        None => None
+        None => None,
     };
     if let Some(token) = token {
         // Save the token

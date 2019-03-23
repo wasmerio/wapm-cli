@@ -1,13 +1,13 @@
-mod whoami;
-mod login;
-mod config;
-mod logout;
 mod add;
+mod config;
+mod login;
+mod logout;
 mod publish;
+mod whoami;
 
-pub use whoami::whoami;
-pub use login::login;
-pub use config::{config, ConfigOpt};
-pub use logout::logout;
 pub use add::{add, AddOpt};
+pub use config::{config, ConfigOpt};
+pub use login::login;
+pub use logout::logout;
 pub use publish::publish;
+pub use whoami::whoami;

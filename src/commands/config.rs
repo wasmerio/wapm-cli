@@ -1,5 +1,5 @@
-use structopt::StructOpt;
 use crate::config::Config;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub enum ConfigOpt {
@@ -13,27 +13,25 @@ pub enum ConfigOpt {
 }
 
 #[derive(StructOpt, Debug)]
-struct ConfigKeyValue {
+pub struct ConfigKeyValue {
     #[structopt(parse(from_str))]
     key: String,
-    
+
     #[structopt(parse(from_str))]
     value: String,
 }
 
 #[derive(StructOpt, Debug)]
-struct ConfigKey {
+pub struct ConfigKey {
     #[structopt(parse(from_str))]
     key: String,
 }
-
 
 #[derive(Debug, Fail)]
 enum ConfigError {
     #[fail(display = "Key not found: {}", key)]
     KeyNotFound { key: String },
 }
-
 
 fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
     match key.as_ref() {
@@ -43,10 +41,10 @@ fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::E
                 // Resets the registry token automatically
                 config.registry.token = None;
             }
-        },
+        }
         "registry.token" => {
             config.registry.token = Some(value);
-        },
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
@@ -58,13 +56,11 @@ fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::E
 
 fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
     let value = match key.as_ref() {
-        "registry.url" => {
-            &config.registry.url
-        },
+        "registry.url" => &config.registry.url,
         "registry.token" => {
             unimplemented!()
             // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
-        },
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
@@ -81,6 +77,6 @@ pub fn config(config_opt: ConfigOpt) -> Result<(), failure::Error> {
             let value = get(&mut config, key)?;
             println!("{}", value);
             Ok(())
-        },
+        }
     }
 }

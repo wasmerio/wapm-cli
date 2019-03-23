@@ -1,5 +1,5 @@
 use failure;
-use graphql_client::{Response, QueryBody};
+use graphql_client::{QueryBody, Response};
 use reqwest::Client;
 use serde;
 use std::string::ToString;
@@ -12,11 +12,14 @@ enum GraphQLError {
     Error { message: String },
 }
 
-pub fn execute_query_modifier<R, V, F>(query: &QueryBody<V>, form_modifier: F) -> Result<R, failure::Error>
+pub fn execute_query_modifier<R, V, F>(
+    query: &QueryBody<V>,
+    form_modifier: F,
+) -> Result<R, failure::Error>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
-    F: FnOnce(reqwest::multipart::Form) -> reqwest::multipart::Form
+    F: FnOnce(reqwest::multipart::Form) -> reqwest::multipart::Form,
 {
     let client = Client::new();
     let config = Config::from_file();
@@ -30,8 +33,7 @@ where
     let form = reqwest::multipart::Form::new()
         .text("query", query.query.to_string())
         .text("operationName", query.operation_name.to_string())
-        .text("variables", vars)
-    ;
+        .text("variables", vars);
     let form = form_modifier(form);
 
     let mut res = client
@@ -58,7 +60,7 @@ where
 pub fn execute_query<R, V>(query: &QueryBody<V>) -> Result<R, failure::Error>
 where
     for<'de> R: serde::Deserialize<'de>,
-    V: serde::Serialize
+    V: serde::Serialize,
 {
     execute_query_modifier(query, |f| f)
 }

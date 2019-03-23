@@ -1,9 +1,9 @@
 use crate::abi::Abi;
 use std::env;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use toml::value::Table;
-use std::fs;
 
 /// The name of the manifest file. This is hard-coded for now.
 static MANIFEST_FILE_NAME: &str = "Wapm.toml";
@@ -25,7 +25,7 @@ pub struct Manifest {
     pub abi: Abi,
     /// The path of the manifest file
     #[serde(skip)]
-    path: PathBuf
+    path: PathBuf,
 }
 
 pub type Target = PathBuf;
@@ -51,7 +51,8 @@ impl Manifest {
 
     pub fn get_target_contents(&self) -> Result<Vec<u8>, failure::Error> {
         let target_path = self.target_absolute_path()?;
-        fs::read(target_path.clone()).map_err(|e| ManifestError::MissingTarget { path: target_path }.into())
+        fs::read(target_path.clone())
+            .map_err(|e| ManifestError::MissingTarget { path: target_path }.into())
     }
 
     /// get the source absolute path
@@ -104,10 +105,11 @@ pub enum ManifestError {
     #[fail(display = "Manifest file not found in current directory.")]
     MissingManifestInCwd,
 
-    #[fail(display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm bundle`?", path)]
-    MissingTarget {
-        path: PathBuf
-    },
+    #[fail(
+        display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm bundle`?",
+        path
+    )]
+    MissingTarget { path: PathBuf },
 }
 
 #[cfg(test)]
