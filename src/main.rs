@@ -40,6 +40,10 @@ enum Command {
     #[structopt(name = "config")]
     /// Config related subcommands
     Config(commands::ConfigOpt),
+
+    #[structopt(name = "add")]
+    /// Add a package
+    Add(commands::AddOpt),
 }
 
 
@@ -53,6 +57,7 @@ fn main() -> Result<(), failure::Error> {
         Command::WhoAmI => commands::whoami(),
         Command::Login => commands::login(),
         Command::Logout => commands::logout(),
-        Command::Config(config) => commands::config(config),
+        Command::Config(config_options) => commands::config(config_options),
+        Command::Add(add_options) => commands::add(add_options),
     }
 }

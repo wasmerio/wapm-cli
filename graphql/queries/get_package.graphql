@@ -1,0 +1,15 @@
+query GetPackageQuery ($name: String!) {
+  package: getPackage(name:$name) {
+    name
+    private
+    maintainers {
+      username
+    }
+    lastVersion {
+      version
+      distribution {
+        downloadUrl
+      }
+    }
+  }
+}
