@@ -44,6 +44,10 @@ enum Command {
     #[structopt(name = "add")]
     /// Add a package
     Add(commands::AddOpt),
+
+    #[structopt(name = "publish")]
+    /// Publish a package
+    Publish,
 }
 
 
@@ -59,5 +63,6 @@ fn main() -> Result<(), failure::Error> {
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Add(add_options) => commands::add(add_options),
+        Command::Publish => commands::publish(),
     }
 }

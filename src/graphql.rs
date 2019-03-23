@@ -21,9 +21,13 @@ where
     let registry_url = &config.registry.get_graphql_url();
     // println!("REGISTRY {}", registry_url);
 
+    // let form = reqwest::multipart::Form::new()
+    //     .file("module", "README.md").unwrap();
+
     let mut res = client
         // .post("https://registry.wapm.dev/graphql")
         .post(registry_url)
+        // .multipart(form)
         .bearer_auth(&config.registry.token.unwrap_or("".to_string()))
         .json(&query)
         .send()?;

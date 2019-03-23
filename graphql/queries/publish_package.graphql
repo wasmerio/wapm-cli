@@ -1,0 +1,12 @@
+mutation PublishPackageMutation($packageName: String!, $fileName:String) {
+  publishPackage(input: {
+    packageName: $packageName,
+    file: $fileName,
+    clientMutationId: ""
+  }) {
+    success
+    packageVersion {
+      version
+    }
+  }
+}
