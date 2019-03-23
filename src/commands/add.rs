@@ -59,7 +59,7 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
             package_file_location.push(package_file);
             let mut dest = File::create(package_file_location)?;
             copy(&mut response, &mut dest)?;
-            println!("Package installed successfully!")
+            println!("Package added successfully to wapm_modules!")
         },
         None => {
             return Err(AddError::PackageNotFound { name: package_name }.into())
