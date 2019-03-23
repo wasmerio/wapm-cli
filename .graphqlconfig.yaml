@@ -1,4 +1,4 @@
-schemaPath: schema/schema.graphql
+schemaPath: graphql/schema.graphql
 extensions:
   endpoints:
     dev: "https://registry.wapm.dev/graphql"
