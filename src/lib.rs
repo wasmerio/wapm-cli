@@ -17,6 +17,7 @@ extern crate structopt;
 extern crate dunce;
 extern crate rpassword;
 extern crate toml;
+extern crate uname;
 
 mod abi;
 pub mod commands;
