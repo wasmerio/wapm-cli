@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::io::{stdin, stdout};
 use std::result::Result as StdResult;
-use crate::graphql::execute_query;
+use crate::graphql::execute_query_modifier;
 use std::io::prelude::*;                                                           
 use crate::config::Config;
 use std::fs;
@@ -29,6 +29,8 @@ pub fn publish() -> Result<(), failure::Error> {
         package_name: package_name.to_string(),
         file_name: Some("module".to_string())
     });
-    let response: publish_package_mutation::ResponseData = execute_query(&q)?;
+    let response: publish_package_mutation::ResponseData = execute_query_modifier(&q, |f| {
+                f.file("module", "README.md").unwrap()
+    })?;
     Ok(())
 }
