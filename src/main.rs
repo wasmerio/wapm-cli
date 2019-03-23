@@ -16,12 +16,15 @@ extern crate structopt;
 // extern crate prettytable;
 extern crate rpassword;
 extern crate toml;
+extern crate dunce;
 
 use structopt::StructOpt;
 
+mod abi;
 mod commands;
 mod graphql;
 mod config;
+mod manifest;
 
 #[derive(StructOpt, Debug)]
 enum Command {

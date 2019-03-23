@@ -1,6 +1,7 @@
-mutation PublishPackageMutation($packageName: String!, $fileName:String) {
+mutation PublishPackageMutation($name: String!, $version: String!, $fileName:String) {
   publishPackage(input: {
-    packageName: $packageName,
+    name: $name,
+    version: $version,
     file: $fileName,
     clientMutationId: ""
   }) {

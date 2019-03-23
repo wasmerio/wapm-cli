@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::io::copy;
 use std::fs::File;
+use crate::manifest::Manifest;
 
 use graphql_client::*;
 use reqwest;
@@ -24,13 +25,20 @@ use structopt::StructOpt;
 struct PublishPackageMutation;
 
 pub fn publish() -> Result<(), failure::Error> {
-    let package_name = "abc";
+    let manifest = Manifest::new_from_path(None)?;
+    // println!("Manifest target path {:?}", manifest.target_absolute_path());
+    // let contents = manifest.get_target_contents()?;
+    let target_path = manifest.target_absolute_path()?;
+    // let mut file = File::open(manifest.)?;
+    // manifest.get_target()
+    let name = manifest.name;
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
-        package_name: package_name.to_string(),
+        name: name.to_string(),
+        version: manifest.version,
         file_name: Some("module".to_string())
     });
     let response: publish_package_mutation::ResponseData = execute_query_modifier(&q, |f| {
-                f.file("module", "README.md").unwrap()
+                f.file("module", target_path).unwrap()
     })?;
     Ok(())
 }

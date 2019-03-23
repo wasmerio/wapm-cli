@@ -8,6 +8,7 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [dependencies]
+dunce = "0.1.1"
 failure = "*"
 graphql_client = "0.7.0"
 serde = "1.0"

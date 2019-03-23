@@ -40,14 +40,14 @@ enum AddError {
 struct GetPackageQuery;
 
 pub fn add(options: AddOpt) -> Result<(), failure::Error> {
-    let package_name = options.package;
+    let name = options.package;
     let q = GetPackageQuery::build_query(get_package_query::Variables {
-        name: package_name.to_string(),
+        name: name.to_string(),
     });
     let response: get_package_query::ResponseData = execute_query(&q)?;
     match response.package {
         Some(package) => {
-            let last_version = package.last_version.ok_or(AddError::NoVersionsAvailable { name: package_name })?;
+            let last_version = package.last_version.ok_or(AddError::NoVersionsAvailable { name: name })?;
             println!("Installing package {}@{}", package.name, last_version.version);
             let download_url = last_version.distribution.download_url;
             // println!("Downloading from url: {}", download_url);
@@ -62,7 +62,7 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
             println!("Package added successfully to wapm_modules!")
         },
         None => {
-            return Err(AddError::PackageNotFound { name: package_name }.into())
+            return Err(AddError::PackageNotFound { name: name }.into())
         }
     };
     Ok(())
