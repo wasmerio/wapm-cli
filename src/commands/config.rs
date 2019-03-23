@@ -38,7 +38,11 @@ enum ConfigError {
 fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
     match key.as_ref() {
         "registry.url" => {
-            config.registry.url = value;
+            if config.registry.url != value {
+                config.registry.url = value;
+                // Resets the registry token automatically
+                config.registry.token = None;
+            }
         },
         "registry.token" => {
             config.registry.token = Some(value);
