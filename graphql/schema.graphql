@@ -1,5 +1,5 @@
 # source: http://localhost:8000/graphql
-# timestamp: Fri Mar 22 2019 15:55:01 GMT-0700 (Pacific Daylight Time)
+# timestamp: Fri Mar 22 2019 17:33:42 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -61,7 +61,7 @@ type PackageConnection {
 }
 
 type PackageDistribution {
-  downloadUrl: String
+  downloadUrl: String!
 }
 
 type PackageEdge {
