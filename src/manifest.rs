@@ -20,7 +20,7 @@ pub struct Manifest {
     pub version: String,
     pub description: String,
     pub license: Option<String>,
-    pub readme: Option<String>,
+    pub readme: Option<PathBuf>,
     source: PathBuf,
     target: PathBuf,
     pub fs: Option<Table>,
@@ -38,8 +38,7 @@ impl Manifest {
     /// get the target absolute path
     pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
         if self.target.is_relative() {
-            let base_path = self.path.parent().unwrap();
-            let path = base_path.join(self.target.as_path());
+            let path = self.get_absolute_path(&self.target);
             // because the target may not  ({:?}), and canonicalize requires that the path exists,
             // we canonicalize the parent directory, if this fails, then we just fail, otherwise
             // we join back with the target file name.
@@ -58,10 +57,15 @@ impl Manifest {
             .map_err(|e| ManifestError::MissingTarget { path: target_path }.into())
     }
 
+    /// get the absolute path given a relative path
+    pub fn get_absolute_path(&self, path: &PathBuf) -> PathBuf {
+        let base_path = self.path.parent().unwrap();
+        base_path.join(path.as_path())
+    }
+
     /// get the source absolute path
     pub fn source_absolute_path(&self) -> Result<Source, failure::Error> {
-        let base_path = self.path.parent().unwrap();
-        let path = base_path.join(self.source.as_path());
+        let path = self.get_absolute_path(&self.source);
         dunce::canonicalize(path).map_err(|e| e.into())
     }
 

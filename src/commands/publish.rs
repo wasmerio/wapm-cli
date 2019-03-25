@@ -25,18 +25,20 @@ struct PublishPackageMutation;
 
 pub fn publish() -> Result<(), failure::Error> {
     let manifest = Manifest::new_from_path(None)?;
-    // println!("Manifest target path {:?}", manifest.target_absolute_path());
-    // let contents = manifest.get_target_contents()?;
     let target_path = manifest.target_absolute_path()?;
-    // let mut file = File::open(manifest.)?;
-    // manifest.get_target()
-    let name = manifest.name;
+    let readme: Option<String> = match manifest.readme {
+        Some(ref location) => {
+            let readme_absolute_location = manifest.get_absolute_path(&location);
+            Some(fs::read_to_string(readme_absolute_location)?)
+        },
+        None => None
+    };
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
-        name: name.to_string(),
+        name: manifest.name.to_string(),
         version: manifest.version,
         description: manifest.description,
         license: manifest.license,
-        readme: None,
+        readme: readme,
         file_name: Some("module".to_string()),
     });
     let response: publish_package_mutation::ResponseData =
