@@ -1,4 +1,10 @@
-# Wapm CLI
+<p align="center">
+  <a href="https://wapm.dev" target="_blank" rel="noopener noreferrer">
+    <img width="400" src="assets/logo.png" alt="Wapm logo">
+  </a>
+</p>
+
+# Introduction
 
 The WebAssembly Package Manager CLI
 
@@ -34,6 +40,53 @@ Gets the config `key` contents.
 
 Search for packages related to the `query`.
 
+#### `wapm bundle`
+
+One can bundle a project by running the bundle command in a directory with a `wapm.toml` or by passing the path to 
+`wapm.toml` in a command-line flag. 
+
+```
+# In a directory with a manifest
+> wapm bundle
+
+# Or with a path to the manifest
+> wapm bundle -m path/to/wapm.toml
+```
+
+Bundled assets are stored in a [custom section][1] of WebAssembly. Assets are archived and compressed before stored in 
+the custom section. Runtimes like [Wasmer][2] can read the custom section and  expose the archived files via virtual 
+filesystem. 
+
+A header is written to the beginning of the custom section containing metadata about the compression and archive. This
+information is useful to runtimes like Wasmer that unpack bundled assets. The header is a 4 bytes block and contains
+the compression type and archive type.
+
+The bundled files may be specified on the command line or in the manifest file:
+
+```
+# cli
+> wapm bundle -a foo.txt:foo.txt,bar.txt:new_bar.txt,my_dir:my/dir
+```
+
+```toml
+# wapm.toml
+[fs]
+"foo.txt" = "foo.txt"
+"bar.txt" = "new_bar.txt"
+"my_dir" = "my/dir"
+```
+
+## Manifest (`wapm.toml`)
+
+The manifest file describes how to bundle a wasm package. A simple example manifest with all required fields:
+```toml
+name = "app"
+description = "My awesome app is awesome."
+version = "0.1.0"
+source = "app.wasm"
+target = "app_bundle.wasm"
+```
+
 ## Development
 
 ### Update GraphQL Schema
@@ -45,3 +98,6 @@ graphql get-schema -e dev
 ```
 
 _Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
+
+[1]: https://webassembly.github.io/spec/core/appendix/custom.html
+[2]: https://wasmer.io
