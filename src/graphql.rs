@@ -45,9 +45,9 @@ where
 
     let mut res = client
         .post(registry_url)
+        .multipart(form)
         .bearer_auth(&config.registry.token.unwrap_or("".to_string()))
         .header(USER_AGENT, user_agent)
-        .multipart(form)
         .send()?;
 
     let response_body: Response<R> = res.json()?;
