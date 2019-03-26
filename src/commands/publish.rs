@@ -30,8 +30,8 @@ pub fn publish() -> Result<(), failure::Error> {
         Some(ref location) => {
             let readme_absolute_location = manifest.get_absolute_path(&location);
             Some(fs::read_to_string(readme_absolute_location)?)
-        },
-        None => None
+        }
+        None => None,
     };
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: manifest.name.to_string(),

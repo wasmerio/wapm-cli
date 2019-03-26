@@ -30,6 +30,10 @@ _Note: when setting the `registry.url`, the `registry.token` will automatically 
 
 Gets the config `key` contents.
 
+#### `wapm search <query>`
+
+Search for packages related to the `query`.
+
 ## Development
 
 ### Update GraphQL Schema

@@ -1,5 +1,5 @@
 # source: http://localhost:8000/graphql
-# timestamp: Sat Mar 23 2019 14:15:17 GMT-0700 (Pacific Daylight Time)
+# timestamp: Mon Mar 25 2019 18:57:23 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -134,6 +134,7 @@ type Query {
   recentPackageVersions(before: String, after: String, first: Int, last: Int): PackageVersionConnection
   getPackage(name: String!): Package
   getPackageVersion(name: String!, version: String): PackageVersion
+  search(query: String!, before: String, after: String, first: Int, last: Int): SearchConnection!
   viewer: User
 }
 
@@ -161,6 +162,21 @@ type RegisterUserPayload {
   token: String
   clientMutationId: String
 }
+
+type SearchConnection {
+  pageInfo: PageInfo!
+  edges: [SearchEdge]!
+}
+
+type SearchEdge {
+  """The item at the end of the edge"""
+  node: SearchResult
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+union SearchResult = PackageVersion
 
 type User {
   """

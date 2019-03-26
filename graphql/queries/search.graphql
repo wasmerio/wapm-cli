@@ -1,0 +1,17 @@
+query SearchQuery($query: String!) {
+  search(query: $query) {
+    edges {
+      node {
+        __typename
+        ... on PackageVersion {
+          package {
+            name
+          }
+          createdAt
+          version
+          description
+        }
+      }
+    }
+  }
+}

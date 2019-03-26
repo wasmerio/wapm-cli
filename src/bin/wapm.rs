@@ -26,6 +26,10 @@ enum Command {
     #[structopt(name = "publish")]
     /// Publish a package
     Publish,
+
+    #[structopt(name = "search")]
+    /// Search packages
+    Search(commands::SearchOpt),
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -41,5 +45,6 @@ fn main() -> Result<(), failure::Error> {
         Command::Config(config_options) => commands::config(config_options),
         Command::Add(add_options) => commands::add(add_options),
         Command::Publish => commands::publish(),
+        Command::Search(search_options) => commands::search(search_options),
     }
 }

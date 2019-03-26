@@ -12,8 +12,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 extern crate structopt;
-// #[macro_use]
-// extern crate prettytable;
+#[macro_use]
+extern crate prettytable;
 extern crate dunce;
 extern crate rpassword;
 extern crate toml;
