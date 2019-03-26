@@ -1,7 +1,7 @@
 use crate::abi::Abi;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use toml::value::Table;
 
 /// The name of the manifest file. This is hard-coded for now.
@@ -37,28 +37,24 @@ impl Manifest {
     /// get the target absolute path
     pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
         if self.target.is_relative() {
-            let manifest_parent_path = self.path.parent().ok_or(ManifestError::MissingManifest)?;
-            let abs_path = manifest_parent_path.join(&self.target);
-            Ok(abs_path)
+            let target_path = self.get_absolute_path(&self.target);
+            Ok(target_path)
         } else {
             Ok(self.target.clone())
         }
     }
 
     /// get the absolute path given a relative path
-    pub fn get_absolute_path(&self, path: &PathBuf) -> PathBuf {
-        if let Some(base_path) = self.path.parent() {
-            let abs_path = base_path.join(path.as_path());
-            abs_path
-        } else {
-            path.to_path_buf()
-        }
+    pub fn get_absolute_path(&self, path: &Path) -> PathBuf {
+        let mut base_path = self.path.parent().expect("Can't use the root dir / as your manifest file").to_path_buf();
+        let abs_path = base_path.join(path);
+        abs_path
     }
 
     /// get the source absolute path
     pub fn source_absolute_path(&self) -> Result<Source, failure::Error> {
         let path = self.get_absolute_path(&self.source);
-        dunce::canonicalize(path).map_err(|e| e.into())
+        dunce::canonicalize(&path).map_err(|e| e.into())
     }
 
     // init from file path
@@ -191,11 +187,11 @@ description = "description"
 
         let expected_source_path = source_wasm_path;
         let actual_source_path = manifest.source_absolute_path().unwrap();
-        assert_eq!(actual_source_path, expected_source_path);
+        assert_eq!(expected_source_path, actual_source_path);
 
         let expected_target_path = target_dir.join("target.wasm");
         let actual_target_path = manifest.target_absolute_path().unwrap();
-        assert_eq!(actual_target_path, expected_target_path);
+        assert_eq!(expected_target_path, actual_target_path);
     }
 
     #[test]
