@@ -16,9 +16,10 @@ enum GraphQLError {
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 pub fn execute_query<R, V>(query: &QueryBody<V>) -> Result<R, failure::Error>
-    where
-            for<'de> R: serde::Deserialize<'de>,
-            V: serde::Serialize {
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+{
     let client = Client::new();
     let config = Config::from_file();
 
@@ -45,7 +46,7 @@ pub fn execute_query<R, V>(query: &QueryBody<V>) -> Result<R, failure::Error>
         return Err(GraphQLError::Error {
             message: error_messages.join(", "),
         }
-            .into());
+        .into());
     }
 
     Ok(response_body.data.expect("missing response data"))
@@ -82,7 +83,9 @@ where
     let mut res = client
         .post(registry_url)
         .bearer_auth(&config.registry.token.unwrap_or("".to_string()))
-        .header(USER_AGENT, user_agent).multipart(form).send()?;
+        .header(USER_AGENT, user_agent)
+        .multipart(form)
+        .send()?;
 
     let response_body: Response<R> = res.json()?;
 

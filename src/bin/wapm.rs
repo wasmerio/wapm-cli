@@ -32,8 +32,8 @@ enum Command {
     Search(commands::SearchOpt),
 
     #[structopt(name = "bundle")]
-    /// Bundle wasm
-    Bundle,
+    /// Bundle a package with assets
+    Bundle(commands::BundleOpt),
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -50,6 +50,6 @@ fn main() -> Result<(), failure::Error> {
         Command::Add(add_options) => commands::add(add_options),
         Command::Publish => commands::publish(),
         Command::Search(search_options) => commands::search(search_options),
-        Command::Bundle => commands::bundle(),
+        Command::Bundle(bundle_option) => commands::bundle(bundle_option),
     }
 }
