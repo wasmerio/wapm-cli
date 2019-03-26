@@ -37,7 +37,8 @@ impl Manifest {
     /// get the target absolute path
     pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
         if self.target.is_relative() {
-            let abs_path = self.path.join(&self.target);
+            let manifest_parent_path = self.path.parent().ok_or(ManifestError::MissingManifest)?;
+            let abs_path = manifest_parent_path.join(&self.target);
             Ok(abs_path)
         } else {
             Ok(self.target.clone())
@@ -63,7 +64,6 @@ impl Manifest {
     // init from file path
     pub fn new_from_path(cli_manifest_path: Option<PathBuf>) -> Result<Self, failure::Error> {
         let manifest_path_buf = get_absolute_manifest_path(cli_manifest_path)?;
-        let _base_manifest_path = manifest_path_buf.parent().unwrap();
         let contents = fs::read_to_string(&manifest_path_buf)?;
         let mut manifest: Self = toml::from_str(contents.as_str())?;
         manifest.path = manifest_path_buf;
@@ -112,8 +112,10 @@ pub enum ManifestError {
 
 #[cfg(test)]
 mod test {
-    use crate::manifest::{get_absolute_manifest_path, MANIFEST_FILE_NAME};
+    use crate::manifest::{get_absolute_manifest_path, Manifest, MANIFEST_FILE_NAME};
+    use std::fs;
     use std::fs::File;
+    use std::io::Write;
 
     #[test]
     fn manifest_in_local_directory() {
@@ -129,5 +131,96 @@ mod test {
             expected_manifest_path, actual_manifest_path,
             "Manifest paths do not match."
         );
+    }
+
+    #[test]
+    fn target_and_source_paths() {
+        let tmp_dir = tempdir::TempDir::new("target_and_source_paths").unwrap();
+        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_absolute_path).unwrap();
+        file.write_all(
+            r#"
+name = "test"
+version = "1.0.0"
+target = "target.wasm"
+source = "source.wasm"
+description = "description"
+        "#
+            .as_bytes(),
+        );
+
+        let source_wasm_path = tmp_dir.path().join("source.wasm");
+        let _ = File::create(&source_wasm_path).unwrap();
+
+        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
+        let expected_source_path = source_wasm_path;
+
+        let actual_source_path = manifest.source_absolute_path().unwrap();
+        assert_eq!(actual_source_path, expected_source_path);
+
+        let expected_target_path = tmp_dir.path().join("target.wasm");
+        let actual_target_path = manifest.target_absolute_path().unwrap();
+        assert_eq!(actual_target_path, expected_target_path);
+    }
+
+    #[test]
+    fn nested_target_and_source_paths() {
+        let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
+        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_absolute_path).unwrap();
+        file.write_all(
+            r#"
+name = "test"
+version = "1.0.0"
+target = "my/awesome/target.wasm"
+source = "my/old/boring/source.wasm"
+description = "description"
+        "#
+            .as_bytes(),
+        );
+
+        let target_dir = tmp_dir.path().join("my/awesome");
+        fs::create_dir_all(&target_dir).unwrap();
+        let source_dir = tmp_dir.path().join("my/old/boring");
+        fs::create_dir_all(&source_dir).unwrap();
+
+        let source_wasm_path = source_dir.join("source.wasm");
+        let _ = File::create(&source_wasm_path).unwrap();
+
+        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
+
+        let expected_source_path = source_wasm_path;
+        let actual_source_path = manifest.source_absolute_path().unwrap();
+        assert_eq!(actual_source_path, expected_source_path);
+
+        let expected_target_path = target_dir.join("target.wasm");
+        let actual_target_path = manifest.target_absolute_path().unwrap();
+        assert_eq!(actual_target_path, expected_target_path);
+    }
+
+    #[test]
+    fn relative_target_path() {
+        let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
+        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_absolute_path).unwrap();
+        file.write_all(
+            r#"
+name = "test"
+version = "1.0.0"
+target = "../../target.wasm"
+source = "source.wasm"
+description = "description"
+        "#
+            .as_bytes(),
+        );
+
+        let source_wasm_path = tmp_dir.path().join("source.wasm");
+        let _ = File::create(&source_wasm_path).unwrap();
+
+        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
+
+        let expected_target_path = tmp_dir.path().join("../../target.wasm");
+        let actual_target_path = manifest.target_absolute_path().unwrap();
+        assert_eq!(actual_target_path, expected_target_path);
     }
 }

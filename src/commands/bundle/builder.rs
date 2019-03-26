@@ -3,7 +3,6 @@ use crate::commands::bundle::compress::ZStdCompression;
 use crate::commands::bundle::options::BundleOpt;
 use crate::manifest::Target;
 use crate::manifest::{get_absolute_manifest_path, Manifest, Source};
-use std::fs;
 use std::path::PathBuf;
 
 /// A builder for generating Wasm. This structure pulls in data from the CLI and the Manifest.
@@ -28,11 +27,9 @@ impl Builder {
     pub fn add_cli_args(mut self, cli_options: BundleOpt) -> Result<Self, failure::Error> {
         let manifest_path_buf = get_absolute_manifest_path(cli_options.manifest_file_path)?;
         let base_manifest_path = manifest_path_buf.parent().unwrap();
-        let contents = fs::read_to_string(&manifest_path_buf)?;
-        let manifest: Manifest = toml::from_str(contents.as_str())?;
-        // add assets from command line arguments
         self.assets
             .add_asset_from_pattern(&base_manifest_path, cli_options.assets)?;
+        let manifest: Manifest = Manifest::new_from_path(Some(manifest_path_buf))?;
 
         self.source = manifest.source_absolute_path().ok();
         self.target = manifest.target_absolute_path().ok();
