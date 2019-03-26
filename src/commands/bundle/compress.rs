@@ -28,10 +28,12 @@ impl Compress for ZStdCompression {
 
 /// A non-compression Compression! Useful for unit tests.
 /// Construction is disallowed.
+#[cfg(test)]
 pub struct NoCompression {
     _private: (),
 }
 
+#[cfg(test)]
 impl Compress for NoCompression {
     fn compress(uncompressed_data: Vec<u8>) -> Result<Vec<u8>, failure::Error> {
         Ok(uncompressed_data)

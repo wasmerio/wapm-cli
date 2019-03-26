@@ -3,9 +3,10 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use toml::value::Table;
+use std::env::current_dir;
 
 /// The name of the manifest file. This is hard-coded for now.
-static MANIFEST_FILE_NAME: &str = "Wapm.toml";
+static MANIFEST_FILE_NAME: &str = "wapm.toml";
 
 /// The manifest represents the file used to describe a Wasm bundle. This file contains fields needed
 /// to generated a wasm bundle. The important fields are `Target` and `Source` which are Paths to wasm
@@ -37,29 +38,23 @@ impl Manifest {
     /// get the target absolute path
     pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
         if self.target.is_relative() {
-            let path = self.get_absolute_path(&self.target);
-            // because the target may not  ({:?}), and canonicalize requires that the path exists,
-            // we canonicalize the parent directory, if this fails, then we just fail, otherwise
-            // we join back with the target file name.
-            let parent = path.parent().unwrap();
-            let file_name = path.file_name().unwrap();
-            let parent = dunce::canonicalize(parent)?;
-            Ok(parent.join(file_name))
+            let cwd = current_dir()?;
+            let abs_path = cwd.join(&self.target);
+            Ok(abs_path)
         } else {
             Ok(self.target.clone())
         }
     }
 
-    pub fn get_target_contents(&self) -> Result<Vec<u8>, failure::Error> {
-        let target_path = self.target_absolute_path()?;
-        fs::read(target_path.clone())
-            .map_err(|_e| ManifestError::MissingTarget { path: target_path }.into())
-    }
-
     /// get the absolute path given a relative path
     pub fn get_absolute_path(&self, path: &PathBuf) -> PathBuf {
-        let base_path = self.path.parent().unwrap();
-        base_path.join(path.as_path())
+        if let Some(base_path) = self.path.parent() {
+            let abs_path = base_path.join(path.as_path());
+            abs_path
+        }
+        else {
+            path.to_path_buf()
+        }
     }
 
     /// get the source absolute path
@@ -114,6 +109,7 @@ pub enum ManifestError {
         display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm bundle`?",
         path
     )]
+    #[allow(dead_code)]
     MissingTarget { path: PathBuf },
 }
 

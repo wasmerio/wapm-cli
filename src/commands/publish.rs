@@ -27,7 +27,7 @@ pub fn publish() -> Result<(), failure::Error> {
         version: manifest.version,
         description: manifest.description,
         license: manifest.license,
-        readme: readme,
+        readme,
         file_name: Some("module".to_string()),
     });
     let _response: publish_package_mutation::ResponseData =

@@ -9,6 +9,7 @@ pub enum HeaderVersion {
 #[repr(u8)]
 #[derive(Debug, PartialEq)]
 pub enum CompressionType {
+    #[allow(dead_code)]
     NONE = 0,
     ZSTD = 1,
 }
