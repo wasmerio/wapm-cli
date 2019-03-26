@@ -49,8 +49,7 @@ impl Manifest {
         if let Some(base_path) = self.path.parent() {
             let abs_path = base_path.join(path.as_path());
             abs_path
-        }
-        else {
+        } else {
             path.to_path_buf()
         }
     }

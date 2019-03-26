@@ -64,9 +64,9 @@ where
 }
 
 pub fn execute_query<R, V>(query: &QueryBody<V>) -> Result<R, failure::Error>
-    where
-            for<'de> R: serde::Deserialize<'de>,
-            V: serde::Serialize,
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
 {
     execute_query_modifier(query, |f| f)
 }
