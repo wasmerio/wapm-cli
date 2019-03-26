@@ -3,7 +3,6 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use toml::value::Table;
-use std::env::current_dir;
 
 /// The name of the manifest file. This is hard-coded for now.
 static MANIFEST_FILE_NAME: &str = "wapm.toml";
@@ -38,8 +37,7 @@ impl Manifest {
     /// get the target absolute path
     pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
         if self.target.is_relative() {
-            let cwd = current_dir()?;
-            let abs_path = cwd.join(&self.target);
+            let abs_path = self.path.join(&self.target);
             Ok(abs_path)
         } else {
             Ok(self.target.clone())
