@@ -1,7 +1,6 @@
 use crate::abi::Abi;
 use std::env;
 use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 use toml::value::Table;
 
@@ -54,7 +53,7 @@ impl Manifest {
     pub fn get_target_contents(&self) -> Result<Vec<u8>, failure::Error> {
         let target_path = self.target_absolute_path()?;
         fs::read(target_path.clone())
-            .map_err(|e| ManifestError::MissingTarget { path: target_path }.into())
+            .map_err(|_e| ManifestError::MissingTarget { path: target_path }.into())
     }
 
     /// get the absolute path given a relative path
@@ -72,7 +71,7 @@ impl Manifest {
     // init from file path
     pub fn new_from_path(cli_manifest_path: Option<PathBuf>) -> Result<Self, failure::Error> {
         let manifest_path_buf = get_absolute_manifest_path(cli_manifest_path)?;
-        let base_manifest_path = manifest_path_buf.parent().unwrap();
+        let _base_manifest_path = manifest_path_buf.parent().unwrap();
         let contents = fs::read_to_string(&manifest_path_buf)?;
         let mut manifest: Self = toml::from_str(contents.as_str())?;
         manifest.path = manifest_path_buf;
@@ -111,7 +110,6 @@ pub enum ManifestError {
     MissingManifest,
     #[fail(display = "Manifest file not found in current directory.")]
     MissingManifestInCwd,
-
     #[fail(
         display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm bundle`?",
         path

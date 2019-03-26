@@ -49,7 +49,7 @@ fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::E
             return Err(ConfigError::KeyNotFound { key }.into());
         }
     };
-    config.save();
+    config.save()?;
     // println!("{:?}", config);
     Ok(())
 }

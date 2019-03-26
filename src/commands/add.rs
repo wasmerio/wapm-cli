@@ -1,13 +1,8 @@
-use crate::config::Config;
 use crate::graphql::execute_query;
-use std::error::Error as StdError;
 use std::fs;
 use std::fs::File;
 use std::io::copy;
-use std::io::prelude::*;
-use std::io::{stdin, stdout};
 use std::path::PathBuf;
-use std::result::Result as StdResult;
 
 use graphql_client::*;
 use reqwest;
@@ -55,7 +50,7 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
             let download_url = last_version.distribution.download_url;
             // println!("Downloading from url: {}", download_url);
             let mut response = reqwest::get(&download_url)?;
-            let mut path_buf = PathBuf::from("./wapm_modules/");
+            let path_buf = PathBuf::from("./wapm_modules/");
             let mut package_file_location = path_buf.clone();
             fs::create_dir_all(path_buf)?;
             let package_file = &format!("{}.wasm", package.name);

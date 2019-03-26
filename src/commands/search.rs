@@ -1,13 +1,4 @@
-use crate::config::Config;
 use crate::graphql::execute_query;
-use std::error::Error as StdError;
-use std::fs;
-use std::fs::File;
-use std::io::copy;
-use std::io::prelude::*;
-use std::io::{stdin, stdout};
-use std::path::PathBuf;
-use std::result::Result as StdResult;
 
 use graphql_client::*;
 

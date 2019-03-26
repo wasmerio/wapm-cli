@@ -24,7 +24,10 @@ dotenv = "0.13.0"
 toml = "0.4.10"
 toml-query = "0.8.0"
 rpassword = "3.0.0"
-uname = "0.1.1"
+whoami = "0.5"
+
+[dev-dependencies]
+tempdir = "0.3"
 
 [workspace]
 members = ["."]
