@@ -30,6 +30,10 @@ enum Command {
     #[structopt(name = "search")]
     /// Search packages
     Search(commands::SearchOpt),
+
+    #[structopt(name = "bundle")]
+    /// Bundle wasm
+    Bundle,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -46,5 +50,6 @@ fn main() -> Result<(), failure::Error> {
         Command::Add(add_options) => commands::add(add_options),
         Command::Publish => commands::publish(),
         Command::Search(search_options) => commands::search(search_options),
+        Command::Bundle => commands::bundle(),
     }
 }

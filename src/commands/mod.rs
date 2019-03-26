@@ -5,6 +5,7 @@ mod logout;
 mod publish;
 mod search;
 mod whoami;
+mod bundle;
 
 pub use add::{add, AddOpt};
 pub use config::{config, ConfigOpt};
@@ -13,3 +14,4 @@ pub use logout::logout;
 pub use publish::publish;
 pub use search::{search, SearchOpt};
 pub use whoami::whoami;
+pub use bundle::bundle;
