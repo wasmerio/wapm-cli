@@ -1,9 +1,7 @@
 use crate::config::Config;
 use crate::graphql::execute_query;
-use std::error::Error as StdError;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
-use std::result::Result as StdResult;
 
 use graphql_client::*;
 
@@ -21,7 +19,7 @@ pub fn login() -> Result<(), failure::Error> {
 
     let buffer = &mut String::new();
     stdin().read_line(buffer)?;
-    let username = buffer.trim_right();
+    let username = buffer.trim_end();
 
     let password =
         rpassword::read_password_from_tty(Some("Password: ")).expect("Can't get password");

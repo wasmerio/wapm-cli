@@ -1,12 +1,6 @@
-use serde::Deserialize;
 use std::env;
-use std::fs;
-use std::fs::{File, OpenOptions};
-use std::io;
+use std::fs::File;
 use std::io::prelude::*;
-// use std::os::unix;
-use std::path::Path;
-use toml::Value;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Config {

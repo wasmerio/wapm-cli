@@ -1,4 +1,5 @@
 mod add;
+mod package;
 mod config;
 mod login;
 mod logout;
@@ -6,10 +7,11 @@ mod publish;
 mod search;
 mod whoami;
 
-pub use add::{add, AddOpt};
-pub use config::{config, ConfigOpt};
-pub use login::login;
-pub use logout::logout;
-pub use publish::publish;
-pub use search::{search, SearchOpt};
-pub use whoami::whoami;
+pub use self::add::{add, AddOpt};
+pub use self::package::{package, PackageOpt};
+pub use self::config::{config, ConfigOpt};
+pub use self::login::login;
+pub use self::logout::logout;
+pub use self::publish::publish;
+pub use self::search::{search, SearchOpt};
+pub use self::whoami::whoami;

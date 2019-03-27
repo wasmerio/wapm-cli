@@ -1,0 +1,25 @@
+trigger:
+  - master
+
+resources:
+  containers:
+    - container: rust133
+      image: rust:1.33
+jobs:
+  - job: LinuxContainer
+    pool:
+      vmImage: 'ubuntu-16.04'
+    strategy:
+      matrix:
+        rust133:
+          containerResource: rust133
+    container: $[ variables['containerResource'] ]
+    steps:
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo build --verbose
+        displayName: 'Build wapm'
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo test --verbose -- --test-threads=1
+        displayName: 'Test wapm'
