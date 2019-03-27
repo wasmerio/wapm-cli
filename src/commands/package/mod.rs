@@ -29,6 +29,7 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
             let local_path = PathBuf::from(pair.0.as_str());
             // assume there is a virtual path_string for now
             let virtual_path_string = pair.1.as_str().unwrap();
+            let local_path = base_manifest_path.join(PathBuf::from(local_path));
             assets.add_asset(&local_path, virtual_path_string)?;
         }
     }

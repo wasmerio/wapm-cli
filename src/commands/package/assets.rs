@@ -26,7 +26,6 @@ impl Assets {
         local_path: &Path,
         virtual_file_path: &str,
     ) -> Result<(), failure::Error> {
-        //        let local_path_buf = PathBuf::from(local_file_path);
         if local_path.is_file() {
             let ar = self.0.get_or_insert(Builder::new(vec![]));
             ar.append_path_with_name(local_path, virtual_file_path)
@@ -37,7 +36,7 @@ impl Assets {
             ar.append_dir_all(virtual_path_buf, local_path)
                 .map_err(|e| e.into())
         } else {
-            panic!("path is not directory or file");
+            Err(AssetsError::InvalidAsset(local_path.display().to_string()).into())
         }
     }
     /// Adds an asset with a string in the format `local_path:virtual_path`. The `virtual_file_path`
@@ -85,6 +84,12 @@ impl Assets {
             }
         })
     }
+}
+
+#[derive(Debug, Fail)]
+pub enum AssetsError {
+    #[fail(display = "{}\nPath is not directory or file.", _0)]
+    InvalidAsset(String),
 }
 
 #[cfg(test)]
