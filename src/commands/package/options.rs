@@ -5,7 +5,7 @@ use structopt::StructOpt;
 /// looks in the current directory for the manifest file. One may also pass the path to the file
 /// with a flag.
 #[derive(Debug, StructOpt)]
-#[structopt(name = "package", about = "Bundle a package with assets.", raw(aliases = r#"&["baz", "fizz"]"#))]
+#[structopt(name = "package", about = "Bundle a package with assets.")]
 pub struct PackageOpt {
     /// Path to the manifest file (wasmer.toml) for the wasm package.
     #[structopt(short = "m", long = "manifest-path", parse(from_os_str))]

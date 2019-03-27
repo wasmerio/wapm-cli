@@ -30,7 +30,7 @@ enum Command {
     /// Search packages
     Search(commands::SearchOpt),
 
-    #[structopt(name = "package")]
+    #[structopt(name = "package", raw(aliases = r#"&["p", "pkg"]"#))]
     /// Create a wasm package with bundled assets
     Package(commands::PackageOpt),
 }
