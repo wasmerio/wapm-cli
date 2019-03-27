@@ -36,7 +36,9 @@ impl Assets {
             ar.append_dir_all(virtual_path_buf, local_path)
                 .map_err(|e| e.into())
         } else {
-            Err(AssetsError::InvalidAsset(local_path.display().to_string()).into())
+            use path_slash::PathExt;
+            let path_string = local_path.to_slash().unwrap_or(local_path.display().to_string());
+            Err(AssetsError::InvalidAsset(path_string).into())
         }
     }
     /// Adds an asset with a string in the format `local_path:virtual_path`. The `virtual_file_path`
