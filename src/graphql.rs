@@ -39,7 +39,7 @@ where
     let user_agent = format!(
         "wapm/{} {} {}",
         VERSION,
-        whoami::platform().to_lowercase(),
+        whoami::platform(),
         whoami::os().to_lowercase(),
     );
 
