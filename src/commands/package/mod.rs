@@ -4,14 +4,14 @@ mod header;
 mod options;
 
 use std::path::PathBuf;
-pub use crate::commands::bundle::options::BundleOpt;
-use crate::commands::bundle::assets::Assets;
+pub use crate::commands::package::options::PackageOpt;
+use crate::commands::package::assets::Assets;
 use crate::manifest::{get_absolute_manifest_path, Manifest};
-use crate::commands::bundle::compress::ZStdCompression;
+use crate::commands::package::compress::ZStdCompression;
 
-pub fn bundle(bundle_options: BundleOpt) -> Result<(), failure::Error> {
+pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
     // add cli args
-    let manifest_path_buf = get_absolute_manifest_path(bundle_options.manifest_file_path)?;
+    let manifest_path_buf = get_absolute_manifest_path(package_options.manifest_file_path)?;
     let manifest: Manifest = Manifest::new_from_path(Some(manifest_path_buf.clone()))?;
 
     // fail early if missing required target and source
@@ -22,7 +22,7 @@ pub fn bundle(bundle_options: BundleOpt) -> Result<(), failure::Error> {
     let base_manifest_path = manifest_path_buf.parent().unwrap();
     let mut assets = Assets::new();
     assets
-        .add_asset_from_pattern(&base_manifest_path, bundle_options.assets)?;
+        .add_asset_from_pattern(&base_manifest_path, package_options.assets)?;
     // add assets from manifest if they exist
     if let Some(table) = manifest.fs {
         for pair in table.iter() {

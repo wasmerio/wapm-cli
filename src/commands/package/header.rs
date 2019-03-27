@@ -32,7 +32,7 @@ pub fn header_to_bytes(
 
 #[cfg(test)]
 mod test {
-    use crate::commands::bundle::header::{
+    use crate::commands::package::header::{
         header_to_bytes, ArchiveType, CompressionType, HeaderVersion,
     };
 

@@ -15,8 +15,7 @@ enum Command {
     /// Remove the token for the registry
     Logout,
 
-    #[structopt(name = "config")]
-    /// Config related subcommands
+    #[structopt(name = "config")] /// Config related subcommands
     Config(commands::ConfigOpt),
 
     #[structopt(name = "add")]
@@ -31,9 +30,9 @@ enum Command {
     /// Search packages
     Search(commands::SearchOpt),
 
-    #[structopt(name = "bundle")]
-    /// Bundle a package with assets
-    Bundle(commands::BundleOpt),
+    #[structopt(name = "package")]
+    /// Create a wasm package with bundled assets
+    Package(commands::PackageOpt),
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -50,6 +49,6 @@ fn main() -> Result<(), failure::Error> {
         Command::Add(add_options) => commands::add(add_options),
         Command::Publish => commands::publish(),
         Command::Search(search_options) => commands::search(search_options),
-        Command::Bundle(bundle_option) => commands::bundle(bundle_option),
+        Command::Package(package_options) => commands::package(package_options),
     }
 }

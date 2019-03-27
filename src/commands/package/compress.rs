@@ -1,6 +1,6 @@
-use crate::commands::bundle::header::CompressionType;
+use crate::commands::package::header::CompressionType;
 
-/// A general way to talk about compression algorithms. This allows the bundler to use different
+/// A general way to talk about compression algorithms. This allows wapm package to use different
 /// kinds of compression when storing assets in the wasm.
 pub trait Compress {
     fn compress(uncompressed_data: Vec<u8>) -> Result<Vec<u8>, failure::Error>;

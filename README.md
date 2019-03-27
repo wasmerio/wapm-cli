@@ -40,17 +40,17 @@ Gets the config `key` contents.
 
 Search for packages related to the `query`.
 
-#### `wapm bundle`
+#### `wapm package`
 
-One can bundle a project by running the bundle command in a directory with a `wapm.toml` or by passing the path to 
+One can bundle a project by running the package command in a directory with a `wapm.toml` or by passing the path to 
 `wapm.toml` in a command-line flag. 
 
 ```
 # In a directory with a manifest
-> wapm bundle
+> wapm package
 
 # Or with a path to the manifest
-> wapm bundle -m path/to/wapm.toml
+> wapm package -m path/to/wapm.toml
 ```
 
 Bundled assets are stored in a [custom section][1] of WebAssembly. Assets are archived and compressed before stored in 
@@ -65,7 +65,7 @@ The bundled files may be specified on the command line or in the manifest file:
 
 ```
 # cli
-> wapm bundle -a foo.txt:foo.txt,bar.txt:new_bar.txt,my_dir:my/dir
+> wapm package -a foo.txt:foo.txt,bar.txt:new_bar.txt,my_dir:my/dir
 ```
 
 ```toml

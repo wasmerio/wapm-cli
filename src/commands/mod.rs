@@ -1,5 +1,5 @@
 mod add;
-mod bundle;
+mod package;
 mod config;
 mod login;
 mod logout;
@@ -8,7 +8,7 @@ mod search;
 mod whoami;
 
 pub use self::add::{add, AddOpt};
-pub use self::bundle::{bundle, BundleOpt};
+pub use self::package::{package, PackageOpt};
 pub use self::config::{config, ConfigOpt};
 pub use self::login::login;
 pub use self::logout::logout;

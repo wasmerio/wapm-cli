@@ -1,5 +1,5 @@
-use crate::commands::bundle::compress::Compress;
-use crate::commands::bundle::header::{header_to_bytes, ArchiveType, HeaderVersion};
+use crate::commands::package::compress::Compress;
+use crate::commands::package::header::{header_to_bytes, ArchiveType, HeaderVersion};
 use regex::Regex;
 use std::path::Path;
 use std::path::PathBuf;
@@ -89,10 +89,10 @@ impl Assets {
 
 #[cfg(test)]
 mod test {
-    use crate::commands::bundle::assets::Assets;
-    use crate::commands::bundle::assets::ASSETS_CUSTOM_SECTION_NAME;
-    use crate::commands::bundle::compress::NoCompression;
-    use crate::commands::bundle::header::{ArchiveType, CompressionType, HeaderVersion};
+    use crate::commands::package::assets::Assets;
+    use crate::commands::package::assets::ASSETS_CUSTOM_SECTION_NAME;
+    use crate::commands::package::compress::NoCompression;
+    use crate::commands::package::header::{ArchiveType, CompressionType, HeaderVersion};
     use std::fs;
     use std::fs::File;
     use std::io::{Read, Write};
@@ -313,7 +313,7 @@ mod test {
         let tmp_dir = tempdir::TempDir::new("dir_in_subdir").unwrap();
         let root = PathBuf::from(".");
 
-        // the dir to bundle
+        // the dir to package
         let my_dir = tmp_dir.path().join("my_dir");
         let _ = fs::create_dir(my_dir.as_path()).unwrap();
 

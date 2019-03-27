@@ -7,8 +7,8 @@ use toml::value::Table;
 /// The name of the manifest file. This is hard-coded for now.
 static MANIFEST_FILE_NAME: &str = "wapm.toml";
 
-/// The manifest represents the file used to describe a Wasm bundle. This file contains fields needed
-/// to generated a wasm bundle. The important fields are `Target` and `Source` which are Paths to wasm
+/// The manifest represents the file used to describe a Wasm package. This file contains fields needed
+/// to generated a wasm package. The important fields are `Target` and `Source` which are Paths to wasm
 /// files. The target will be generated or overwritten by the bundler.
 ///
 /// The `fs` section represents assets that will be embedded into the Wasm module as custom sections.
@@ -99,7 +99,7 @@ pub enum ManifestError {
     #[fail(display = "Manifest file not found in current directory.")]
     MissingManifestInCwd,
     #[fail(
-        display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm bundle`?",
+        display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm package`?",
         path
     )]
     #[allow(dead_code)]
