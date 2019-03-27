@@ -39,8 +39,8 @@ where
     let user_agent = format!(
         "wapm/{} {} {}",
         VERSION,
-        whoami::hostname().to_lowercase(),
-        whoami::host().to_lowercase(),
+        whoami::platform().to_lowercase(),
+        whoami::os().to_lowercase(),
     );
 
     let mut res = client
