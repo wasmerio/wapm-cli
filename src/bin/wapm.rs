@@ -35,13 +35,13 @@ enum Command {
     Package(commands::PackageOpt),
 }
 
-fn main() -> Result<(), failure::Error> {
+fn main() {
     // dotenv::dotenv().ok();
     // env_logger::init();
     // let config: Env = envy::from_env()?;
 
     let args = Command::from_args();
-    match args {
+    let result = match args {
         Command::WhoAmI => commands::whoami(),
         Command::Login => commands::login(),
         Command::Logout => commands::logout(),
@@ -50,5 +50,9 @@ fn main() -> Result<(), failure::Error> {
         Command::Publish => commands::publish(),
         Command::Search(search_options) => commands::search(search_options),
         Command::Package(package_options) => commands::package(package_options),
+    };
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        std::process::exit(-1);
     }
 }

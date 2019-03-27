@@ -88,7 +88,7 @@ impl Assets {
 
 #[derive(Debug, Fail)]
 pub enum AssetsError {
-    #[fail(display = "{}\nPath is not directory or file.", _0)]
+    #[fail(display = "Path is not directory or file: \"{}\"", _0)]
     InvalidAsset(String),
 }
 
