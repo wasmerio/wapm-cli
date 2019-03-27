@@ -52,7 +52,7 @@ fn main() {
         Command::Package(package_options) => commands::package(package_options),
     };
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("\nError: {}", e);
         std::process::exit(-1);
     }
 }
