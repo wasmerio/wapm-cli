@@ -52,7 +52,7 @@ impl Registry {
 
 #[derive(Debug, Fail)]
 pub enum GlobalConfigError {
-    #[fail(display = "\nThe Wasmer directory is missing. I Wasmer not installed?\nInstall Wasmer at https://wasmer.io")]
+    #[fail(display = "\nThe Wasmer directory is missing. Is Wasmer not installed?\nInstall Wasmer at https://wasmer.io.")]
     MissingWasmerDir,
     #[fail(display = "Error while reading config: [{}]", _0)]
     Io(std::io::Error),
