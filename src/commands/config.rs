@@ -69,8 +69,7 @@ fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
 }
 
 pub fn config(config_opt: ConfigOpt) -> Result<(), failure::Error> {
-    let mut config = Config::from_file();
-    // println!("{:?}", config);
+    let mut config = Config::from_file()?;
     match config_opt {
         ConfigOpt::Set(ConfigKeyValue { key, value }) => set(&mut config, key, value),
         ConfigOpt::Get(ConfigKey { key }) => {
