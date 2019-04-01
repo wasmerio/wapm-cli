@@ -15,7 +15,8 @@ enum Command {
     /// Remove the token for the registry
     Logout,
 
-    #[structopt(name = "config")] /// Config related subcommands
+    #[structopt(name = "config")]
+    /// Config related subcommands
     Config(commands::ConfigOpt),
 
     #[structopt(name = "add")]
