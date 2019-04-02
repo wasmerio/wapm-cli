@@ -44,10 +44,11 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let last_version = package
         .last_version
         .ok_or(InstallError::NoVersionsAvailable { name: name })?;
-    let fully_qualified_package_name = format!("{}@{}", package.name, last_version.version);
+    let fully_qualified_package_name =
+        fully_qualified_package_display_name(&package.name, &last_version.version);
     println!("Installing package {}", fully_qualified_package_name);
     let current_dir = env::current_dir()?;
-    let package_dir = create_module_dir(&current_dir, &package.name, &last_version.version)?;
+    let package_dir = create_module_dir(&current_dir, &fully_qualified_package_name)?;
     let download_url = last_version.distribution.download_url;
     let mut response = reqwest::get(&download_url)?;
     let package_file_path = package_dir.join(&format!("{}.wasm", package.name));
@@ -59,33 +60,34 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
 
 fn create_module_dir<P: AsRef<Path>>(
     project_dir: P,
-    package_name: &str,
-    package_version: &str,
+    fully_qualified_package_name: &str,
 ) -> Result<PathBuf, io::Error> {
-    let fully_qualified_package_name = format!("{}@{}", package_name, package_version);
     let mut package_dir = project_dir.as_ref().join("wapm_modules");
     package_dir.push(&fully_qualified_package_name);
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }
 
+#[inline]
+fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
+    format!("{}@{}", package_name, package_version)
+}
+
 #[cfg(test)]
 mod test {
-    use crate::commands::install::create_module_dir;
+    use crate::commands::install::{create_module_dir, fully_qualified_package_display_name};
 
     #[test]
     fn creates_package_directory() {
         let tmp_dir = tempdir::TempDir::new("install_package").unwrap();
         let expected_package_version = "0.1.2";
         let expected_package_name = "my_pkg";
+        let expected_fully_qualified_package_name =
+            fully_qualified_package_display_name(expected_package_name, expected_package_version);
         let tmp_dir_path = tmp_dir.path();
         let expected_package_directory = tmp_dir_path.join("wapm_modules/my_pkg@0.1.2");
-        let actual_package_directory = create_module_dir(
-            tmp_dir_path,
-            expected_package_name,
-            expected_package_version,
-        )
-        .unwrap();
+        let actual_package_directory =
+            create_module_dir(tmp_dir_path, &expected_fully_qualified_package_name).unwrap();
         assert!(expected_package_directory.exists());
         assert_eq!(expected_package_directory, actual_package_directory);
     }
