@@ -1,6 +1,6 @@
 use crate::graphql::execute_query;
 use std::fs::File;
-use std::io::copy;
+use std::io::{copy, Write};
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 
@@ -8,6 +8,7 @@ use graphql_client::*;
 use reqwest;
 
 use structopt::StructOpt;
+use crate::manifest::Manifest;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
@@ -56,7 +57,17 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     copy(&mut response, &mut dest)?;
 
     // update wapm.toml
-
+    match find_manifest(&current_dir) {
+        Ok(mut manifest) => {
+            manifest.add_dependency(&package.name, &last_version.version);
+            let path = current_dir.join("wapm.toml");
+            let contents = toml::to_string(&manifest)?;
+            let mut file = std::fs::OpenOptions::new().write(true).open(&path)?;
+            file.write_all(contents.as_bytes())?;
+        },
+        Err(_e) => {
+        }
+    }
 
     println!("Package installed successfully to wapm_modules!");
     Ok(())
@@ -75,6 +86,13 @@ fn create_package_dir<P: AsRef<Path>>(
 #[inline]
 fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
     format!("{}@{}", package_name, package_version)
+}
+
+fn find_manifest<P: AsRef<Path>>(project_dir: P) -> Result<Manifest, failure::Error> {
+    let path = project_dir.as_ref().join("wapm.toml");
+    let contents = fs::read_to_string(&path)?;
+    let manifest: Manifest = toml::from_str(contents.as_str())?;
+    Ok(manifest)
 }
 
 #[cfg(test)]
