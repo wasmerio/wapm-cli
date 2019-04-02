@@ -35,10 +35,9 @@ pub fn login() -> Result<(), failure::Error> {
     };
     if let Some(token) = token {
         // Save the token
-        let mut config = Config::from_file();
+        let mut config = Config::from_file()?;
         config.registry.token = Some(token);
         config.save()?;
-        // println!("{:?}", token);
     }
     Ok(())
 }

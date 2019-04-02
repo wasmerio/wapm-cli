@@ -1,7 +1,7 @@
 use crate::abi::Abi;
 use std::env;
 use std::fs;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use toml::value::Table;
 
 /// The name of the manifest file. This is hard-coded for now.
@@ -46,7 +46,11 @@ impl Manifest {
 
     /// get the absolute path given a relative path
     pub fn get_absolute_path(&self, path: &Path) -> PathBuf {
-        let base_path = self.path.parent().expect("Can't use the root dir / as your manifest file").to_path_buf();
+        let base_path = self
+            .path
+            .parent()
+            .expect("Can't use the root dir / as your manifest file")
+            .to_path_buf();
         let abs_path = base_path.join(path);
         abs_path
     }
@@ -143,7 +147,8 @@ source = "source.wasm"
 description = "description"
         "#
             .as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let source_wasm_path = tmp_dir.path().join("source.wasm");
         let _ = File::create(&source_wasm_path).unwrap();
@@ -173,7 +178,8 @@ source = "my/old/boring/source.wasm"
 description = "description"
         "#
             .as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let target_dir = tmp_dir.path().join("my/awesome");
         fs::create_dir_all(&target_dir).unwrap();
@@ -208,7 +214,8 @@ source = "source.wasm"
 description = "description"
         "#
             .as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let source_wasm_path = tmp_dir.path().join("source.wasm");
         let _ = File::create(&source_wasm_path).unwrap();

@@ -37,7 +37,9 @@ impl Assets {
                 .map_err(|e| e.into())
         } else {
             use path_slash::PathExt;
-            let path_string = local_path.to_slash().unwrap_or(local_path.display().to_string());
+            let path_string = local_path
+                .to_slash()
+                .unwrap_or(local_path.display().to_string());
             Err(AssetsError::InvalidAsset(path_string).into())
         }
     }

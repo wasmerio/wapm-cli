@@ -25,7 +25,7 @@ where
     F: FnOnce(reqwest::multipart::Form) -> reqwest::multipart::Form,
 {
     let client = Client::new();
-    let config = Config::from_file();
+    let config = Config::from_file()?;
 
     let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();

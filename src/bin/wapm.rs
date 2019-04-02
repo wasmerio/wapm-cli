@@ -15,7 +15,8 @@ enum Command {
     /// Remove the token for the registry
     Logout,
 
-    #[structopt(name = "config")] /// Config related subcommands
+    #[structopt(name = "config")]
+    /// Config related subcommands
     Config(commands::ConfigOpt),
 
     #[structopt(name = "add")]
@@ -52,7 +53,7 @@ fn main() {
         Command::Package(package_options) => commands::package(package_options),
     };
     if let Err(e) = result {
-        eprintln!("\nError: {}", e);
+        eprintln!("\nError: {}\n", e);
         std::process::exit(-1);
     }
 }
