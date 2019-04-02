@@ -1,8 +1,8 @@
 use crate::graphql::execute_query;
-use std::fs;
 use std::fs::File;
 use std::io::copy;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::{env, fs, io};
 
 use graphql_client::*;
 use reqwest;
@@ -38,28 +38,55 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         name: name.to_string(),
     });
     let response: get_package_query::ResponseData = execute_query(&q)?;
-    match response.package {
-        Some(package) => {
-            let last_version = package
-                .last_version
-                .ok_or(InstallError::NoVersionsAvailable { name: name })?;
-            println!(
-                "Installing package {}@{}",
-                package.name, last_version.version
-            );
-            let download_url = last_version.distribution.download_url;
-            // println!("Downloading from url: {}", download_url);
-            let mut response = reqwest::get(&download_url)?;
-            let path_buf = PathBuf::from("./wapm_modules/");
-            let mut package_file_location = path_buf.clone();
-            fs::create_dir_all(path_buf)?;
-            let package_file = &format!("{}.wasm", package.name);
-            package_file_location.push(package_file);
-            let mut dest = File::create(package_file_location)?;
-            copy(&mut response, &mut dest)?;
-            println!("Package installed successfully to wapm_modules!")
-        }
-        None => return Err(InstallError::PackageNotFound { name: name }.into()),
-    };
+    let package = response
+        .package
+        .ok_or(InstallError::PackageNotFound { name: name.clone() })?;
+    let last_version = package
+        .last_version
+        .ok_or(InstallError::NoVersionsAvailable { name: name })?;
+    let fully_qualified_package_name = format!("{}@{}", package.name, last_version.version);
+    println!("Installing package {}", fully_qualified_package_name);
+    let current_dir = env::current_dir()?;
+    let package_dir = create_module_dir(&current_dir, &package.name, &last_version.version)?;
+    let download_url = last_version.distribution.download_url;
+    let mut response = reqwest::get(&download_url)?;
+    let package_file_path = package_dir.join(&format!("{}.wasm", package.name));
+    let mut dest = File::create(package_file_path)?;
+    copy(&mut response, &mut dest)?;
+    println!("Package installed successfully to wapm_modules!");
     Ok(())
+}
+
+fn create_module_dir<P: AsRef<Path>>(
+    project_dir: P,
+    package_name: &str,
+    package_version: &str,
+) -> Result<PathBuf, io::Error> {
+    let fully_qualified_package_name = format!("{}@{}", package_name, package_version);
+    let mut package_dir = project_dir.as_ref().join("wapm_modules");
+    package_dir.push(&fully_qualified_package_name);
+    fs::create_dir_all(&package_dir)?;
+    Ok(package_dir)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::commands::install::create_module_dir;
+
+    #[test]
+    fn creates_package_directory() {
+        let tmp_dir = tempdir::TempDir::new("install_package").unwrap();
+        let expected_package_version = "0.1.2";
+        let expected_package_name = "my_pkg";
+        let tmp_dir_path = tmp_dir.path();
+        let expected_package_directory = tmp_dir_path.join("wapm_modules/my_pkg@0.1.2");
+        let actual_package_directory = create_module_dir(
+            tmp_dir_path,
+            expected_package_name,
+            expected_package_version,
+        )
+        .unwrap();
+        assert!(expected_package_directory.exists());
+        assert_eq!(expected_package_directory, actual_package_directory);
+    }
 }
