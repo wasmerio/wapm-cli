@@ -3,6 +3,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::value::Table;
+use std::collections::BTreeMap;
+use toml::Value;
 
 /// The name of the manifest file. This is hard-coded for now.
 static MANIFEST_FILE_NAME: &str = "wapm.toml";
@@ -13,7 +15,7 @@ static MANIFEST_FILE_NAME: &str = "wapm.toml";
 ///
 /// The `fs` section represents assets that will be embedded into the Wasm module as custom sections.
 /// These are pairs of paths.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Manifest {
     pub name: String,
     pub version: String,
@@ -25,17 +27,15 @@ pub struct Manifest {
     pub fs: Option<Table>,
     #[serde(default = "Abi::default")]
     pub abi: Abi,
+    pub dependencies: Option<Table>,
     /// The path of the manifest file
     #[serde(skip)]
     path: PathBuf,
 }
 
-pub type Target = PathBuf;
-pub type Source = PathBuf;
-
 impl Manifest {
     /// get the target absolute path
-    pub fn target_absolute_path(&self) -> Result<Target, failure::Error> {
+    pub fn target_absolute_path(&self) -> Result<PathBuf, failure::Error> {
         if self.target.is_relative() {
             let target_path = self.get_absolute_path(&self.target);
             Ok(target_path)
@@ -56,7 +56,7 @@ impl Manifest {
     }
 
     /// get the source absolute path
-    pub fn source_absolute_path(&self) -> Result<Source, failure::Error> {
+    pub fn source_absolute_path(&self) -> Result<PathBuf, failure::Error> {
         let path = self.get_absolute_path(&self.source);
         dunce::canonicalize(&path).map_err(|e| e.into())
     }
@@ -68,6 +68,11 @@ impl Manifest {
         let mut manifest: Self = toml::from_str(contents.as_str())?;
         manifest.path = manifest_path_buf;
         Ok(manifest)
+    }
+
+    pub fn add_dependency(&mut self, dependency_name: &str, dependency_version: &str) {
+        let dependencies = self.dependencies.get_or_insert(BTreeMap::new());
+        dependencies.insert(dependency_name.to_string(), Value::String(dependency_version.to_string()));
     }
 }
 
@@ -108,6 +113,46 @@ pub enum ManifestError {
     )]
     #[allow(dead_code)]
     MissingTarget { path: PathBuf },
+}
+
+#[cfg(test)]
+mod dependency_tests {
+    use crate::manifest::Manifest;
+    use std::path::PathBuf;
+    use crate::abi::Abi;
+
+    #[test]
+    fn add_new_dependency() {
+        let mut manifest = Manifest {
+            name: "test_pkg".to_string(),
+            version: "1.0.0".to_string(),
+            description: "description".to_string(),
+            license: None,
+            readme: None,
+            source: PathBuf::new(),
+            target: PathBuf::new(),
+            fs: None,
+            abi: Abi::Emscripten,
+            dependencies: None,
+            path: PathBuf::new(),
+        };
+
+        let dependency_name = "dep_pkg";
+        let dependency_version = "0.1.0";
+
+        manifest.add_dependency(dependency_name, dependency_version);
+        assert_eq!(1, manifest.dependencies.as_ref().unwrap().len());
+
+        // adding the same dependency twice changes nothing
+        manifest.add_dependency(dependency_name, dependency_version);
+        assert_eq!(1, manifest.dependencies.as_ref().unwrap().len());
+
+        // adding a second different dependency will increase the count
+        let dependency_name_2 = "dep_pkg_2";
+        let dependency_version_2 = "0.2.0";
+        manifest.add_dependency(dependency_name_2, dependency_version_2);
+        assert_eq!(2, manifest.dependencies.as_ref().unwrap().len());
+    }
 }
 
 #[cfg(test)]

@@ -19,9 +19,9 @@ enum Command {
     /// Config related subcommands
     Config(commands::ConfigOpt),
 
-    #[structopt(name = "add")]
-    /// Add a package
-    Add(commands::AddOpt),
+    #[structopt(name = "install")]
+    /// Install a package
+    Install(commands::InstallOpt),
 
     #[structopt(name = "publish")]
     /// Publish a package
@@ -47,7 +47,7 @@ fn main() {
         Command::Login => commands::login(),
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
-        Command::Add(add_options) => commands::add(add_options),
+        Command::Install(install_options) => commands::install(install_options),
         Command::Publish => commands::publish(),
         Command::Search(search_options) => commands::search(search_options),
         Command::Package(package_options) => commands::package(package_options),
