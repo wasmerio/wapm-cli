@@ -48,17 +48,21 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         fully_qualified_package_display_name(&package.name, &last_version.version);
     println!("Installing package {}", fully_qualified_package_name);
     let current_dir = env::current_dir()?;
-    let package_dir = create_module_dir(&current_dir, &fully_qualified_package_name)?;
+    let package_dir = create_package_dir(&current_dir, &fully_qualified_package_name)?;
     let download_url = last_version.distribution.download_url;
     let mut response = reqwest::get(&download_url)?;
     let package_file_path = package_dir.join(&format!("{}.wasm", package.name));
     let mut dest = File::create(package_file_path)?;
     copy(&mut response, &mut dest)?;
+
+    // update wapm.toml
+
+
     println!("Package installed successfully to wapm_modules!");
     Ok(())
 }
 
-fn create_module_dir<P: AsRef<Path>>(
+fn create_package_dir<P: AsRef<Path>>(
     project_dir: P,
     fully_qualified_package_name: &str,
 ) -> Result<PathBuf, io::Error> {
@@ -75,7 +79,7 @@ fn fully_qualified_package_display_name(package_name: &str, package_version: &st
 
 #[cfg(test)]
 mod test {
-    use crate::commands::install::{create_module_dir, fully_qualified_package_display_name};
+    use crate::commands::install::{create_package_dir, fully_qualified_package_display_name};
 
     #[test]
     fn creates_package_directory() {
@@ -87,7 +91,7 @@ mod test {
         let tmp_dir_path = tmp_dir.path();
         let expected_package_directory = tmp_dir_path.join("wapm_modules/my_pkg@0.1.2");
         let actual_package_directory =
-            create_module_dir(tmp_dir_path, &expected_fully_qualified_package_name).unwrap();
+            create_package_dir(tmp_dir_path, &expected_fully_qualified_package_name).unwrap();
         assert!(expected_package_directory.exists());
         assert_eq!(expected_package_directory, actual_package_directory);
     }
