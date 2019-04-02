@@ -1,5 +1,5 @@
-mod add;
 mod config;
+mod install;
 mod login;
 mod logout;
 mod package;
@@ -7,8 +7,8 @@ mod publish;
 mod search;
 mod whoami;
 
-pub use self::add::{add, AddOpt};
 pub use self::config::{config, ConfigOpt};
+pub use self::install::{install, InstallOpt};
 pub use self::login::login;
 pub use self::logout::logout;
 pub use self::package::{package, PackageOpt};

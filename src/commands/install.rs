@@ -10,13 +10,13 @@ use reqwest;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-pub struct AddOpt {
+pub struct InstallOpt {
     #[structopt(parse(from_str))]
     package: String,
 }
 
 #[derive(Debug, Fail)]
-enum AddError {
+enum InstallError {
     #[fail(display = "Package not found in the registry: {}", name)]
     PackageNotFound { name: String },
 
@@ -32,7 +32,7 @@ enum AddError {
 )]
 struct GetPackageQuery;
 
-pub fn add(options: AddOpt) -> Result<(), failure::Error> {
+pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let name = options.package;
     let q = GetPackageQuery::build_query(get_package_query::Variables {
         name: name.to_string(),
@@ -42,7 +42,7 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
         Some(package) => {
             let last_version = package
                 .last_version
-                .ok_or(AddError::NoVersionsAvailable { name: name })?;
+                .ok_or(InstallError::NoVersionsAvailable { name: name })?;
             println!(
                 "Installing package {}@{}",
                 package.name, last_version.version
@@ -57,9 +57,9 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
             package_file_location.push(package_file);
             let mut dest = File::create(package_file_location)?;
             copy(&mut response, &mut dest)?;
-            println!("Package added successfully to wapm_modules!")
+            println!("Package installed successfully to wapm_modules!")
         }
-        None => return Err(AddError::PackageNotFound { name: name }.into()),
+        None => return Err(InstallError::PackageNotFound { name: name }.into()),
     };
     Ok(())
 }
