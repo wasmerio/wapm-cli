@@ -27,14 +27,14 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
     // fail early if missing required source
     let source = manifest
         .source_path()
-        .map_err(|_| BundleError::MissingSource)?;
+        .map_err(|_| PackageError::MissingSource)?;
 
     // add assets from CLI pattern
     //    let base_manifest_path = manifest_path_buf.parent().unwrap();
     let mut assets = Assets::new();
     assets.add_asset_from_pattern(&base_path, package_options.assets)?;
     // add assets from manifest if they exist
-    if let Some(table) = manifest.fs {
+    if let Some(table) = &manifest.fs {
         for pair in table.iter() {
             let local_path = PathBuf::from(pair.0.as_str());
             // assume there is a virtual path_string for now
@@ -56,8 +56,7 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
     let module_path = manifest.module_path()?;
     let module_path = if module_path.is_relative() {
         base_path.join(module_path)
-    }
-    else {
+    } else {
         module_path
     };
 
@@ -66,9 +65,7 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
 }
 
 #[derive(Debug, Fail)]
-pub enum BundleError {
-    #[fail(display = "Missing target.")]
-    MissingTarget,
+pub enum PackageError {
     #[fail(display = "Missing source.")]
     MissingSource,
 }
