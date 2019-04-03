@@ -6,33 +6,40 @@ mod options;
 use crate::commands::package::assets::Assets;
 use crate::commands::package::compress::ZStdCompression;
 pub use crate::commands::package::options::PackageOpt;
-use crate::manifest::{get_absolute_manifest_path, Manifest};
+use crate::manifest::Manifest;
+use std::env;
 use std::path::PathBuf;
 
 pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
-    // add cli args
-    let manifest_path_buf = get_absolute_manifest_path(package_options.manifest_file_path)?;
-    let manifest: Manifest = Manifest::new_from_path(Some(manifest_path_buf.clone()))?;
+    let (manifest, base_path) = match package_options.manifest_file_path {
+        Some(manifest_path) => {
+            let manifest = Manifest::open(&manifest_path)?;
+            let base_path = manifest_path.parent().unwrap().to_path_buf();
+            (manifest, base_path)
+        }
+        None => {
+            let manifest = Manifest::find_in_current_directory()?;
+            let base_path = env::current_dir()?;
+            (manifest, base_path)
+        }
+    };
 
-    // fail early if missing required target and source
+    // fail early if missing required source
     let source = manifest
-        .source_absolute_path()
-        .map_err(|_| BundleError::MissingSource)?;
-    let target = manifest
-        .target_absolute_path()
-        .map_err(|_| BundleError::MissingTarget)?;
+        .source_path()
+        .map_err(|_| PackageError::MissingSource)?;
 
     // add assets from CLI pattern
-    let base_manifest_path = manifest_path_buf.parent().unwrap();
+    //    let base_manifest_path = manifest_path_buf.parent().unwrap();
     let mut assets = Assets::new();
-    assets.add_asset_from_pattern(&base_manifest_path, package_options.assets)?;
+    assets.add_asset_from_pattern(&base_path, package_options.assets)?;
     // add assets from manifest if they exist
-    if let Some(table) = manifest.fs {
+    if let Some(table) = &manifest.fs {
         for pair in table.iter() {
             let local_path = PathBuf::from(pair.0.as_str());
             // assume there is a virtual path_string for now
             let virtual_path_string = pair.1.as_str().unwrap();
-            let local_path = base_manifest_path.join(PathBuf::from(local_path));
+            let local_path = base_path.join(local_path);
             assets.add_asset(&local_path, virtual_path_string)?;
         }
     }
@@ -45,14 +52,20 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
         module.custom.push(custom_section);
     }
 
+    // because this possibly does not exist yet, simply join to the base path if it is relative
+    let module_path = manifest.module_path()?;
+    let module_path = if module_path.is_relative() {
+        base_path.join(module_path)
+    } else {
+        module_path
+    };
+
     // publish the wasm module
-    module.emit_wasm_file(target)
+    module.emit_wasm_file(module_path)
 }
 
 #[derive(Debug, Fail)]
-pub enum BundleError {
-    #[fail(display = "Missing target.")]
-    MissingTarget,
+pub enum PackageError {
     #[fail(display = "Missing source.")]
     MissingSource,
 }
