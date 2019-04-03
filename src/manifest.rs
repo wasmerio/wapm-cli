@@ -253,6 +253,7 @@ mod module_path_tests {
         File::create(&source_wasm_path).unwrap();
         // simulate the creation of the module file
         let module_wasm_path = tmp_dir.path().join("target.wasm");
+        fs::create_dir_all(tmp_dir.path().join("nested/relative")).unwrap();
         File::create(&module_wasm_path).unwrap();
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
