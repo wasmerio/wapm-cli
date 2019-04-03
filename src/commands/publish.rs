@@ -1,6 +1,5 @@
 use crate::graphql::execute_query_modifier;
 use crate::manifest::Manifest;
-use std::fs;
 
 use graphql_client::*;
 
@@ -13,15 +12,9 @@ use graphql_client::*;
 struct PublishPackageMutation;
 
 pub fn publish() -> Result<(), failure::Error> {
-    let manifest = Manifest::new_from_path(None)?;
-    let target_path = manifest.target_absolute_path()?;
-    let readme: Option<String> = match manifest.readme {
-        Some(ref location) => {
-            let readme_absolute_location = manifest.get_absolute_path(&location);
-            Some(fs::read_to_string(readme_absolute_location)?)
-        }
-        None => None,
-    };
+    let manifest = Manifest::find_in_current_directory()?;
+    let readme = manifest.read_readme_to_string();
+    let module_path = manifest.module_path()?;
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: manifest.name.to_string(),
         version: manifest.version,
@@ -31,6 +24,6 @@ pub fn publish() -> Result<(), failure::Error> {
         file_name: Some("module".to_string()),
     });
     let _response: publish_package_mutation::ResponseData =
-        execute_query_modifier(&q, |f| f.file("module", target_path).unwrap())?;
+        execute_query_modifier(&q, |f| f.file("module", &module_path).unwrap())?;
     Ok(())
 }

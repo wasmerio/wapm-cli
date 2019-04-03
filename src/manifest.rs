@@ -1,17 +1,19 @@
 use crate::abi::Abi;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::value::Table;
-use std::collections::BTreeMap;
 use toml::Value;
 
 /// The name of the manifest file. This is hard-coded for now.
 static MANIFEST_FILE_NAME: &str = "wapm.toml";
 
-/// The manifest represents the file used to describe a Wasm package. This file contains fields needed
-/// to generated a wasm package. The important fields are `Target` and `Source` which are Paths to wasm
-/// files. The target will be generated or overwritten by the bundler.
+/// The manifest represents the file used to describe a Wasm package.
+///
+/// The `module` field represents the wasm file to be published.
+///
+/// The `source` is used to create bundles with the `fs` section.
 ///
 /// The `fs` section represents assets that will be embedded into the Wasm module as custom sections.
 /// These are pairs of paths.
@@ -22,83 +24,96 @@ pub struct Manifest {
     pub description: String,
     pub license: Option<String>,
     pub readme: Option<PathBuf>,
-    source: PathBuf,
-    target: PathBuf,
+    source: Option<PathBuf>,
+    module: PathBuf,
     pub fs: Option<Table>,
     #[serde(default = "Abi::default")]
     pub abi: Abi,
     pub dependencies: Option<Table>,
-    /// The path of the manifest file
+
+    /// private data
+    /// store the directory path of the manifest file for use later accessing relative path fields
     #[serde(skip)]
-    path: PathBuf,
+    base_directory_path: PathBuf,
 }
 
 impl Manifest {
-    /// get the target absolute path
-    pub fn target_absolute_path(&self) -> Result<PathBuf, failure::Error> {
-        if self.target.is_relative() {
-            let target_path = self.get_absolute_path(&self.target);
-            Ok(target_path)
-        } else {
-            Ok(self.target.clone())
-        }
-    }
-
-    /// get the absolute path given a relative path
-    pub fn get_absolute_path(&self, path: &Path) -> PathBuf {
-        let base_path = self
-            .path
-            .parent()
-            .expect("Can't use the root dir / as your manifest file")
-            .to_path_buf();
-        let abs_path = base_path.join(path);
-        abs_path
-    }
-
-    /// get the source absolute path
-    pub fn source_absolute_path(&self) -> Result<PathBuf, failure::Error> {
-        let path = self.get_absolute_path(&self.source);
-        dunce::canonicalize(&path).map_err(|e| e.into())
-    }
-
-    // init from file path
-    pub fn new_from_path(cli_manifest_path: Option<PathBuf>) -> Result<Self, failure::Error> {
-        let manifest_path_buf = get_absolute_manifest_path(cli_manifest_path)?;
-        let contents = fs::read_to_string(&manifest_path_buf)?;
+    /// Construct a manifest by searching for a manifest file with a file path
+    pub fn open<P: AsRef<Path>>(manifest_file_path: P) -> Result<Self, failure::Error> {
+        let contents =
+            fs::read_to_string(&manifest_file_path).map_err(|_e| ManifestError::MissingManifest)?;
         let mut manifest: Self = toml::from_str(contents.as_str())?;
-        manifest.path = manifest_path_buf;
+        let parent_directory = manifest_file_path.as_ref().parent().unwrap();
+        manifest.base_directory_path = dunce::canonicalize(parent_directory)?;
         Ok(manifest)
     }
 
+    /// Construct a manifest by searching in the current directory for a manifest file
+    pub fn find_in_current_directory() -> Result<Self, failure::Error> {
+        let cwd = env::current_dir()?;
+        let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
+        let contents = fs::read_to_string(&manifest_path_buf)
+            .map_err(|_e| ManifestError::MissingManifestInCwd)?;
+        let manifest: Self = toml::from_str(contents.as_str())?;
+        Ok(manifest)
+    }
+
+    /// read the contents of the readme into a string
+    pub fn read_readme_to_string(&self) -> Option<String> {
+        match self.readme {
+            Some(ref readme_path) => {
+                let readme_path = self.base_directory_path.join(readme_path);
+                fs::read_to_string(&readme_path).ok()
+            }
+            None => None,
+        }
+    }
+
+    /// get a canonical path to the wasm module
+    pub fn module_path(&self) -> Result<PathBuf, failure::Error> {
+        self.canonicalize_path(self.module.as_path())
+    }
+
+    /// get the source absolute path
+    pub fn source_path(&self) -> Result<PathBuf, failure::Error> {
+        match self.canonicalize_optional_path(&self.source) {
+            Some(source_path_result) => source_path_result,
+            None => Err(ManifestError::MissingSource.into()),
+        }
+    }
+
+    /// add a dependency
     pub fn add_dependency(&mut self, dependency_name: &str, dependency_version: &str) {
         let dependencies = self.dependencies.get_or_insert(BTreeMap::new());
-        dependencies.insert(dependency_name.to_string(), Value::String(dependency_version.to_string()));
+        dependencies.insert(
+            dependency_name.to_string(),
+            Value::String(dependency_version.to_string()),
+        );
     }
-}
 
-/// Helper for getting the absolute path to a wasmer.toml from an optional PathBuf. The path could
-/// be absolute or relative. If it is None, we create a PathBuf based in the current directory.
-pub fn get_absolute_manifest_path(
-    cli_manifest_path: Option<PathBuf>,
-) -> Result<PathBuf, failure::Error> {
-    let absolute_manifest_path = match cli_manifest_path {
-        // path supplied on command-line
-        Some(cli_manifest_path) => {
-            // get the absolute path
-            dunce::canonicalize(&cli_manifest_path).map_err(|_e| ManifestError::MissingManifest)?
+    /// internal helper for canonicalizing a path that may be relative or absolute
+    fn canonicalize_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, failure::Error> {
+        if path.as_ref().is_relative() {
+            let path_buf = self.base_directory_path.join(path.as_ref());
+            dunce::canonicalize(&path_buf).map_err(|e| e.into())
+        } else {
+            Ok(path.as_ref().to_path_buf())
         }
-        // no path supplied, look in current directory
-        None => {
-            let cwd = env::current_dir()?;
-            let absolute_manifest_path = cwd.join(MANIFEST_FILE_NAME);
-            absolute_manifest_path
-                .metadata()
-                .map_err(|_e| ManifestError::MissingManifestInCwd)?;
-            absolute_manifest_path
-        }
-    };
+    }
 
-    Ok(absolute_manifest_path)
+    /// internal helper for canonicalizing an optional path that may be relative or absolute
+    fn canonicalize_optional_path(
+        &self,
+        path_buf: &Option<PathBuf>,
+    ) -> Option<Result<PathBuf, failure::Error>> {
+        match path_buf {
+            Some(ref path_buf) => {
+                let path = &**path_buf;
+                Some(self.canonicalize_path(path))
+            }
+            None => None,
+        }
+    }
 }
 
 #[derive(Debug, Fail)]
@@ -113,13 +128,15 @@ pub enum ManifestError {
     )]
     #[allow(dead_code)]
     MissingTarget { path: PathBuf },
+    #[fail(display = "Source wasm file not found.")]
+    MissingSource,
 }
 
 #[cfg(test)]
 mod dependency_tests {
+    use crate::abi::Abi;
     use crate::manifest::Manifest;
     use std::path::PathBuf;
-    use crate::abi::Abi;
 
     #[test]
     fn add_new_dependency() {
@@ -129,12 +146,12 @@ mod dependency_tests {
             description: "description".to_string(),
             license: None,
             readme: None,
-            source: PathBuf::new(),
-            target: PathBuf::new(),
+            source: None,
+            module: PathBuf::new(),
             fs: None,
             abi: Abi::Emscripten,
             dependencies: None,
-            path: PathBuf::new(),
+            base_directory_path: PathBuf::new(),
         };
 
         let dependency_name = "dep_pkg";
@@ -156,119 +173,102 @@ mod dependency_tests {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::manifest::{get_absolute_manifest_path, Manifest, MANIFEST_FILE_NAME};
+mod module_path_tests {
+    use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
     use std::fs;
     use std::fs::File;
     use std::io::Write;
 
     #[test]
-    fn manifest_in_local_directory() {
-        let tmp_dir = tempdir::TempDir::new("manifest_in_local_directory").unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let _ = File::create(manifest_absolute_path.clone()).unwrap();
-        let manifest_path = Some(manifest_absolute_path.clone());
-        let result = get_absolute_manifest_path(manifest_path);
-        assert!(result.is_ok(), "Failed to get manifest path");
-        let actual_manifest_path = result.unwrap();
-        let expected_manifest_path = manifest_absolute_path;
-        assert_eq!(
-            expected_manifest_path, actual_manifest_path,
-            "Manifest paths do not match."
-        );
-    }
-
-    #[test]
     fn target_and_source_paths() {
         let tmp_dir = tempdir::TempDir::new("target_and_source_paths").unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_absolute_path).unwrap();
-        file.write_all(
-            r#"
-name = "test"
-version = "1.0.0"
-target = "target.wasm"
-source = "source.wasm"
-description = "description"
-        "#
-            .as_bytes(),
-        )
-        .unwrap();
-
+        // setup the source wasm file
         let source_wasm_path = tmp_dir.path().join("source.wasm");
-        let _ = File::create(&source_wasm_path).unwrap();
-
-        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
+        File::create(&source_wasm_path).unwrap();
+        // simulate the creation of the module file
+        let module_wasm_path = tmp_dir.path().join("target.wasm");
+        File::create(&module_wasm_path).unwrap();
+        // open the manifest file
+        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_path).unwrap();
+        let wapm_toml = toml! {
+            name = "test"
+            version = "1.0.0"
+            module = "target.wasm"
+            source = "source.wasm"
+            description = "description"
+        };
+        let toml_string = toml::to_string(&wapm_toml).unwrap();
+        file.write_all(toml_string.as_bytes()).unwrap();
+        let manifest = Manifest::open(manifest_path).unwrap();
+        // assert paths are correct
         let expected_source_path = source_wasm_path;
-
-        let actual_source_path = manifest.source_absolute_path().unwrap();
+        let actual_source_path = manifest.source_path().unwrap();
         assert_eq!(actual_source_path, expected_source_path);
-
-        let expected_target_path = tmp_dir.path().join("target.wasm");
-        let actual_target_path = manifest.target_absolute_path().unwrap();
+        let expected_target_path = module_wasm_path;
+        let actual_target_path = manifest.module_path().unwrap();
         assert_eq!(actual_target_path, expected_target_path);
     }
 
     #[test]
     fn nested_target_and_source_paths() {
         let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_absolute_path).unwrap();
-        file.write_all(
-            r#"
-name = "test"
-version = "1.0.0"
-target = "my/awesome/target.wasm"
-source = "my/old/boring/source.wasm"
-description = "description"
-        "#
-            .as_bytes(),
-        )
-        .unwrap();
-
-        let target_dir = tmp_dir.path().join("my/awesome");
-        fs::create_dir_all(&target_dir).unwrap();
+        // setup the source wasm file
         let source_dir = tmp_dir.path().join("my/old/boring");
-        fs::create_dir_all(&source_dir).unwrap();
-
         let source_wasm_path = source_dir.join("source.wasm");
-        let _ = File::create(&source_wasm_path).unwrap();
-
-        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
-
+        fs::create_dir_all(&source_dir).unwrap();
+        File::create(&source_wasm_path).unwrap();
+        // simulate the creation of the module file
+        let target_dir = tmp_dir.path().join("my/awesome");
+        let module_wasm_path = target_dir.join("target.wasm");
+        fs::create_dir_all(&target_dir).unwrap();
+        File::create(&module_wasm_path).unwrap();
+        // open the manifest file
+        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_path).unwrap();
+        let wapm_toml = toml! {
+            name = "test"
+            version = "1.0.0"
+            module = "my/awesome/target.wasm"
+            source = "my/old/boring/source.wasm"
+            description = "description"
+        };
+        let toml_string = toml::to_string(&wapm_toml).unwrap();
+        file.write_all(toml_string.as_bytes()).unwrap();
+        let manifest = Manifest::open(manifest_path).unwrap();
+        // assert paths are correct
         let expected_source_path = source_wasm_path;
-        let actual_source_path = manifest.source_absolute_path().unwrap();
+        let actual_source_path = manifest.source_path().unwrap();
         assert_eq!(expected_source_path, actual_source_path);
-
         let expected_target_path = target_dir.join("target.wasm");
-        let actual_target_path = manifest.target_absolute_path().unwrap();
+        let actual_target_path = manifest.module_path().unwrap();
         assert_eq!(expected_target_path, actual_target_path);
     }
 
     #[test]
     fn relative_target_path() {
         let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_absolute_path).unwrap();
-        file.write_all(
-            r#"
-name = "test"
-version = "1.0.0"
-target = "../../target.wasm"
-source = "source.wasm"
-description = "description"
-        "#
-            .as_bytes(),
-        )
-        .unwrap();
-
+        // setup the source wasm file
         let source_wasm_path = tmp_dir.path().join("source.wasm");
-        let _ = File::create(&source_wasm_path).unwrap();
-
-        let manifest = Manifest::new_from_path(Some(manifest_absolute_path)).unwrap();
-
-        let expected_target_path = tmp_dir.path().join("../../target.wasm");
-        let actual_target_path = manifest.target_absolute_path().unwrap();
+        File::create(&source_wasm_path).unwrap();
+        // simulate the creation of the module file
+        let module_wasm_path = tmp_dir.path().join("target.wasm");
+        File::create(&module_wasm_path).unwrap();
+        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_path).unwrap();
+        let wapm_toml = toml! {
+            name = "test"
+            version = "1.0.0"
+            module = "nested/relative/../relative/../../target.wasm"
+            source = "source.wasm"
+            description = "description"
+        };
+        let toml_string = toml::to_string(&wapm_toml).unwrap();
+        file.write_all(toml_string.as_bytes()).unwrap();
+        let manifest = Manifest::open(manifest_path).unwrap();
+        // assert
+        let expected_target_path = module_wasm_path;
+        let actual_target_path = manifest.module_path().unwrap();
         assert_eq!(actual_target_path, expected_target_path);
     }
 }

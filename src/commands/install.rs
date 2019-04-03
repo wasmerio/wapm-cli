@@ -7,8 +7,8 @@ use std::{env, fs, io};
 use graphql_client::*;
 use reqwest;
 
-use structopt::StructOpt;
 use crate::manifest::Manifest;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
@@ -64,9 +64,8 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             let contents = toml::to_string(&manifest)?;
             let mut file = std::fs::OpenOptions::new().write(true).open(&path)?;
             file.write_all(contents.as_bytes())?;
-        },
-        Err(_e) => {
         }
+        Err(_e) => {}
     }
 
     println!("Package installed successfully to wapm_modules!");

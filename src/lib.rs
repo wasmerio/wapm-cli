@@ -7,6 +7,10 @@ extern crate serde_derive;
 #[macro_use]
 extern crate prettytable;
 
+#[cfg(test)]
+#[macro_use]
+extern crate toml;
+
 mod abi;
 pub mod commands;
 mod config;
