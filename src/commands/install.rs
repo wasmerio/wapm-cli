@@ -94,10 +94,10 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             lockfile.save(&manifest.base_directory_path)?;
         }
         (Err(_manifest_error), Ok(_lockfile)) => {
-            //            Lockfile::new_from_lockfile();
+            // TODO: Lockfile::new_from_lockfile();
         }
         (Err(_), Err(_)) => {
-            //            Lockfile::new();
+            // TODO: Lockfile::new();
         }
     }
 
