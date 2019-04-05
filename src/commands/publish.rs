@@ -16,13 +16,9 @@ pub fn publish() -> Result<(), failure::Error> {
     let manifest = Manifest::find_in_current_directory()?;
     let module = manifest.module.as_ref().ok_or(PublishError::NoModule)?;
     let manifest_string = toml::to_string(&manifest)?;
-    let readme = match module.readme {
-        Some(ref readme_path) => {
-            let readme_path = manifest.base_directory_path.join(readme_path);
-            fs::read_to_string(&readme_path).ok()
-        }
-        None => None,
-    };
+    let readme = module.readme.as_ref().and_then(|readme_path| {
+        fs::read_to_string(manifest.base_directory_path.join(readme_path)).ok()
+    });
     let module_path = manifest.module_path()?;
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: module.name.to_string(),
