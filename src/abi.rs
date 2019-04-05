@@ -4,6 +4,7 @@
 pub enum Abi {
     Emscripten,
     None,
+    Wasi,
 }
 
 impl Default for Abi {
