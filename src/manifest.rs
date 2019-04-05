@@ -15,7 +15,7 @@ pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Command {
     pub name: String,
-    emscripten_call_arguments: Option<String>,
+    pub emscripten_call_arguments: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

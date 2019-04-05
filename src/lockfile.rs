@@ -108,7 +108,7 @@ impl Lockfile {
                             format!("{} {}", dependency_module.name, dependency_module.version);
                         let lockfile_command = LockfileCommand {
                             module: module_string,
-                            emscripten_arguments: None,
+                            emscripten_arguments: command.emscripten_call_arguments.clone(),
                         };
                         lockfile_commands.insert(command.name.clone(), lockfile_command);
                     }
@@ -124,7 +124,7 @@ impl Lockfile {
                     let module_string = format!("{} {}", module.name, module.version);
                     let lockfile_command = LockfileCommand {
                         module: module_string,
-                        emscripten_arguments: None,
+                        emscripten_arguments: command.emscripten_call_arguments.clone(),
                     };
                     lockfile_commands.insert(command.name.clone(), lockfile_command);
                 }
