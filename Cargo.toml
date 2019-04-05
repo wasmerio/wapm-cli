@@ -35,5 +35,5 @@ tempdir = "0.3"
 [workspace]
 members = ["."]
 
-[profile.release]
-lto = true
+#[profile.release]
+#lto = true

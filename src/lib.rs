@@ -14,5 +14,7 @@ extern crate toml;
 mod abi;
 pub mod commands;
 mod config;
+mod dependency_resolver;
 mod graphql;
+mod lockfile;
 mod manifest;

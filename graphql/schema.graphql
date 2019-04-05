@@ -1,5 +1,5 @@
 # source: http://localhost:8000/graphql
-# timestamp: Mon Mar 25 2019 18:57:23 GMT-0700 (Pacific Daylight Time)
+# timestamp: Fri Apr 05 2019 12:23:05 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -44,6 +44,7 @@ type ObtainJSONWebTokenPayload {
 
 type Package implements Node {
   name: String!
+  namespace: String
   private: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -52,6 +53,8 @@ type Package implements Node {
 
   """The ID of the object."""
   id: ID!
+  alias: String
+  displayName: String!
   lastVersion: PackageVersion
 }
 
@@ -76,6 +79,7 @@ type PackageVersion {
   package: Package!
   version: String!
   description: String!
+  manifest: String!
   license: String
   readme: String
   versionPosition: Int!
@@ -117,6 +121,7 @@ input PublishPackageInput {
   name: String!
   version: String!
   description: String!
+  manifest: String!
   license: String
   readme: String
   file: String
@@ -130,6 +135,8 @@ type PublishPackagePayload {
 }
 
 type Query {
+  """The ID of the object"""
+  node(id: ID!): Node
   packages(before: String, after: String, first: Int, last: Int): PackageConnection
   recentPackageVersions(before: String, after: String, first: Int, last: Int): PackageVersionConnection
   getPackage(name: String!): Package

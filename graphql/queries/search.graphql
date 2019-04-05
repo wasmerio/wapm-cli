@@ -5,7 +5,7 @@ query SearchQuery($query: String!) {
         __typename
         ... on PackageVersion {
           package {
-            name
+            displayName
           }
           createdAt
           version
