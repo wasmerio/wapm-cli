@@ -1,6 +1,6 @@
 use crate::abi::Abi;
-use crate::dependency_resolver::DependencyResolver;
-use crate::manifest::Manifest;
+use crate::dependency_resolver::{Dependency, DependencyResolver};
+use crate::manifest::{extract_dependencies, Command, Manifest, Module};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -19,6 +19,16 @@ pub struct LockfileCommand {
     emscripten_arguments: Option<String>,
 }
 
+impl LockfileCommand {
+    pub fn from_command(module: &str, command: &Command) -> Self {
+        let lockfile_command = LockfileCommand {
+            module: module.to_string(),
+            emscripten_arguments: command.emscripten_call_arguments.clone(),
+        };
+        lockfile_command
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
     pub name: String,
@@ -29,6 +39,28 @@ pub struct LockfileModule {
     pub hash: String,
     pub abi: Abi,
     pub entry: String,
+}
+
+impl LockfileModule {
+    pub fn from_module(module: &Module, download_url: &str) -> Self {
+        let lockfile_module = LockfileModule {
+            name: module.name.clone(),
+            version: module.version.to_string(),
+            source: format!("registry+{}", module.name),
+            resolved: download_url.to_string(),
+            integrity: "".to_string(),
+            hash: "".to_string(),
+            abi: module.abi.clone(),
+            entry: module
+                .module
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string(),
+        };
+        lockfile_module
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -47,89 +79,29 @@ impl Lockfile {
         Ok(lockfile)
     }
 
-    /// This function takes a manifest, maybe a lockfile, and a dependency resolver. The output is
-    /// a new lockfile that resolves changes that have been made to the manifest file and the
-    /// existing lockfile, if it exists. The resolver is used to fetch the manifest for packages
-    /// that are new i.e. packages that have been added to the manifest and not been updated in
-    /// the lockfile.
+    /// This method constructs a new lockfile with just a manifest. This is typical if no lockfile
+    /// previously exists. All dependencies will be fetched.
     pub fn new_from_manifest<D: DependencyResolver>(
         manifest: &Manifest,
-        existing_lockfile: Option<Lockfile>,
         dependency_resolver: &D,
     ) -> Result<Self, failure::Error> {
-        // get all dependencies that changed and references to unchanged lockfile modules
-        let (changed_dependencies, unchanged_lockfile_modules) =
-            resolve_changes(&manifest, existing_lockfile.as_ref())?;
-        // get all (unchanged) commands for unchanged lockfile modules
+        let mut lockfile_modules = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
-        match existing_lockfile {
-            Some(ref lockfile) => {
-                let commands = &lockfile.commands;
-                for (key, _lockfile_module) in unchanged_lockfile_modules.iter() {
-                    for (name, command) in
-                        commands.iter().filter(|(_name, c)| &c.module == key)
-                    {
-                        lockfile_commands.insert(name.clone(), command.clone());
-                    }
-                }
-            }
-            None => {}
+        let dependencies = extract_dependencies(&manifest.dependencies)?;
+        let mut manifests = vec![];
+        for (name, version) in dependencies.iter() {
+            let dependency_manifest = dependency_resolver.resolve(name, version)?;
+            manifests.push(dependency_manifest);
         }
-        // copy all lockfile modules into a map
-        let mut lockfile_modules= unchanged_lockfile_modules;
-        // for all changed dependencies, fetch the newest manifest
-        for (name, version) in changed_dependencies {
-            let dependency_manifest = dependency_resolver.resolve(&name, &version)?;
-            let dependency_module = dependency_manifest.module.as_ref().unwrap();
-            let key = format!("{} {}", name, version);
-            let lockfile_module = LockfileModule {
-                name: dependency_module.name.clone(),
-                version: dependency_module.version.to_string(),
-                source: format!("registry+{}", dependency_module.name),
-                resolved: "".to_string(),
-                integrity: "".to_string(),
-                hash: "".to_string(),
-                abi: dependency_module.abi.clone(),
-                entry: dependency_module
-                    .module
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            };
-            lockfile_modules.insert(key, lockfile_module);
-
-            match dependency_manifest.command {
-                Some(ref commands) => {
-                    for command in commands {
-                        let module_string =
-                            format!("{} {}", dependency_module.name, dependency_module.version);
-                        let lockfile_command = LockfileCommand {
-                            module: module_string,
-                            emscripten_arguments: command.emscripten_call_arguments.clone(),
-                        };
-                        lockfile_commands.insert(command.name.clone(), lockfile_command);
-                    }
-                }
-                None => {}
-            };
+        for manifest in manifests.iter() {
+            get_lockfile_data_from_manifest(
+                &manifest,
+                &mut lockfile_modules,
+                &mut lockfile_commands,
+            );
         }
-
         // handle this manifest's commands
-        match (&manifest.command, &manifest.module) {
-            (Some(commands), Some(module)) => {
-                for command in commands {
-                    let module_string = format!("{} {}", module.name, module.version);
-                    let lockfile_command = LockfileCommand {
-                        module: module_string,
-                        emscripten_arguments: command.emscripten_call_arguments.clone(),
-                    };
-                    lockfile_commands.insert(command.name.clone(), lockfile_command);
-                }
-            }
-            (_, _) => {} // if there is no module, then there are no commands
-        };
+        get_commands_from_manifest(&manifest, &mut lockfile_commands);
 
         let new_lockfile = Lockfile {
             modules: lockfile_modules,
@@ -139,6 +111,56 @@ impl Lockfile {
         Ok(new_lockfile)
     }
 
+    /// This function takes a manifest, maybe a lockfile, and a dependency resolver. The output is
+    /// a new lockfile that resolves changes that have been made to the manifest file and the
+    /// existing lockfile, if it exists. The resolver is used to fetch the manifest for packages
+    /// that are new i.e. packages that have been added to the manifest and not been updated in
+    /// the lockfile.
+    pub fn new_from_manifest_and_lockfile<D: DependencyResolver>(
+        manifest: &Manifest,
+        existing_lockfile: Lockfile,
+        dependency_resolver: &D,
+    ) -> Result<Self, failure::Error> {
+        // capture references to the parts of the lockfile
+        let existing_lockfile_module = &existing_lockfile.modules;
+        let existing_lockfile_commands = &existing_lockfile.commands;
+        // get all dependencies that changed and references to unchanged lockfile modules
+        let (changed_dependencies, unchanged_lockfile_modules) =
+            resolve_changes(&manifest, existing_lockfile_module)?;
+        // get all (unchanged) commands for unchanged lockfile modules
+        let mut lockfile_commands = BTreeMap::new();
+        for (key, _lockfile_module) in unchanged_lockfile_modules.iter() {
+            for (name, command) in existing_lockfile_commands
+                .iter()
+                .filter(|(_name, c)| &c.module == key)
+            {
+                lockfile_commands.insert(name.clone(), command.clone());
+            }
+        }
+        // copy all lockfile modules into a map
+        let mut lockfile_modules = unchanged_lockfile_modules;
+        // for all changed dependencies, fetch the newest manifest
+        for (name, version) in changed_dependencies {
+            let dependency_manifest = dependency_resolver.resolve(&name, &version)?;
+            get_lockfile_data_from_manifest(
+                &dependency_manifest,
+                &mut lockfile_modules,
+                &mut lockfile_commands,
+            );
+        }
+
+        // handle this manifest's commands
+        get_commands_from_manifest(&manifest, &mut lockfile_commands);
+
+        let new_lockfile = Lockfile {
+            modules: lockfile_modules,
+            commands: lockfile_commands,
+        };
+
+        Ok(new_lockfile)
+    }
+
+    /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> Result<(), failure::Error> {
         let lockfile_string = toml::to_string(self)?;
         let lockfile_string = format!("{}\n{}", LOCKFILE_HEADER, lockfile_string);
@@ -154,21 +176,21 @@ impl Lockfile {
 /// The packages that had no changes are returned as references to the the lockfile modules.
 fn resolve_changes<'a, 'b>(
     manifest: &'b Manifest,
-    lockfile: Option<&'a Lockfile>,
-) -> Result<(Vec<(&'b String, &'b String)>, BTreeMap<String, LockfileModule>), failure::Error> {
-    let (changes, not_changed) = match (lockfile, &manifest.dependencies) {
-        (Some(lockfile), Some(ref dependencies)) => {
+    lockfile_modules: &BTreeMap<String, LockfileModule>,
+) -> Result<(Vec<(&'b str, &'b str)>, BTreeMap<String, LockfileModule>), failure::Error> {
+    let (changes, not_changed) = match manifest.dependencies {
+        Some(ref dependencies) => {
             let mut changes = vec![];
             let mut not_changed = BTreeMap::new();
             for (name, value) in dependencies.iter() {
                 match value {
                     Value::String(version) => {
                         let key = format!("{} {}", name, version);
-                        match lockfile.modules.get(&key) {
+                        match lockfile_modules.get(&key) {
                             Some(lockfile_module) => {
                                 not_changed.insert(key, lockfile_module.clone());
                             }
-                            None => changes.push((name, version)),
+                            None => changes.push((name.as_str(), version.as_str())),
                         }
                     }
                     _ => return Err(LockfileError::InvalidVersion.into()),
@@ -176,21 +198,58 @@ fn resolve_changes<'a, 'b>(
             }
             (changes, not_changed)
         }
-        (Some(_lockfile), None) => (vec![], BTreeMap::new()), // TODO no manifest but lockfile exists
-        (None, Some(ref dependencies)) => {
-            let mut changes = vec![];
-            for (name, value) in dependencies.iter() {
-                match value {
-                    Value::String(version) => changes.push((name, version)),
-                    _ => return Err(LockfileError::InvalidVersion.into()),
-                }
-            }
-            (changes, BTreeMap::new())
-        }
-        (None, None) => (vec![],  BTreeMap::new()),
+        None => (vec![], BTreeMap::new()),
     };
 
     Ok((changes, not_changed))
+}
+
+fn get_lockfile_data_from_manifest(
+    dependency: &Dependency,
+    lockfile_modules: &mut BTreeMap<String, LockfileModule>,
+    lockfile_commands: &mut BTreeMap<String, LockfileCommand>,
+) {
+    let manifest = &dependency.manifest;
+    let download_url = dependency.download_url.as_str();
+    match manifest.module {
+        Some(ref module) => {
+            let lockfile_module = LockfileModule::from_module(module, download_url);
+            let key = format!(
+                "{} {}",
+                lockfile_module.name.clone(),
+                lockfile_module.version.clone()
+            );
+            lockfile_modules.insert(key.clone(), lockfile_module);
+            // if there is a module, then get the commands if any exist
+            match manifest.command {
+                Some(ref commands) => {
+                    for command in commands {
+                        let lockfile_command = LockfileCommand::from_command(&key, command);
+                        lockfile_commands.insert(command.name.clone(), lockfile_command);
+                    }
+                }
+                None => {}
+            }
+        }
+        None => {}
+    }
+}
+
+fn get_commands_from_manifest(
+    manifest: &Manifest,
+    lockfile_commands: &mut BTreeMap<String, LockfileCommand>,
+) {
+    // handle this manifest's commands
+    match (&manifest.command, &manifest.module) {
+        (Some(commands), Some(module)) => {
+            for command in commands {
+                let module_string = format!("{} {}", module.name, module.version);
+                let lockfile_command = LockfileCommand::from_command(&module_string, command);
+                lockfile_commands.insert(command.name.clone(), lockfile_command);
+            }
+        }
+        (_, _) => {} // if there is no module, then there are no commands
+    };
 }
 
 #[derive(Debug, Fail)]
@@ -200,40 +259,42 @@ pub enum LockfileError {
 }
 
 #[cfg(test)]
+mod get_lockfile_data_from_manifest_tests {
+    use crate::dependency_resolver::Dependency;
+    use crate::lockfile::get_lockfile_data_from_manifest;
+    use crate::manifest::Manifest;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn fill_lockfile_data() {
+        let mut lockfile_modules = BTreeMap::new();
+        let mut lockfile_commands = BTreeMap::new();
+        let foo_toml: toml::Value = toml! {
+            [module]
+            name = "foo"
+            version = "1.0.0"
+            module = "foo.wasm"
+            description = ""
+            [[command]]
+            name = "do_foo_stuff"
+            [[command]]
+            name = "do_other_stuff"
+        };
+        let foo_manifest: Manifest = foo_toml.try_into().unwrap();
+        let dependency = Dependency {
+            manifest: foo_manifest,
+            download_url: "".to_string(),
+        };
+        get_lockfile_data_from_manifest(&dependency, &mut lockfile_modules, &mut lockfile_commands);
+        assert_eq!(1, lockfile_modules.len());
+        assert_eq!(2, lockfile_commands.len());
+    }
+}
+
+#[cfg(test)]
 mod resolve_changes_tests {
     use crate::lockfile::{resolve_changes, Lockfile};
     use crate::manifest::Manifest;
-    #[test]
-    fn no_existing_lock_file_and_has_zero_dependencies() {
-        let wapm_toml = toml! {
-            [module]
-            name = "test"
-            version = "1.0.0"
-            module = "target.wasm"
-            description = "description"
-        };
-        let manifest: Manifest = wapm_toml.try_into().unwrap();
-        let (changes, not_changed) = resolve_changes(&manifest, None).unwrap();
-        assert_eq!(0, changes.len());
-        assert_eq!(0, not_changed.len());
-    }
-    #[test]
-    fn no_existing_lock_file_and_has_dependencies() {
-        let wapm_toml = toml! {
-            [module]
-            name = "test"
-            version = "1.0.0"
-            module = "target.wasm"
-            description = "description"
-            [dependencies]
-            foo = "1.0.0"
-            bar = "2.0.1"
-        };
-        let manifest: Manifest = wapm_toml.try_into().unwrap();
-        let (changes, not_changed) = resolve_changes(&manifest, None).unwrap();
-        assert_eq!(2, changes.len());
-        assert_eq!(0, not_changed.len());
-    }
     #[test]
     fn lock_file_exists_and_one_unchanged_dependency() {
         let wapm_toml = toml! {
@@ -269,9 +330,8 @@ mod resolve_changes_tests {
             [commands]
         };
         let lockfile: Lockfile = wapm_lock_toml.try_into().unwrap();
-        let lockfile = Some(&lockfile);
-
-        let (changes, not_changed) = resolve_changes(&manifest, lockfile).unwrap();
+        let lockfile_modules = lockfile.modules;
+        let (changes, not_changed) = resolve_changes(&manifest, &lockfile_modules).unwrap();
         assert_eq!(1, changes.len()); // one dependency was upgraded
         assert_eq!(1, not_changed.len()); // one dependency did not change, reuse the lockfile module
     }
@@ -279,7 +339,7 @@ mod resolve_changes_tests {
 
 #[cfg(test)]
 mod test {
-    use crate::dependency_resolver::TestResolver;
+    use crate::dependency_resolver::{Dependency, TestResolver};
     use crate::lockfile::{Lockfile, LOCKFILE_NAME};
     use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
     use std::collections::BTreeMap;
@@ -333,7 +393,7 @@ mod test {
 
         let resolver = TestResolver(BTreeMap::new());
 
-        let lockfile = Lockfile::new_from_manifest(&manifest, None, &resolver).unwrap();
+        let lockfile = Lockfile::new_from_manifest(&manifest, &resolver).unwrap();
         assert_eq!(0, lockfile.commands.len());
         assert_eq!(0, lockfile.modules.len());
     }
@@ -364,8 +424,12 @@ mod test {
             name = "do_foo_stuff"
         };
         let foo_manifest: Manifest = foo_toml.try_into().unwrap();
+        let foo_dependency = Dependency {
+            manifest: foo_manifest,
+            download_url: "".to_string(),
+        };
         // FOO package v 1.0.2
-        map.insert(("foo".to_string(), "1.0.2".to_string()), foo_manifest);
+        map.insert(("foo".to_string(), "1.0.2".to_string()), foo_dependency);
         let newer_foo_toml: toml::Value = toml! {
             [module]
             name = "foo"
@@ -376,7 +440,14 @@ mod test {
             name = "do_more_foo_stuff" // COMMAND REMOVED AND ADDED
         };
         let newer_foo_manifest: Manifest = newer_foo_toml.try_into().unwrap();
-        map.insert(("foo".to_string(), "1.0.2".to_string()), newer_foo_manifest);
+        let newer_foo_dependency = Dependency {
+            manifest: newer_foo_manifest,
+            download_url: "".to_string(),
+        };
+        map.insert(
+            ("foo".to_string(), "1.0.2".to_string()),
+            newer_foo_dependency,
+        );
         // BAR package v 2.0.1
         let bar_toml: toml::Value = toml! {
             [module]
@@ -386,7 +457,11 @@ mod test {
             description = ""
         };
         let bar_manifest: Manifest = bar_toml.try_into().unwrap();
-        map.insert(("bar".to_string(), "2.0.1".to_string()), bar_manifest);
+        let bar_dependency = Dependency {
+            manifest: bar_manifest,
+            download_url: "".to_string(),
+        };
+        map.insert(("bar".to_string(), "2.0.1".to_string()), bar_dependency);
         // BAR package v 3.0.0
         let bar_newer_toml: toml::Value = toml! {
             [module]
@@ -398,7 +473,14 @@ mod test {
             name = "do_bar_stuff" // ADDED COMMAND
         };
         let bar_newer_manifest: Manifest = bar_newer_toml.try_into().unwrap();
-        map.insert(("bar".to_string(), "3.0.0".to_string()), bar_newer_manifest);
+        let bar_newer_dependency = Dependency {
+            manifest: bar_newer_manifest,
+            download_url: "".to_string(),
+        };
+        map.insert(
+            ("bar".to_string(), "3.0.0".to_string()),
+            bar_newer_dependency,
+        );
         let test_resolver = TestResolver(map);
 
         // existing lockfile
@@ -428,7 +510,7 @@ mod test {
         let existing_lockfile: Lockfile = wapm_lock_toml.try_into().unwrap();
 
         let lockfile =
-            Lockfile::new_from_manifest(&manifest, Some(existing_lockfile), &test_resolver)
+            Lockfile::new_from_manifest_and_lockfile(&manifest, existing_lockfile, &test_resolver)
                 .unwrap();
 
         // existing lockfile

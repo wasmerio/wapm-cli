@@ -108,6 +108,24 @@ impl Manifest {
     }
 }
 
+pub fn extract_dependencies(
+    dependencies_table: &Option<Table>,
+) -> Result<Vec<(&str, &str)>, failure::Error> {
+    match dependencies_table {
+        Some(dependencies_table) => {
+            let mut dependencies = vec![];
+            for (name, version_value) in dependencies_table.iter() {
+                match version_value {
+                    Value::String(version) => dependencies.push((name.as_str(), version.as_str())),
+                    _ => bail!("Version must be a string"),
+                }
+            }
+            Ok(dependencies)
+        }
+        None => Ok(vec![]),
+    }
+}
+
 /// internal helper for canonicalizing a path that may be relative or absolute
 fn canonicalize_path<P1: AsRef<Path>, P2: AsRef<Path>>(
     directory: P1,

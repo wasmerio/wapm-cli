@@ -67,32 +67,37 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     copy(&mut response, &mut dest)?;
 
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
-    // update wapm.toml
-    match Manifest::open(&manifest_file_path) {
-        Ok(mut manifest) => {
+
+    match (
+        Manifest::open(&manifest_file_path),
+        Lockfile::open(current_dir),
+    ) {
+        (Ok(mut manifest), Ok(existing_lockfile)) => {
             manifest.add_dependency(&package.name, &last_version.version);
             // construct lockfile
             let resolver = RegistryResolver;
-            let existing_lockfile = Lockfile::open(&manifest.base_directory_path).ok();
-            let mut lockfile =
-                Lockfile::new_from_manifest(&manifest, existing_lockfile, &resolver)?;
-            match lockfile
-                .modules
-                .get_mut(&format!("{} {}", package.name, last_version.version))
-            {
-                Some(lockfile_module) => lockfile_module.resolved = download_url,
-                _ => {}
-            };
+            let lockfile =
+                Lockfile::new_from_manifest_and_lockfile(&manifest, existing_lockfile, &resolver)?;
             // write the manifest
             manifest.save()?;
             // write the lockfile
             lockfile.save(&manifest.base_directory_path)?;
         }
-        Err(_e) => {
-            // TODO: implement new_from_install
-            // Install dependency with no manifest
-            // let resolver = RegistryResolver;
-            // let lockfile = Lockfile::new_from_install(&manifest, &resolver)?;
+        (Ok(mut manifest), Err(_lockfile_error)) => {
+            manifest.add_dependency(&package.name, &last_version.version);
+            // construct lockfile
+            let resolver = RegistryResolver;
+            let lockfile = Lockfile::new_from_manifest(&manifest, &resolver)?;
+            // write the manifest
+            manifest.save()?;
+            // write the lockfile
+            lockfile.save(&manifest.base_directory_path)?;
+        }
+        (Err(_manifest_error), Ok(_lockfile)) => {
+            //            Lockfile::new_from_lockfile();
+        }
+        (Err(_), Err(_)) => {
+            //            Lockfile::new();
         }
     }
 
