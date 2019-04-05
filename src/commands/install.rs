@@ -89,7 +89,6 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             lockfile.save(&manifest.base_directory_path)?;
         }
         Err(_e) => {
-            println!("didn't open manifest: {:?}", _e);
             // TODO: implement new_from_install
             // Install dependency with no manifest
             // let resolver = RegistryResolver;
