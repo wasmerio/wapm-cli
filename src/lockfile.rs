@@ -47,6 +47,11 @@ impl Lockfile {
         Ok(lockfile)
     }
 
+    /// This function takes a manifest, maybe a lockfile, and a dependency resolver. The output is
+    /// a new lockfile that resolves changes that have been made to the manifest file and the
+    /// existing lockfile, if it exists. The resolver is used to fetch the manifest for packages
+    /// that are new i.e. packages that have been added to the manifest and not been updated in
+    /// the lockfile.
     pub fn new_from_manifest<D: DependencyResolver>(
         manifest: &Manifest,
         existing_lockfile: Option<Lockfile>,
@@ -60,11 +65,9 @@ impl Lockfile {
         match existing_lockfile {
             Some(ref lockfile) => {
                 let commands = &lockfile.commands;
-                for lockfile_module in unchanged_lockfile_modules.iter() {
-                    let module_name =
-                        format!("{} {}", lockfile_module.name, lockfile_module.version);
+                for (key, _lockfile_module) in unchanged_lockfile_modules.iter() {
                     for (name, command) in
-                        commands.iter().filter(|(_name, c)| c.module == module_name)
+                        commands.iter().filter(|(_name, c)| &c.module == key)
                     {
                         lockfile_commands.insert(name.clone(), command.clone());
                     }
@@ -73,11 +76,7 @@ impl Lockfile {
             None => {}
         }
         // copy all lockfile modules into a map
-        let mut lockfile_modules = BTreeMap::new();
-        for lockfile_module in unchanged_lockfile_modules {
-            let key = format!("{} {}", lockfile_module.name, lockfile_module.version);
-            lockfile_modules.insert(key, lockfile_module.clone());
-        }
+        let mut lockfile_modules= unchanged_lockfile_modules;
         // for all changed dependencies, fetch the newest manifest
         for (name, version) in changed_dependencies {
             let dependency_manifest = dependency_resolver.resolve(&name, &version)?;
@@ -150,20 +149,24 @@ impl Lockfile {
     }
 }
 
+/// This helper function resolves differences between the lockfile and the manifest file. All changes
+/// that have not been reflected in the lockfile are returned as a vec of package names and versions.
+/// The packages that had no changes are returned as references to the the lockfile modules.
 fn resolve_changes<'a, 'b>(
     manifest: &'b Manifest,
     lockfile: Option<&'a Lockfile>,
-) -> Result<(Vec<(&'b String, &'b String)>, Vec<&'a LockfileModule>), failure::Error> {
+) -> Result<(Vec<(&'b String, &'b String)>, BTreeMap<String, LockfileModule>), failure::Error> {
     let (changes, not_changed) = match (lockfile, &manifest.dependencies) {
         (Some(lockfile), Some(ref dependencies)) => {
             let mut changes = vec![];
-            let mut not_changed = vec![];
+            let mut not_changed = BTreeMap::new();
             for (name, value) in dependencies.iter() {
                 match value {
                     Value::String(version) => {
-                        match lockfile.modules.get(&format!("{} {}", name, version)) {
+                        let key = format!("{} {}", name, version);
+                        match lockfile.modules.get(&key) {
                             Some(lockfile_module) => {
-                                not_changed.push(lockfile_module);
+                                not_changed.insert(key, lockfile_module.clone());
                             }
                             None => changes.push((name, version)),
                         }
@@ -173,7 +176,7 @@ fn resolve_changes<'a, 'b>(
             }
             (changes, not_changed)
         }
-        (Some(_lockfile), None) => (vec![], vec![]), // TODO no manifest but lockfile exists
+        (Some(_lockfile), None) => (vec![], BTreeMap::new()), // TODO no manifest but lockfile exists
         (None, Some(ref dependencies)) => {
             let mut changes = vec![];
             for (name, value) in dependencies.iter() {
@@ -182,9 +185,9 @@ fn resolve_changes<'a, 'b>(
                     _ => return Err(LockfileError::InvalidVersion.into()),
                 }
             }
-            (changes, vec![])
+            (changes, BTreeMap::new())
         }
-        (None, None) => (vec![], vec![]),
+        (None, None) => (vec![],  BTreeMap::new()),
     };
 
     Ok((changes, not_changed))
