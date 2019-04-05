@@ -8,7 +8,7 @@ use graphql_client::*;
 use reqwest;
 
 use crate::dependency_resolver::RegistryResolver;
-use crate::lockfile::Lockfile;
+use crate::lock::{get_package_namespace_and_name, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use structopt::StructOpt;
 
@@ -25,9 +25,6 @@ enum InstallError {
 
     #[fail(display = "No package versions available for package {}", name)]
     NoVersionsAvailable { name: String },
-
-    #[fail(display = "The package name is invalid: {}", _0)]
-    InvalidPackageName(String),
 }
 
 #[derive(GraphQLQuery)]
@@ -120,15 +117,6 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
 #[inline]
 fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
     format!("{}@{}", package_name, package_version)
-}
-
-#[inline]
-fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
-    let split: Vec<&str> = package_name.split('/').collect();
-    match &split[..] {
-        [namespace, name] => Ok((*namespace, *name)),
-        _ => Err(InstallError::InvalidPackageName(package_name.to_string()).into()),
-    }
 }
 
 #[cfg(test)]
