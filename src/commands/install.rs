@@ -40,7 +40,6 @@ struct GetPackageQuery;
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let name = options.package;
-    println!("install package {}", name);
     let q = GetPackageQuery::build_query(get_package_query::Variables {
         name: name.to_string(),
     });
