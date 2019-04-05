@@ -2,12 +2,35 @@ use crate::abi::Abi;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use toml::value::Table;
 use toml::Value;
 
 /// The name of the manifest file. This is hard-coded for now.
-static MANIFEST_FILE_NAME: &str = "wapm.toml";
+pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
+
+/// Describes a command for a wapm module
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Command {
+    pub name: String,
+    emscripten_call_arguments: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Module {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub license: Option<String>,
+    pub readme: Option<PathBuf>,
+    source: Option<PathBuf>,
+    pub module: PathBuf,
+    #[serde(default = "Abi::default")]
+    pub abi: Abi,
+    pub fs: Option<Table>,
+}
 
 /// The manifest represents the file used to describe a Wasm package.
 ///
@@ -17,24 +40,15 @@ static MANIFEST_FILE_NAME: &str = "wapm.toml";
 ///
 /// The `fs` section represents assets that will be embedded into the Wasm module as custom sections.
 /// These are pairs of paths.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    pub license: Option<String>,
-    pub readme: Option<PathBuf>,
-    source: Option<PathBuf>,
-    module: PathBuf,
-    pub fs: Option<Table>,
-    #[serde(default = "Abi::default")]
-    pub abi: Abi,
+    pub module: Option<Module>,
     pub dependencies: Option<Table>,
-
+    pub command: Option<Vec<Command>>,
     /// private data
     /// store the directory path of the manifest file for use later accessing relative path fields
     #[serde(skip)]
-    base_directory_path: PathBuf,
+    pub base_directory_path: PathBuf,
 }
 
 impl Manifest {
@@ -58,30 +72,6 @@ impl Manifest {
         Ok(manifest)
     }
 
-    /// read the contents of the readme into a string
-    pub fn read_readme_to_string(&self) -> Option<String> {
-        match self.readme {
-            Some(ref readme_path) => {
-                let readme_path = self.base_directory_path.join(readme_path);
-                fs::read_to_string(&readme_path).ok()
-            }
-            None => None,
-        }
-    }
-
-    /// get a canonical path to the wasm module
-    pub fn module_path(&self) -> Result<PathBuf, failure::Error> {
-        self.canonicalize_path(self.module.as_path())
-    }
-
-    /// get the source absolute path
-    pub fn source_path(&self) -> Result<PathBuf, failure::Error> {
-        match self.canonicalize_optional_path(&self.source) {
-            Some(source_path_result) => source_path_result,
-            None => Err(ManifestError::MissingSource.into()),
-        }
-    }
-
     /// add a dependency
     pub fn add_dependency(&mut self, dependency_name: &str, dependency_version: &str) {
         let dependencies = self.dependencies.get_or_insert(BTreeMap::new());
@@ -91,28 +81,54 @@ impl Manifest {
         );
     }
 
-    /// internal helper for canonicalizing a path that may be relative or absolute
-    fn canonicalize_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, failure::Error> {
-        if path.as_ref().is_relative() {
-            let path_buf = self.base_directory_path.join(path.as_ref());
-            dunce::canonicalize(&path_buf).map_err(|e| e.into())
-        } else {
-            Ok(path.as_ref().to_path_buf())
-        }
+    pub fn save(&self) -> Result<(), failure::Error> {
+        let manifest_string = toml::to_string(self)?;
+        let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&manifest_path)?;
+        file.write_all(manifest_string.as_bytes())?;
+        Ok(())
     }
 
-    /// internal helper for canonicalizing an optional path that may be relative or absolute
-    fn canonicalize_optional_path(
-        &self,
-        path_buf: &Option<PathBuf>,
-    ) -> Option<Result<PathBuf, failure::Error>> {
-        match path_buf {
-            Some(ref path_buf) => {
-                let path = &**path_buf;
-                Some(self.canonicalize_path(path))
-            }
-            None => None,
+    /// get a canonical path to the wasm module
+    pub fn module_path(&self) -> Result<PathBuf, failure::Error> {
+        let module = self.module.as_ref().ok_or(ManifestError::NoModule)?;
+        canonicalize_path(&self.base_directory_path, &module.module)
+    }
+
+    /// get the source absolute path
+    pub fn source_path(&self) -> Result<PathBuf, failure::Error> {
+        let module = self.module.as_ref().ok_or(ManifestError::NoModule)?;
+        match canonicalize_optional_path(&self.base_directory_path, &module.source) {
+            Some(source_path_result) => source_path_result,
+            None => Err(ManifestError::MissingSource.into()),
         }
+    }
+}
+
+/// internal helper for canonicalizing a path that may be relative or absolute
+fn canonicalize_path<P1: AsRef<Path>, P2: AsRef<Path>>(
+    directory: P1,
+    path: P2,
+) -> Result<PathBuf, failure::Error> {
+    if path.as_ref().is_relative() {
+        let path_buf = directory.as_ref().join(path.as_ref());
+        dunce::canonicalize(&path_buf).map_err(|e| e.into())
+    } else {
+        Ok(path.as_ref().to_path_buf())
+    }
+}
+
+/// internal helper for canonicalizing an optional path that may be relative or absolute
+fn canonicalize_optional_path<P: AsRef<Path>>(
+    directory: P,
+    path_buf: &Option<PathBuf>,
+) -> Option<Result<PathBuf, failure::Error>> {
+    match path_buf {
+        Some(ref path_buf) => Some(canonicalize_path(directory, path_buf.as_path())),
+        None => None,
     }
 }
 
@@ -130,29 +146,57 @@ pub enum ManifestError {
     MissingTarget { path: PathBuf },
     #[fail(display = "Source wasm file not found.")]
     MissingSource,
+    #[fail(display = "No module.")]
+    NoModule,
+}
+
+#[cfg(test)]
+mod command_tests {
+    use crate::manifest::Manifest;
+
+    #[test]
+    fn get_commands() {
+        let wapm_toml = toml! {
+            [module]
+            name = "test"
+            version = "1.0.0"
+            module = "target.wasm"
+            source = "source.wasm"
+            description = "description"
+            [[command]]
+            name = "foo"
+            [[command]]
+            name = "baz"
+            emscripten_call_arguments = "$@"
+        };
+        let manifest: Manifest = wapm_toml.try_into().unwrap();
+        let commands = &manifest.command.unwrap();
+        assert_eq!(2, commands.len());
+    }
 }
 
 #[cfg(test)]
 mod dependency_tests {
-    use crate::abi::Abi;
-    use crate::manifest::Manifest;
-    use std::path::PathBuf;
+    use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+    use std::fs::File;
+    use std::io::Write;
 
     #[test]
     fn add_new_dependency() {
-        let mut manifest = Manifest {
-            name: "test_pkg".to_string(),
-            version: "1.0.0".to_string(),
-            description: "description".to_string(),
-            license: None,
-            readme: None,
-            source: None,
-            module: PathBuf::new(),
-            fs: None,
-            abi: Abi::Emscripten,
-            dependencies: None,
-            base_directory_path: PathBuf::new(),
+        let tmp_dir = tempdir::TempDir::new("add_new_dependency").unwrap();
+        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let mut file = File::create(&manifest_path).unwrap();
+        let wapm_toml = toml! {
+            [module]
+            name = "test"
+            version = "1.0.0"
+            module = "target.wasm"
+            description = "description"
+            abi = "None"
         };
+        let toml_string = toml::to_string(&wapm_toml).unwrap();
+        file.write_all(toml_string.as_bytes()).unwrap();
+        let mut manifest = Manifest::open(manifest_path).unwrap();
 
         let dependency_name = "dep_pkg";
         let dependency_version = "0.1.0";
@@ -192,6 +236,7 @@ mod module_path_tests {
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
+            [module]
             name = "test"
             version = "1.0.0"
             module = "target.wasm"
@@ -227,6 +272,7 @@ mod module_path_tests {
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
+            [module]
             name = "test"
             version = "1.0.0"
             module = "my/awesome/target.wasm"
@@ -258,6 +304,7 @@ mod module_path_tests {
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
+            [module]
             name = "test"
             version = "1.0.0"
             module = "nested/relative/../relative/../../target.wasm"

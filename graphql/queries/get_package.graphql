@@ -10,6 +10,7 @@ query GetPackageQuery ($name: String!) {
       distribution {
         downloadUrl
       }
+      manifest
     }
   }
 }

@@ -24,6 +24,8 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
         }
     };
 
+    let wapm_module = manifest.module.as_ref().ok_or(PackageError::NoModule)?;
+
     // fail early if missing required source
     let source = manifest
         .source_path()
@@ -34,7 +36,7 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
     let mut assets = Assets::new();
     assets.add_asset_from_pattern(&base_path, package_options.assets)?;
     // add assets from manifest if they exist
-    if let Some(table) = &manifest.fs {
+    if let Some(table) = &wapm_module.fs {
         for pair in table.iter() {
             let local_path = PathBuf::from(pair.0.as_str());
             // assume there is a virtual path_string for now
@@ -68,4 +70,6 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
 pub enum PackageError {
     #[fail(display = "Missing source.")]
     MissingSource,
+    #[fail(display = "Cannot package without a module.")]
+    NoModule,
 }

@@ -43,7 +43,7 @@ pub fn search(options: SearchOpt) -> Result<(), failure::Error> {
         match node {
             Some(search_query::SearchQuerySearchEdgesNode::PackageVersion(version)) => {
                 table.add_row(row![
-                    version.package.name,
+                    version.package.display_name,
                     version.description,
                     version.created_at[..10],
                     version.version
