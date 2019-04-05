@@ -176,7 +176,7 @@ impl Lockfile {
 /// This helper function resolves differences between the lockfile and the manifest file. All changes
 /// that have not been reflected in the lockfile are returned as a vec of package names and versions.
 /// The packages that had no changes are returned as references to the the lockfile modules.
-fn resolve_changes<'a, 'b>(
+fn resolve_changes<'b>(
     manifest: &'b Manifest,
     lockfile_modules: &BTreeMap<String, LockfileModule>,
 ) -> Result<(Vec<(&'b str, &'b str)>, BTreeMap<String, LockfileModule>), failure::Error> {
