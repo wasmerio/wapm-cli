@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use toml::Value;
 
 pub static LOCKFILE_NAME: &str = "wapm.lock";
 
@@ -87,7 +86,10 @@ impl Lockfile {
     ) -> Result<Self, failure::Error> {
         let mut lockfile_modules = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
-        let dependencies = extract_dependencies(&manifest.dependencies)?;
+        let dependencies = match manifest.dependencies {
+            Some(ref dependencies) => extract_dependencies(dependencies)?,
+            None => vec![],
+        };
         let mut manifests = vec![];
         for (name, version) in dependencies.iter() {
             let dependency_manifest = dependency_resolver.resolve(name, version)?;
@@ -182,25 +184,20 @@ fn resolve_changes<'a, 'b>(
         Some(ref dependencies) => {
             let mut changes = vec![];
             let mut not_changed = BTreeMap::new();
-            for (name, value) in dependencies.iter() {
-                match value {
-                    Value::String(version) => {
-                        let key = format!("{} {}", name, version);
-                        match lockfile_modules.get(&key) {
-                            Some(lockfile_module) => {
-                                not_changed.insert(key, lockfile_module.clone());
-                            }
-                            None => changes.push((name.as_str(), version.as_str())),
-                        }
+            let dependencies = extract_dependencies(dependencies)?;
+            for (name, version) in dependencies.iter() {
+                let key = format!("{} {}", name, version);
+                match lockfile_modules.get(&key) {
+                    Some(lockfile_module) => {
+                        not_changed.insert(key, lockfile_module.clone());
                     }
-                    _ => return Err(LockfileError::InvalidVersion.into()),
+                    None => changes.push((*name, *version)),
                 }
             }
             (changes, not_changed)
         }
         None => (vec![], BTreeMap::new()),
     };
-
     Ok((changes, not_changed))
 }
 
@@ -250,12 +247,6 @@ fn get_commands_from_manifest(
         }
         (_, _) => {} // if there is no module, then there are no commands
     };
-}
-
-#[derive(Debug, Fail)]
-pub enum LockfileError {
-    #[fail(display = "Version must be a string.")]
-    InvalidVersion,
 }
 
 #[cfg(test)]
