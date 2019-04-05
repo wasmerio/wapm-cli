@@ -101,10 +101,11 @@ impl Manifest {
     /// get the source absolute path
     pub fn source_path(&self) -> Result<PathBuf, failure::Error> {
         let module = self.module.as_ref().ok_or(ManifestError::NoModule)?;
-        match canonicalize_optional_path(&self.base_directory_path, &module.source) {
-            Some(source_path_result) => source_path_result,
-            None => Err(ManifestError::MissingSource.into()),
-        }
+        module
+            .source
+            .as_ref()
+            .map(|source| canonicalize_path(&self.base_directory_path, source))
+            .unwrap_or(Err(ManifestError::MissingSource.into()))
     }
 }
 
@@ -136,17 +137,6 @@ fn canonicalize_path<P1: AsRef<Path>, P2: AsRef<Path>>(
         dunce::canonicalize(&path_buf).map_err(|e| e.into())
     } else {
         Ok(path.as_ref().to_path_buf())
-    }
-}
-
-/// internal helper for canonicalizing an optional path that may be relative or absolute
-fn canonicalize_optional_path<P: AsRef<Path>>(
-    directory: P,
-    path_buf: &Option<PathBuf>,
-) -> Option<Result<PathBuf, failure::Error>> {
-    match path_buf {
-        Some(ref path_buf) => Some(canonicalize_path(directory, path_buf.as_path())),
-        None => None,
     }
 }
 
