@@ -27,6 +27,10 @@ enum Command {
     /// Publish a package
     Publish,
 
+    #[structopt(name = "run")]
+    /// Run a command from the package or one of the dependencies
+    Run(commands::RunOpt),
+
     #[structopt(name = "search")]
     /// Search packages
     Search(commands::SearchOpt),
@@ -49,6 +53,7 @@ fn main() {
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
         Command::Publish => commands::publish(),
+        Command::Run(run_options) => commands::run(run_options),
         Command::Search(search_options) => commands::search(search_options),
         Command::Package(package_options) => commands::package(package_options),
     };
