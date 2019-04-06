@@ -7,8 +7,7 @@ use std::{env, fs, io};
 use graphql_client::*;
 use reqwest;
 
-use crate::dependency_resolver::RegistryResolver;
-use crate::lock::{get_package_namespace_and_name, Lockfile};
+use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use structopt::StructOpt;
 
@@ -65,38 +64,18 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
 
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
 
-    match (
-        Manifest::open(&manifest_file_path),
-        Lockfile::open(current_dir),
-    ) {
-        (Ok(mut manifest), Ok(existing_lockfile)) => {
+    let mut maybe_manifest = Manifest::open(&manifest_file_path);
+    let maybe_lockfile = Lockfile::open(current_dir);
+
+    match maybe_manifest {
+        Ok(ref mut manifest) => {
             manifest.add_dependency(&package.name, &last_version.version);
-            // construct lockfile
-            let resolver = RegistryResolver;
-            let lockfile =
-                Lockfile::new_from_manifest_and_lockfile(&manifest, existing_lockfile, &resolver)?;
-            // write the manifest
-            manifest.save()?;
-            // write the lockfile
-            lockfile.save(&manifest.base_directory_path)?;
         }
-        (Ok(mut manifest), Err(_lockfile_error)) => {
-            manifest.add_dependency(&package.name, &last_version.version);
-            // construct lockfile
-            let resolver = RegistryResolver;
-            let lockfile = Lockfile::new_from_manifest(&manifest, &resolver)?;
-            // write the manifest
-            manifest.save()?;
-            // write the lockfile
-            lockfile.save(&manifest.base_directory_path)?;
-        }
-        (Err(_manifest_error), Ok(_lockfile)) => {
-            // TODO: Lockfile::new_from_lockfile();
-        }
-        (Err(_), Err(_)) => {
-            // TODO: Lockfile::new();
-        }
-    }
+        _ => {}
+    };
+
+    // with the manifest updated, we can now regenerate the lockfile
+    regenerate_lockfile(maybe_manifest, maybe_lockfile)?;
 
     println!("Package installed successfully to wapm_modules!");
     Ok(())
