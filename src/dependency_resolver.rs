@@ -12,6 +12,7 @@ struct GetPackageVersionManifestQuery;
 
 #[derive(Clone, Debug)]
 pub struct Dependency {
+    pub name: String,
     pub manifest: Manifest,
     pub download_url: String,
 }
@@ -53,7 +54,9 @@ impl DependencyResolver for RegistryResolver {
         let manifest_string: String = package.manifest;
         let download_url: String = package.distribution.download_url;
         let manifest: Manifest = toml::from_str(&manifest_string)?;
+        let name = package.package.name;
         let dependency = Dependency {
+            name,
             manifest,
             download_url,
         };

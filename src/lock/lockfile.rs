@@ -176,7 +176,8 @@ fn get_lockfile_data_from_manifest(
     let download_url = dependency.download_url.as_str();
     match manifest.module {
         Some(ref module) => {
-            let lockfile_module = LockfileModule::from_module(module, download_url);
+            let name = &dependency.name;
+            let lockfile_module = LockfileModule::from_module(name.to_string(), module, download_url);
             let key = format!(
                 "{} {}",
                 lockfile_module.name.clone(),
@@ -281,6 +282,7 @@ mod get_lockfile_data_from_manifest_tests {
         };
         let foo_manifest: Manifest = foo_toml.try_into().unwrap();
         let dependency = Dependency {
+            name: "foo".to_string(),
             manifest: foo_manifest,
             download_url: "".to_string(),
         };
@@ -426,6 +428,7 @@ mod test {
         };
         let foo_manifest: Manifest = foo_toml.try_into().unwrap();
         let foo_dependency = Dependency {
+            name: "foo".to_string(),
             manifest: foo_manifest,
             download_url: "".to_string(),
         };
@@ -442,6 +445,7 @@ mod test {
         };
         let newer_foo_manifest: Manifest = newer_foo_toml.try_into().unwrap();
         let newer_foo_dependency = Dependency {
+            name: "foo".to_string(),
             manifest: newer_foo_manifest,
             download_url: "".to_string(),
         };
@@ -459,6 +463,7 @@ mod test {
         };
         let bar_manifest: Manifest = bar_toml.try_into().unwrap();
         let bar_dependency = Dependency {
+            name: "foo".to_string(),
             manifest: bar_manifest,
             download_url: "".to_string(),
         };
@@ -475,6 +480,7 @@ mod test {
         };
         let bar_newer_manifest: Manifest = bar_newer_toml.try_into().unwrap();
         let bar_newer_dependency = Dependency {
+            name: "foo".to_string(),
             manifest: bar_newer_manifest,
             download_url: "".to_string(),
         };

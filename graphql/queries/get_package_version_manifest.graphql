@@ -3,6 +3,9 @@ query GetPackageVersionManifestQuery ($name: String!, $version: String!) {
         distribution {
             downloadUrl
         }
+        package {
+            name
+        }
         manifest
     }
 }

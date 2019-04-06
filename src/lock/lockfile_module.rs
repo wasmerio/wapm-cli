@@ -14,9 +14,9 @@ pub struct LockfileModule {
 }
 
 impl LockfileModule {
-    pub fn from_module(module: &Module, download_url: &str) -> Self {
+    pub fn from_module(name: String, module: &Module, download_url: &str) -> Self {
         let lockfile_module = LockfileModule {
-            name: module.name.clone(),
+            name: name.clone(),
             version: module.version.to_string(),
             source: format!("registry+{}", module.name),
             resolved: download_url.to_string(),
