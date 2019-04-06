@@ -15,7 +15,7 @@ pub struct RunOpt {
     /// Command name
     command: String,
     /// Application arguments
-    #[structopt(name = "--", raw(multiple = "true"), parse(from_os_str))]
+    #[structopt(raw(multiple = "true"), parse(from_os_str))]
     args: Vec<OsString>,
 }
 
