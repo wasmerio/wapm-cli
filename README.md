@@ -76,6 +76,10 @@ The bundled files may be specified on the command line or in the manifest file:
 "my_dir" = "my/dir"
 ```
 
+#### `wapm run`
+
+One can execute a package command with the `run` command. The command will be run with the wasmer runtime.
+
 ## Manifest (`wapm.toml`)
 
 The manifest file describes how to bundle a wasm package. A simple example manifest with all required fields:
@@ -84,7 +88,7 @@ name = "app"
 description = "My awesome app is awesome."
 version = "0.1.0"
 source = "app.wasm"
-target = "app_bundle.wasm"
+module = "app_bundle.wasm"
 ```
 
 ## Development
