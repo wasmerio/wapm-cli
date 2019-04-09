@@ -1,11 +1,13 @@
 use crate::graphql::execute_query;
 use std::fs::File;
-use std::io::copy;
+use std::io::{copy, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 
+use flate2::read::GzDecoder;
 use graphql_client::*;
 use reqwest;
+use tar::Archive;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
@@ -24,6 +26,9 @@ enum InstallError {
 
     #[fail(display = "No package versions available for package {}", name)]
     NoVersionsAvailable { name: String },
+
+    #[fail(display = "Can't process package file {} because {}", name, error)]
+    CorruptFile { name: String, error: String },
 }
 
 #[derive(GraphQLQuery)]
@@ -33,6 +38,40 @@ enum InstallError {
     response_derives = "Debug"
 )]
 struct GetPackageQuery;
+
+/// TODO: describe
+fn decompress_and_extract_archive(
+    mut compressed_archive: File,
+    pkg_name: &str,
+) -> Result<(), failure::Error> {
+    let mut compressed_archive_data = Vec::new();
+    compressed_archive
+        .read_to_end(&mut compressed_archive_data)
+        .map_err(|err| InstallError::CorruptFile {
+            name: format!("{:?}", compressed_archive),
+            error: format!("{}", err),
+        })?;
+
+    let mut gz = GzDecoder::new(&compressed_archive_data[..]);
+    let mut archive_data = Vec::new();
+    gz.read_to_end(&mut archive_data)
+        .map_err(|err| InstallError::CorruptFile {
+            name: format!("{:?}", compressed_archive),
+            error: format!("{}", err),
+        })?;
+
+    // deal with uncompressed data
+    let mut archive = Archive::new(archive_data.as_slice());
+
+    archive
+        .unpack(pkg_name)
+        .map_err(|err| InstallError::CorruptFile {
+            name: format!("{}", pkg_name),
+            error: format!("{}", err),
+        })?;
+
+    Ok(())
+}
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let name = options.package;
@@ -58,9 +97,17 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let download_url = last_version.distribution.download_url;
     let mut response = reqwest::get(&download_url)?;
 
-    let package_file_path = package_dir.join(&format!("{}.wasm", pkg_name));
-    let mut dest = File::create(package_file_path)?;
+    // REVIEW: where should we put the compressed archive?
+    let compressed_package_archive_path = package_dir.join(&format!("temp/{}.tar.gz", pkg_name));
+    let mut dest = File::create(compressed_package_archive_path.clone())?;
     copy(&mut response, &mut dest)?;
+
+    let decompress_and_extract_result = decompress_and_extract_archive(dest, pkg_name);
+    if let Err(_) = fs::remove_dir_all(compressed_package_archive_path) {
+        // warn here?
+    }
+    // return after cleaning up if we failed
+    let _ = decompress_and_extract_result?;
 
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
 
