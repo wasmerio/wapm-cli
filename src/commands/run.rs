@@ -3,12 +3,12 @@ use crate::lock::{
     LockfileCommand, LockfileModule,
 };
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
-use std::{env, io};
 use std::ffi::OsString;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, io};
 use structopt::StructOpt;
-use std::io::Write;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
