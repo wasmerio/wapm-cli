@@ -18,26 +18,9 @@ pub fn validate(validate_opts: ValidateOpt) -> Result<(), failure::Error> {
 
 pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::Error> {
     if pkg_path.is_dir() {
-        // validate as dir
-        let manifest = Manifest::find_in_directory(pkg_path.clone())?;
-        if let Some(module) = manifest.module {
-            let path_str = module.module.to_string_lossy().to_string();
-            let mut wasm_file =
-                fs::File::open(module.module).map_err(|_| ValidationError::MissingFile {
-                    file: path_str.clone(),
-                })?;
-            let mut wasm_buffer = Vec::new();
-            wasm_file.read_to_end(&mut wasm_buffer).map_err(|err| {
-                ValidationError::MiscCannotRead {
-                    file: path_str.clone(),
-                    error: format!("{}", err),
-                }
-            })?;
-
-            validate_wasm_and_report_errors(&wasm_buffer, path_str)?;
-        }
+        validate_directory(pkg_path)
     } else {
-        // validate as tar file
+        //unzip then validate as dir
         /*let mut compressed_archive_data = Vec::new();
         compressed_archive
             .read_to_end(&mut compressed_archive_data)
@@ -51,6 +34,32 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         );
 
         for entry in archive.entries() {} */
+
+        // let ret = validate_direcotry();
+        // clean up
+        // ret
+        Ok(())
+    }
+}
+
+pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
+    // validate as dir
+    let manifest = Manifest::find_in_directory(pkg_path.clone())?;
+    if let Some(module) = manifest.module {
+        let path_str = module.module.to_string_lossy().to_string();
+        let mut wasm_file =
+            fs::File::open(module.module).map_err(|_| ValidationError::MissingFile {
+                file: path_str.clone(),
+            })?;
+        let mut wasm_buffer = Vec::new();
+        wasm_file
+            .read_to_end(&mut wasm_buffer)
+            .map_err(|err| ValidationError::MiscCannotRead {
+                file: path_str.clone(),
+                error: format!("{}", err),
+            })?;
+
+        validate_wasm_and_report_errors(&wasm_buffer, path_str)?;
     }
 
     Ok(())
