@@ -1,9 +1,9 @@
 use crate::manifest::Manifest;
 
-//use flate2::read::GzDecoder;
+use flate2::read::GzDecoder;
 use std::{fs, io::Read, path::PathBuf};
 use structopt::StructOpt;
-//use tar::Archive;
+use tar::Archive;
 
 #[derive(StructOpt, Debug)]
 pub struct ValidateOpt {
@@ -21,24 +21,42 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         validate_directory(pkg_path)
     } else {
         //unzip then validate as dir
-        /*let mut compressed_archive_data = Vec::new();
+        let mut compressed_archive_data = Vec::new();
+        let mut compressed_archive =
+            fs::File::open(&pkg_path).map_err(|_| ValidationError::MissingFile {
+                file: pkg_path.to_string_lossy().to_string(),
+            })?;
         compressed_archive
             .read_to_end(&mut compressed_archive_data)
-            .unwrap();
+            .map_err(|err| ValidationError::MiscCannotRead {
+                file: pkg_path.to_string_lossy().to_string(),
+                error: format!("{}", err),
+            })?;
 
         let mut gz = GzDecoder::new(&compressed_archive_data[..]);
         let mut archive_data = Vec::new();
         gz.read_to_end(&mut archive_data).unwrap();
-        let archive = Archive::new(archive_data).unpack(
-            //temp place todo
-        );
 
-        for entry in archive.entries() {} */
+        let out_dir = {
+            let mut out_dir = pkg_path.clone();
+            out_dir.push("temp/");
+            out_dir
+        };
+        let mut archive = Archive::new(archive_data.as_slice());
+        archive
+            .unpack(&out_dir)
+            .map_err(|err| ValidationError::CannotUnpackArchive {
+                file: pkg_path.to_string_lossy().to_string(),
+                error: format!("{}", err),
+            })?;
 
-        // let ret = validate_direcotry();
-        // clean up
-        // ret
-        Ok(())
+        let ret = validate_directory(out_dir.clone());
+
+        if let Err(_) = fs::remove_dir_all(&out_dir) {
+            // warn?
+        }
+
+        ret
     }
 }
 
@@ -98,4 +116,6 @@ pub enum ValidationError {
     MissingFile { file: String },
     #[fail(display = "Failed to read file {}; {}", file, error)]
     MiscCannotRead { file: String, error: String },
+    #[fail(display = "Failed to unpack archive \"{}\"! {}", file, error)]
+    CannotUnpackArchive { file: String, error: String },
 }
