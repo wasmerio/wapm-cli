@@ -38,6 +38,7 @@ enum Command {
     /// Search packages
     Search(commands::SearchOpt),
 
+    #[cfg(feature = "package")]
     #[structopt(name = "package", raw(aliases = r#"&["p", "pkg"]"#))]
     /// Create a wasm package with bundled assets
     Package(commands::PackageOpt),
@@ -58,6 +59,7 @@ fn main() {
         Command::Publish => commands::publish(),
         Command::Run(run_options) => commands::run(run_options),
         Command::Search(search_options) => commands::search(search_options),
+        #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),
     };
     if let Err(e) = result {
