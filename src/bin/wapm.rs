@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 use wapm_cli::commands;
 
 #[derive(StructOpt, Debug)]
@@ -27,7 +27,10 @@ enum Command {
     /// Publish a package
     Publish,
 
-    #[structopt(name = "run")]
+    #[structopt(
+        name = "run",
+        raw(settings = "&[AppSettings::TrailingVarArg, AppSettings::AllowLeadingHyphen]")
+    )]
     /// Run a command from the package or one of the dependencies
     Run(commands::RunOpt),
 
