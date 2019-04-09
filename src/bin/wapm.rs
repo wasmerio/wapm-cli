@@ -42,6 +42,9 @@ enum Command {
     #[structopt(name = "package", raw(aliases = r#"&["p", "pkg"]"#))]
     /// Create a wasm package with bundled assets
     Package(commands::PackageOpt),
+
+    #[structopt(name = "validate")]
+    Validate(commands::ValidateOpt),
 }
 
 fn main() {
@@ -61,6 +64,7 @@ fn main() {
         Command::Search(search_options) => commands::search(search_options),
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),
+        Command::Validate(validate_options) => commands::validate(validate_options),
     };
     if let Err(e) = result {
         eprintln!("\nError: {}\n", e);

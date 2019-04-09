@@ -28,6 +28,7 @@ rpassword = "3.0.0"
 walrus = "0.4"
 whoami = "0.5"
 zstd = "0.4"
+wasmparser = "0.29.2"
 
 [dev-dependencies]
 tempdir = "0.3"
