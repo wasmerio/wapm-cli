@@ -39,7 +39,8 @@ enum InstallError {
 )]
 struct GetPackageQuery;
 
-/// TODO: describe
+/// Loads a GZipped tar in to memory, decompresses it, and unpackages the
+/// content to `pkg_name`
 fn decompress_and_extract_archive(
     mut compressed_archive: File,
     pkg_name: &str,
@@ -56,7 +57,7 @@ fn decompress_and_extract_archive(
     let mut archive_data = Vec::new();
     gz.read_to_end(&mut archive_data)
         .map_err(|err| InstallError::CorruptFile {
-            name: format!("{:?}", compressed_archive),
+            name: format!("{}", pkg_name),
             error: format!("{}", err),
         })?;
 

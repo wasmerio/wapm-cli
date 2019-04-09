@@ -107,6 +107,17 @@ impl Manifest {
             .map(|source| canonicalize_path(&self.base_directory_path, source))
             .unwrap_or(Err(ManifestError::MissingSource.into()))
     }
+
+    /// The path of the manifest itself
+    pub fn manifest_path(&self) -> Result<PathBuf, failure::Error> {
+        canonicalize_path(&self.base_directory_path, MANIFEST_FILE_NAME)
+    }
+
+    /// Archive path for publishing this package
+    pub fn get_archive_path(&self) -> Result<PathBuf, failure::Error> {
+        // TODO: //manifest.package.name
+        canonicalize_path(&self.base_directory_path, "test.tar.gz")
+    }
 }
 
 pub fn extract_dependencies(
