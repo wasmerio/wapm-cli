@@ -37,11 +37,8 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         let mut archive_data = Vec::new();
         gz.read_to_end(&mut archive_data).unwrap();
 
-        let out_dir = {
-            let mut out_dir = pkg_path.clone();
-            out_dir.push("temp/");
-            out_dir
-        };
+        let temp_out_dir = tempdir::TempDir::new("temp").unwrap();
+        let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());
         archive
             .unpack(&out_dir)
@@ -50,7 +47,19 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
                 error: format!("{}", err),
             })?;
 
-        let ret = validate_directory(out_dir.clone());
+        let archive_path = {
+            let mut ar_path = out_dir.clone().to_path_buf();
+            let archive_folder_name = pkg_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(".tar.gz", "");
+            ar_path.push(archive_folder_name);
+            ar_path
+        };
+
+        let ret = validate_directory(archive_path);
 
         if let Err(_) = fs::remove_dir_all(&out_dir) {
             // warn?

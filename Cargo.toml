@@ -30,6 +30,7 @@ whoami = "0.5"
 zstd = "0.4"
 flate2 = "1.0.7" 
 wasmparser = "0.29.2"
+tempdir = "0.3"
 
 [dev-dependencies]
 tempdir = "0.3"
