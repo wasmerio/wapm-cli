@@ -41,7 +41,7 @@ pub fn regenerate_lockfile(
             // construct lockfile
             let mut resolver = PackageRegistry::new();
             let lockfile =
-                Lockfile::new_from_manifest_and_lockfile(&manifest, &existing_lockfile, &mut resolver)?;
+                Lockfile::new_from_manifest_and_lockfile(&manifest, existing_lockfile, &mut resolver)?;
             // write the manifest
             manifest.save()?;
             // write the lockfile

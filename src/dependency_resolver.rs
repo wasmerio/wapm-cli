@@ -23,7 +23,7 @@ pub struct Dependency {
 
 pub trait PackageRegistryLike {
 //    fn resolve(&self, pkg_name: &str, pkg_version: &str) -> Result<Dependency, failure::Error>;
-    fn get_all_dependencies<'a>(&'a mut self, root_pkg_name: &str, root_pkg_version: &str, root_dependencies: Vec<(&str, &str)>) -> Result<Vec<&'a Dependency>, failure::Error>;
+    fn get_all_dependencies<'a>(&'a mut self, root_pkg_name: &'a str, root_pkg_version: &'a str, root_dependencies: Vec<(&'a str, &'a str)>) -> Result<Vec<&'a Dependency>, failure::Error>;
 }
 
 #[cfg(test)]
@@ -31,7 +31,7 @@ pub struct TestRegistry(pub BTreeMap<&'static str, Vec<Dependency>>);
 
 #[cfg(test)]
 impl PackageRegistryLike for TestRegistry {
-    fn get_all_dependencies<'a>(&'a mut self, root_pkg_name: &str, root_pkg_version: &str, root_dependencies: Vec<(&str, &str)>) -> Result<Vec<&'a Dependency>, failure::Error> {
+    fn get_all_dependencies<'a>(&'a mut self, _root_pkg_name: &'a str, _root_pkg_version: &'a str, root_dependencies: Vec<(&'a str, &'a str)>) -> Result<Vec<&'a Dependency>, failure::Error> {
         // for now, only fetch root dependencies
         let mut dependencies = vec![];
         for (package_name, package_version) in root_dependencies {
@@ -88,7 +88,7 @@ impl PackageRegistry {
 }
 
 impl PackageRegistryLike for PackageRegistry {
-    fn get_all_dependencies<'a>(&'a mut self, _root_pkg_name: &str, _root_pkg_version: &str, root_dependencies: Vec<(&str, &str)>) -> Result<Vec<&'a Dependency>, failure::Error> {
+    fn get_all_dependencies<'a>(&'a mut self, _root_pkg_name: &'a str, _root_pkg_version: &'a str, root_dependencies: Vec<(&'a str, &'a str)>) -> Result<Vec<&'a Dependency>, failure::Error> {
         // for now, only fetch root dependencies
         let package_names: Vec<String> = root_dependencies.iter().map(|t| t.0.to_string()).collect();
         // update local map of packages

@@ -100,6 +100,7 @@ impl Manifest {
         file.write_all(manifest_string.as_bytes())?;
         Ok(())
     }
+
     pub fn extract_dependencies(&self) -> Result<Vec<(&str, &str)>, failure::Error> {
         if let None = self.dependencies {
             return Ok(vec![])

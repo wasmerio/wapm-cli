@@ -74,9 +74,61 @@ impl<'a> Lockfile<'a> {
         Ok(new_lockfile)
     }
 
-    pub fn new_from_manifest_and_lockfile<D: PackageRegistryLike>(manifest: &'a Manifest, existing_lockfile: &'a Lockfile, resolver: &'a mut D) -> Result<Self, failure::Error> {
-        // TODO re-implement for multiple modules
-        Self::new_from_manifest(manifest, resolver)
+    pub fn new_from_manifest_and_lockfile<D: PackageRegistryLike>(manifest: &'a Manifest, existing_lockfile: Lockfile<'a>, dependency_resolver: &'a mut D) -> Result<Self, failure::Error> {
+        let mut existing_lockfile = existing_lockfile;
+        // get all dependencies that changed and references to unchanged lockfile modules
+        let manifest_dependencies = manifest.extract_dependencies()?;
+        // mutate the existing lockfile: prune changed modules and commands, leave everything else
+        let changed_dependencies = resolve_changes(manifest_dependencies, &mut existing_lockfile.modules, &mut existing_lockfile.commands);
+        let dependencies = dependency_resolver.get_all_dependencies(&manifest.package.name, &manifest.package.version, changed_dependencies)?;
+        for dependency in dependencies.iter() {
+            let package_name = dependency.manifest.package.name.as_str();
+            let package_version = dependency.manifest.package.version.as_str();
+            let lockfile_modules_vec = LockfileModule::from_dependency(*dependency)?;
+            for lockfile_module in lockfile_modules_vec.into_iter() {
+                let module_name = lockfile_module.name.clone();
+                let version_map = existing_lockfile.modules.entry(package_name).or_insert(BTreeMap::new());
+                let module_map = version_map.entry(package_version).or_insert(BTreeMap::new());
+                module_map.insert(module_name, lockfile_module);
+            }
+            let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
+            for lockfile_command in lockfile_commands_vec {
+                if lockfile_command.is_top_level_dependency {
+                    eprintln!("inserted command: {}", lockfile_command.name);
+                    let r = existing_lockfile.commands.insert(lockfile_command.name, lockfile_command).is_some();
+                    eprintln!("insert previously existed?: {}", r);
+                }
+            }
+        }
+
+        let pkg_name = &manifest.package.name;
+        let pkg_version = &manifest.package.version;
+
+        // just clear commands that are marked for the root package and re-add them from the manifest
+        let mut root_commands_to_remove: Vec<&str> = vec![];
+        for (command_name, command) in existing_lockfile.commands.iter() {
+            if command.package_name == manifest.package.name {
+                root_commands_to_remove.push(command_name.clone());
+            }
+        }
+        for command_name in root_commands_to_remove {
+            existing_lockfile.commands.remove(command_name);
+        }
+
+        // handle this manifest's commands
+        if let Some(commands) = manifest.command.as_ref() {
+            for command in commands {
+                let lockfile_command = LockfileCommand::from_command(pkg_name, pkg_version, command);
+                existing_lockfile.commands.insert(&command.name, lockfile_command);
+            }
+        }
+
+        let new_lockfile = Lockfile {
+            modules: existing_lockfile.modules,
+            commands: existing_lockfile.commands,
+        };
+
+        Ok(new_lockfile)
     }
 
     /// Save the lockfile to the directory.
@@ -123,106 +175,62 @@ pub enum LockfileError {
     AggregateLockfileError(Vec<failure::Error>),
 }
 
-// /// This helper function resolves differences between the lockfile and the manifest file. All changes
-// /// that have not been reflected in the lockfile are returned as a vec of package names and versions.
-// /// The packages that had no changes are returned as references to the the lockfile modules.
-//fn resolve_changes<'b>(
-//    manifest: &'b Manifest,
-//    lockfile_modules: &BTreeMap<String, LockfileModule>,
-//) -> Result<(Vec<(&'b str, &'b str)>, BTreeMap<String, LockfileModule>), failure::Error> {
-//    let (changes, not_changed) = match manifest.dependencies {
-//        Some(ref dependencies) => {
-//            let mut changes = vec![];
-//            let mut not_changed = BTreeMap::new();
-//            let dependencies = extract_dependencies(dependencies)?;
-//            for (name, version) in dependencies.iter() {
-//                let key = format!("{} {}", name, version);
-//                match lockfile_modules.get(&key) {
-//                    Some(lockfile_module) => {
-//                        not_changed.insert(key, lockfile_module.clone());
-//                    }
-//                    None => changes.push((*name, *version)),
-//                }
-//            }
-//            (changes, not_changed)
-//        }
-//        None => (vec![], BTreeMap::new()),
-//    };
-//    Ok((changes, not_changed))
-//}
+/// dependencies that are unchanged remain in the BTreeMap. A vec of string refs are returned which
+/// are the package name and the version which is different or new. The strings live as long as the
+/// dependencies vec.
+fn resolve_changes<'dependencies, 'modules: 'dependencies>(
+    dependencies: Vec<(&'dependencies str, &'dependencies str)>,
+    lockfile_modules: &mut ModuleMap<'dependencies>,
+    lockfile_commands: &mut CommandMap<'modules>,
+) -> Vec<(&'dependencies str, &'dependencies str)> {
+    let mut changes = vec![];
+    let mut changed_package_names = vec![];
+    for (name, version) in dependencies.iter() {
+        match lockfile_modules.get(name) {
+            Some(ref modules) if !modules.contains_key(version) => {
+                lockfile_modules.remove(name);
+                changed_package_names.push(name);
+                changes.push((*name, *version));
+            }
+            None => {
+                changes.push((*name, *version));
+            }
+            Some(_) => {}
+        }
+    }
 
-// /// dependencies that are unchanged remain in the BTreeMap. A vec of string refs are returned which
-// /// are the package name and the version which is different or new. The strings live as long as the
-// /// dependencies vec.
-//fn better_resolve_changes<'dependencies>(
-//    dependencies: &'dependencies Vec<(&'dependencies str, &'dependencies str)>,
-//    lockfile_modules: &mut ModuleMap<'dependencies>,
-//) -> Vec<(&'dependencies str, &'dependencies str)> {
-//    let mut changes = vec![];
-//    for (name, version) in dependencies {
-//        match lockfile_modules.get(*name) {
-//            Some(ref modules) if !modules.contains_key(*version) => {
-//                lockfile_modules.remove(*name);
-//                changes.push((*name, *version));
-//            }
-//            None => {
-//                changes.push((*name, *version));
-//            }
-//            Some(_) => {}
-//        }
-//    }
-//    changes
-//}
+    // remove all package dependencies modules and commands that were eliminated from the manifest
+    let dependency_packages: Vec<_> = dependencies.iter().map(|(package_name, _)| package_name).collect();
+    let removed_packages: Vec<_> = lockfile_modules.keys().filter(|package_name| {
+        dependency_packages.iter().find(|name| name == &package_name).is_none()
+    }).map(|n| n.clone()) .collect();
+    for removed_package in removed_packages.iter() {
+        lockfile_modules.remove(*removed_package);
+        let removed_commands: Vec<_> = lockfile_commands.iter()
+            .filter(|(command_name, command)| &command.package_name == removed_package)
+            .map(|(command_name, _)| command_name.clone())
+            .collect();
+        for removed_command_name in removed_commands {
+            let r = lockfile_commands.remove(removed_command_name).is_some();
+            eprintln!("second round: removing command: {}, succeded: {}", removed_command_name, r);
 
-//fn get_lockfile_data_from_dependency<'a>(
-//    dependency: &'a Dependency,
-//    lockfile_modules: &'a mut ModuleMap<'a>,
-//    lockfile_commands: &'a mut CommandMap<'a>,
-//) {
-//    let manifest = &dependency.manifest;
-//    let package_name = &manifest.package.name;
-//    let package_version = &manifest.package.version;
-//    let download_url = dependency.download_url.as_str();
-//    match manifest.module {
-//        Some(ref modules) => {
-//            for module in modules {
-//                let name = &dependency.name;
-//                let mut version_map = match lockfile_modules.get(dependency.manifest.package.name.as_str()) {
-//                    Some(version_map) => {
-//                        version_map
-//                    },
-//                    None => {
-//                        let version_map = BTreeMap::new();
-//                        lockfile_modules.insert(&dependency.manifest.package.name, version_map);
-//                        lockfile_modules.get(dependency.manifest.package.name.as_str()).unwrap()
-//                    }
-//                };
-//                let mut module_map = match version_map.get(dependency.manifest.package.version.as_str()) {
-//                    Some(module_map) => module_map,
-//                    None => {
-//                        let module_map = BTreeMap::new();
-//                        version_map.insert(dependency.manifest.package.version.as_str(), module_map);
-//                        version_map.get(dependency.manifest.package.version.as_str()).unwrap()
-//                    }
-//                };
-//                let lockfile_module =
-//                    LockfileModule::from_module(package_name, package_version, module, download_url);
-//                module_map.insert(module.name.as_str(), lockfile_module);
-//            }
-//            // if there is a module, then get the commands if any exist
-//            match manifest.command {
-//                Some(ref commands) => {
-//                    for command in commands {
-//                        let lockfile_command = LockfileCommand::from_command(&dependency.manifest.package.name,&dependency.manifest.package.version, command);
-//                        lockfile_commands.insert(&command.name, lockfile_command);
-//                    }
-//                }
-//                None => {}
-//            }
-//        }
-//        None => {}
-//    }
-//}
+        }
+    }
+
+    // prune all commands that have changed
+    for changed_package_name in changed_package_names {
+        let removed_commands: Vec<&str> = lockfile_commands.iter()
+            .map(|(cmd_name, c)| (cmd_name, c.package_name))
+            .filter(|(cmd_name, package_name)| *changed_package_name == *package_name)
+            .map(|(cmd_name, _)| *cmd_name)
+            .collect();
+        for removed_command_name in removed_commands {
+            let r = lockfile_commands.remove(removed_command_name).is_some();
+            eprintln!("second round: removing command: {}, succeded: {}", removed_command_name, r);
+        }
+    }
+    changes
+}
 
 #[cfg(test)]
 mod get_command_tests {
@@ -313,10 +321,7 @@ mod create_from_manifest_tests {
     use crate::lock::Lockfile;
     use crate::dependency_resolver::TestRegistry;
     use crate::dependency_resolver::Dependency;
-    use crate::manifest::Package;
-    use std::path::PathBuf;
     use std::collections::BTreeMap;
-    use crate::manifest::Module;
 
     #[test]
     fn create_from_manifest() {
@@ -442,304 +447,259 @@ mod create_from_manifest_tests {
             is_top_level_dependency = true
         };
         let expected_lockfile_string = expected_lockfile_toml.to_string();
+
         let expected_lockfile: Lockfile = toml::from_str(&expected_lockfile_string).unwrap();
 
         assert_eq!(expected_lockfile, actual_lockfile);
     }
 }
 
-//#[cfg(test)]
-//mod get_lockfile_data_from_manifest_tests {
-//    use crate::dependency_resolver::Dependency;
-//    use crate::lock::lockfile::get_lockfile_data_from_dependency;
-//    use crate::manifest::Manifest;
-//    use std::collections::BTreeMap;
-//
-//    #[test]
-//    fn fill_lockfile_data() {
-//        let mut lockfile_modules = BTreeMap::new();
-//        let mut lockfile_commands = BTreeMap::new();
-//        let foo_toml: toml::Value = toml! {
-//            [package]
-//            name = "ns/foo"
-//            description = "foo in the ns namespace"
-//            version = "1.0.0"
-//            [[module]]
-//            name = "foo"
-//            source = "foo.wasm"
-//            [[command]]
-//            module = "foo"
-//            name = "do_foo_stuff"
-//            [[command]]
-//            module = "foo"
-//            name = "do_other_stuff"
-//        };
-//        let foo_manifest: Manifest = foo_toml.try_into().unwrap();
-//        let dependency = Dependency {
-//            name: "foo".to_string(),
-//            manifest: foo_manifest,
-//            download_url: "".to_string(),
-//        };
-//        get_lockfile_data_from_dependency(
-//            &dependency,
-//            &mut lockfile_modules,
-//            &mut lockfile_commands,
-//        );
-//        assert_eq!(1, lockfile_modules.len());
-//        assert_eq!(2, lockfile_commands.len());
-//    }
-//}
+#[cfg(test)]
+mod create_from_manifest_and_lockfile_tests {
+    use crate::manifest::Manifest;
+    use crate::lock::Lockfile;
+    use crate::dependency_resolver::TestRegistry;
+    use crate::dependency_resolver::Dependency;
+    use std::collections::BTreeMap;
 
-//#[cfg(test)]
-//mod resolve_changes_tests {
-//    use crate::lock::lockfile::{resolve_changes, Lockfile};
-//    use crate::manifest::Manifest;
-//
-//    #[test]
-//    fn lock_file_exists_and_one_unchanged_dependency() {
-//        let wapm_toml = toml! {
-//            [package]
-//            name = "ns/test"
-//            version = "1.0.0"
-//            description = "test package"
-//            [[module]]
-//            name = "test"
-//            source = "target.wasm"
-//            description = "description"
-//            [dependencies]
-//            "abc/foo" = "1.0.0"
-//            "xyz/bar" = "2.0.1"
-//        };
-//        let manifest: Manifest = wapm_toml.try_into().unwrap();
-//        let wapm_lock_toml = toml! {
-//            [modules."abc/foo 1.0.0 foo"]
-//            name = "foo"
-//            version = "1.0.0"
-//            source = ""
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "target.wasm"
-//            [modules."xyz/bar 3.0.0"]
-//            name = "bar"
-//            version = "3.0.0" // THIS CHANGED!
-//            source = ""
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "target.wasm"
-//            [commands]
-//        };
-//        let lockfile: Lockfile = wapm_lock_toml.try_into().unwrap();
-//        let lockfile_modules = lockfile.modules;
-//        let (changes, not_changed) = resolve_changes(&manifest, &lockfile_modules).unwrap();
-//        assert_eq!(1, changes.len()); // one dependency was upgraded
-//        assert_eq!(1, not_changed.len()); // one dependency did not change, reuse the lockfile module
-//    }
-//}
-//
-//#[cfg(test)]
-//mod test {
-//    use crate::dependency_resolver::{Dependency, TestResolver};
-//    use crate::lock::lockfile::Lockfile;
-//    use crate::lock::LOCKFILE_NAME;
-//    use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
-//    use std::collections::BTreeMap;
-//    use std::fs::File;
-//    use std::io::Write;
-//
-//    #[test]
-//    fn create_from_manifest() {
-//        let tmp_dir = tempdir::TempDir::new("create_from_manifest").unwrap();
-//        let wapm_toml = toml! {
-//            [package]
-//            description = "description"
-//            version = "1.0.0"
-//            [[module]]
-//            name = "test"
-//            source = "test.wasm"
-//        };
-//        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-//        let mut file = File::create(&manifest_path).unwrap();
-//        let toml_string = toml::to_string(&wapm_toml).unwrap();
-//        file.write_all(toml_string.as_bytes()).unwrap();
-//        let manifest = Manifest::open(manifest_path).unwrap();
-//        let resolver = TestResolver(BTreeMap::new());
-//        let lockfile = Lockfile::new_from_manifest(&manifest, &resolver).unwrap();
-//        assert_eq!(0, lockfile.commands.len());
-//        assert_eq!(0, lockfile.modules.len());
-//    }
-//    #[test]
-//    fn create_from_manifest_and_existing_lockfile_with_dependencies_and_commands() {
-//        let wapm_toml = toml! {
-//            [package]
-//            name = "test"
-//            version = "1.0.0"
-//            description = "description"
-//            [[module]]
-//            name = "test"
-//            source = "test.wasm"
-//            [dependencies]
-//            foo = "1.0.2"
-//            bar = "3.0.0"
-//        };
-//        let manifest: Manifest = wapm_toml.try_into().unwrap();
-//
-//        // setup resolver
-//        let mut map = BTreeMap::new();
-//        // FOO package v 1.0.0
-//        let foo_toml: toml::Value = toml! {
-//            [package]
-//            name = "foo"
-//            version = "1.0.0"
-//            description = ""
-//            [[module]]
-//            name = "foo"
-//            source = "foo.wasm"
-//            [[command]]
-//            name = "do_foo_stuff"
-//        };
-//        let foo_manifest: Manifest = foo_toml.try_into().unwrap();
-//        let foo_dependency = Dependency {
-//            name: "foo".to_string(),
-//            manifest: foo_manifest,
-//            download_url: "".to_string(),
-//        };
-//        // FOO package v 1.0.2
-//        map.insert(("foo".to_string(), "1.0.2".to_string()), foo_dependency);
-//        let newer_foo_toml: toml::Value = toml! {
-//            [package]
-//            name = "foo"
-//            version = "1.0.2"
-//            description = ""
-//            [[module]]
-//            name = "foo"
-//            source = "foo.wasm"
-//            [[command]]
-//            name = "do_more_foo_stuff" // COMMAND REMOVED AND ADDED
-//        };
-//        let newer_foo_manifest: Manifest = newer_foo_toml.try_into().unwrap();
-//        let newer_foo_dependency = Dependency {
-//            name: "foo".to_string(),
-//            manifest: newer_foo_manifest,
-//            download_url: "".to_string(),
-//        };
-//        map.insert(
-//            ("foo".to_string(), "1.0.2".to_string()),
-//            newer_foo_dependency,
-//        );
-//        // BAR package v 2.0.1
-//        let bar_toml: toml::Value = toml! {
-//            [package]
-//
-//            [[module]]
-//            name = "bar"
-//            version = "2.0.1"
-//            module = "bar.wasm"
-//            description = ""
-//        };
-//        let bar_manifest: Manifest = bar_toml.try_into().unwrap();
-//        let bar_dependency = Dependency {
-//            name: "foo".to_string(),
-//            manifest: bar_manifest,
-//            download_url: "".to_string(),
-//        };
-//        map.insert(("bar".to_string(), "2.0.1".to_string()), bar_dependency);
-//        // BAR package v 3.0.0
-//        let bar_newer_toml: toml::Value = toml! {
-//            [package]
-//            name = "bar"
-//            version = "3.0.0"
-//            description = ""
-//            [[module]]
-//            name = "bar"
-//            module = "bar.wasm"
-//            [[command]]
-//            name = "do_bar_stuff" // ADDED COMMAND
-//        };
-//        let bar_newer_manifest: Manifest = bar_newer_toml.try_into().unwrap();
-//        let bar_newer_dependency = Dependency {
-//            name: "foo".to_string(),
-//            manifest: bar_newer_manifest,
-//            download_url: "".to_string(),
-//        };
-//        map.insert(
-//            ("bar".to_string(), "3.0.0".to_string()),
-//            bar_newer_dependency,
-//        );
-//        let test_resolver = TestResolver(map);
-//
-//        // existing lockfile
-//        let wapm_lock_toml = toml! {
-//            [modules."abc/foo"."1.0.0"."foo_module"]
-//            name = "foo_module"
-//            version = "1.0.0"
-//            source = "registry+foo"
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "foo.wasm"
-//
-//            [modules."xyz/bar"."2.0.1"."bar_module"]
-//            name = "bar_module"
-//            version = "2.0.1"
-//            source = "registry+bar"
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "bar.wasm"
-//
-//            [commands.do_foo_stuff]
-//            module = "foo_module"
-//            package_name = "abc/foo"
-//            package_version = "1.0.0"
-//        };
-//
-//        let existing_lockfile: Lockfile = wapm_lock_toml.try_into().unwrap();
-//
-//        let lockfile =
-//            Lockfile::new_from_manifest_and_lockfile(&manifest, existing_lockfile, &test_resolver)
-//                .unwrap();
-//
-//        // existing lockfile
-//        let expected_lock_toml = toml! {
-//            [modules."abc/foo"."1.0.2"."foo_module"]
-//            name = "foo_module"
-//            version = "1.0.2"
-//            source = "registry+foo"
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "foo.wasm"
-//
-//            [modules."xyz/bar"."3.0.0"."bar_module"]
-//            name = "bar_module"
-//            version = "3.0.0"
-//            source = "registry+bar"
-//            resolved = ""
-//            integrity = ""
-//            hash = ""
-//            abi = "None"
-//            entry = "bar.wasm"
-//
-//            [commands.do_more_foo_stuff]
-//            package_name = "abc/foo"
-//            package_version = "1.0.2"
-//            module = "foo_module"
-//
-//            [commands.do_bar_stuff]
-//            package_name = "xyz/bar"
-//            package_version = "1.0.2"
-//            module = "bar_module"
-//        };
-//
-//        let expected_lockfile: Lockfile = expected_lock_toml.try_into().unwrap();
-//
-//        assert_eq!(expected_lockfile, lockfile);
-//    }
-//}
+    #[test]
+    fn create_from_manifest_and_lockfile() {
+        let foo_toml: toml::Value = toml! {
+            [package]
+            name = "_/root_pkg"
+            description = "foo in the ns namespace"
+            // updated version number
+            version = "1.1.0"
+            [dependencies]
+            // removed dependency a, upgrade dependency b and added dependency c
+            "_/test_dep_b" = "2.1.0"
+            "_/test_dep_c" = "4.0.0"
+            [[module]]
+            name = "root_module"
+            source = "root.wasm"
+            // added a new root module
+            [[module]]
+            name = "root_module_2"
+            source = "root_2.wasm"
+            // removed root_pkg_command_a
+            [[command]]
+            module = "root_module"
+            name = "root_pkg_command_b"
+            // added root_pkg_command_c
+            [[command]]
+            module = "root_module"
+            name = "root_pkg_command_c"
+        };
+        let toml_string = foo_toml.to_string();
+        let foo_manifest: Manifest = toml::from_str(&toml_string).unwrap();
+
+        let test_dep_a_manifest_toml = toml! {
+            [package]
+            name = "_/test_dep_a"
+            version = "1.0.0"
+            description = "test dep a"
+            [[module]]
+            name = "test_dep_a_module"
+            source = "a.wasm"
+            [[command]]
+            name = "mod_a_command"
+            module = "test_dep_a_module"
+        };
+        let test_dep_a_manifest_string = test_dep_a_manifest_toml.to_string();
+        let test_dep_a_manifest: Manifest = toml::from_str(&test_dep_a_manifest_string).unwrap();
+
+        let test_dep_a = Dependency {
+            name: "_/test_dep_a".to_string(),
+            version: "1.0.0".to_string(),
+            manifest: test_dep_a_manifest,
+            download_url: "dep_a_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let test_dep_b_manifest_toml = toml! {
+            [package]
+            name = "_/test_dep_b"
+            version = "2.0.0"
+            description = "test dep b"
+            [[module]]
+            name = "test_dep_b_module"
+            source = "b.wasm"
+            [[command]]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+        };
+        let test_dep_b_manifest_string = test_dep_b_manifest_toml.to_string();
+        let test_dep_b_manifest: Manifest = toml::from_str(&test_dep_b_manifest_string).unwrap();
+
+        let test_dep_b = Dependency {
+            name: "_/test_dep_b".to_string(),
+            version: "2.0.0".to_string(),
+            manifest: test_dep_b_manifest,
+            download_url: "dep_b_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let test_dep_b_manifest_update_toml = toml! {
+            [package]
+            name = "_/test_dep_b"
+            version = "2.1.0"
+            description = "test dep b"
+            [[module]]
+            name = "test_dep_b_module"
+            source = "b.wasm"
+            [[command]]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+            // added new command
+            [[command]]
+            name = "mod_b_command_2"
+            module = "test_dep_b_module"
+        };
+        let test_dep_b_manifest_update_string = test_dep_b_manifest_update_toml.to_string();
+        let test_dep_b_manifest_update: Manifest = toml::from_str(&test_dep_b_manifest_update_string).unwrap();
+
+        let test_dep_b_update = Dependency {
+            name: "_/test_dep_b".to_string(),
+            version: "2.1.0".to_string(),
+            manifest: test_dep_b_manifest_update,
+            download_url: "dep_b_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let test_dep_c_manifest_toml = toml! {
+            [package]
+            name = "_/test_dep_c"
+            version = "4.0.0"
+            description = "test dep c"
+            [[module]]
+            name = "test_dep_c_module"
+            source = "c.wasm"
+        };
+        let test_dep_c_manifest_string = test_dep_c_manifest_toml.to_string();
+        let test_dep_c_manifest: Manifest = toml::from_str(&test_dep_c_manifest_string).unwrap();
+
+        let test_dep_c = Dependency {
+            name: "_/test_dep_c".to_string(),
+            version: "4.0.0".to_string(),
+            manifest: test_dep_c_manifest,
+            download_url: "dep_c_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let mut test_registry_map = BTreeMap::new();
+        let version_vec_a = vec![test_dep_a];
+        let version_vec_b = vec![test_dep_b, test_dep_b_update];
+        let version_vec_c = vec![test_dep_c];
+        test_registry_map.insert("_/test_dep_a", version_vec_a);
+        test_registry_map.insert("_/test_dep_b", version_vec_b);
+        test_registry_map.insert("_/test_dep_c", version_vec_c);
+
+        let mut test_registry = TestRegistry(test_registry_map);
+
+        let existing_lockfile_toml = toml! {
+            [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
+            name = "test_dep_a_module"
+            package_name = "_/test_dep_a"
+            package_version = "1.0.0"
+            source = "registry+test_dep_a_module"
+            resolved = "dep_a_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "a.wasm"
+            [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
+            name = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.0.0"
+            source = "registry+test_dep_b_module"
+            resolved = "dep_b_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "b.wasm"
+            [commands."mod_a_command"]
+            name = "mod_a_command"
+            module = "test_dep_a_module"
+            package_name = "_/test_dep_a"
+            package_version = "1.0.0"
+            is_top_level_dependency = true
+            [commands."mod_b_command"]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.0.0"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_a"]
+            name = "root_pkg_command_a"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.0.0"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_b"]
+            name = "root_pkg_command_b"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.0.0"
+            is_top_level_dependency = true
+        };
+
+        let existing_lockfile_string = existing_lockfile_toml.to_string();
+        let existing_lockfile: Lockfile = toml::from_str(&existing_lockfile_string).unwrap();
+
+        let expected_lockfile_toml = toml! {
+            [modules."_/test_dep_b"."2.1.0"."test_dep_b_module"]
+            name = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.1.0"
+            source = "registry+test_dep_b_module"
+            resolved = "dep_b_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "b.wasm"
+			[modules."_/test_dep_c"."4.0.0"."test_dep_c_module"]
+            name = "test_dep_c_module"
+            package_name = "_/test_dep_c"
+            package_version = "4.0.0"
+            source = "registry+test_dep_c_module"
+            resolved = "dep_c_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "c.wasm"
+            [commands."mod_b_command"]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.1.0"
+            is_top_level_dependency = true
+            [commands."mod_b_command_2"]
+            name = "mod_b_command_2"
+            module = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.1.0"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_b"]
+            name = "root_pkg_command_b"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.1.0"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_c"]
+            name = "root_pkg_command_c"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.1.0"
+            is_top_level_dependency = true
+        };
+
+        let expected_lockfile_string = expected_lockfile_toml.to_string();
+        let expected_lockfile: Lockfile = toml::from_str(&expected_lockfile_string).unwrap();
+
+        let actual_lockfile = Lockfile::new_from_manifest_and_lockfile(&foo_manifest, existing_lockfile, &mut test_registry).unwrap();
+
+        let actual_lockfile_string = toml::to_string(&actual_lockfile).unwrap();
+        eprintln!("{}", actual_lockfile_string);
+        assert_eq!(expected_lockfile, actual_lockfile);
+    }
+}
