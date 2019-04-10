@@ -8,7 +8,6 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-//type ModuleMap<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeMap<&'a str, LockfileModule>>>;
 type ModuleMap<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeMap<&'a str, LockfileModule<'a>>>>;
 type CommandMap<'a> = BTreeMap<&'a str, LockfileCommand<'a>>;
 
@@ -278,7 +277,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         let removed_commands: Vec<&str> = lockfile_commands
             .iter()
             .map(|(cmd_name, c)| (cmd_name, c.package_name))
-            .filter(|(cmd_name, package_name)| *changed_package_name == *package_name)
+            .filter(|(_cmd_name, package_name)| *changed_package_name == *package_name)
             .map(|(cmd_name, _)| *cmd_name)
             .collect();
         for removed_command_name in removed_commands {

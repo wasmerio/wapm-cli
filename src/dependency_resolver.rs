@@ -157,6 +157,4 @@ impl PackageRegistryLike for PackageRegistry {
 enum DependencyResolverError {
     #[fail(display = "Package not found in the registry: {}@{}", _0, _1)]
     MissingDependency(String, String),
-    //    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
-    //    DependencyVersionMustBeString(String),
 }

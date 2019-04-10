@@ -102,7 +102,7 @@ impl Manifest {
     }
 
     pub fn extract_dependencies(&self) -> Result<Vec<(&str, &str)>, failure::Error> {
-        if let None = self.dependencies {
+        if self.dependencies.is_none() {
             return Ok(vec![]);
         }
         let dependencies = self.dependencies.as_ref().unwrap();
@@ -122,19 +122,6 @@ impl Manifest {
         Ok(extracted_dependencies)
     }
 }
-
-/// internal helper for canonicalizing a path that may be relative or absolute
-//pub fn canonicalize_path<P1: AsRef<Path>, P2: AsRef<Path>>(
-//    directory: P1,
-//    path: P2,
-//) -> Result<PathBuf, failure::Error> {
-//    if path.as_ref().is_relative() {
-//        let path_buf = directory.as_ref().join(path.as_ref());
-//        dunce::canonicalize(&path_buf).map_err(|e| e.into())
-//    } else {
-//        Ok(path.as_ref().to_path_buf())
-//    }
-//}
 
 #[derive(Debug, Fail)]
 pub enum ManifestError {
