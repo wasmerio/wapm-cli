@@ -1,6 +1,6 @@
 use crate::abi::Abi;
-use crate::manifest::Module;
 use crate::dependency_resolver::Dependency;
+use crate::manifest::Module;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule<'a> {
@@ -16,7 +16,12 @@ pub struct LockfileModule<'a> {
 }
 
 impl<'a> LockfileModule<'a> {
-    pub fn from_module(name: &'a str, version: &'a str, module: &'a Module, download_url: &'a str) -> Self {
+    pub fn from_module(
+        name: &'a str,
+        version: &'a str,
+        module: &'a Module,
+        download_url: &'a str,
+    ) -> Self {
         let lockfile_module = LockfileModule {
             name: module.name.as_str(),
             package_version: version,
@@ -31,9 +36,11 @@ impl<'a> LockfileModule<'a> {
         lockfile_module
     }
 
-    pub fn from_dependency(dependency: &'a Dependency) -> Result<(Vec<LockfileModule<'a>>), failure::Error> {
+    pub fn from_dependency(
+        dependency: &'a Dependency,
+    ) -> Result<(Vec<LockfileModule<'a>>), failure::Error> {
         if let None = dependency.manifest.module {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
 
         let modules = dependency.manifest.module.as_ref().unwrap();
@@ -42,7 +49,10 @@ impl<'a> LockfileModule<'a> {
         let package_version = dependency.manifest.package.version.as_str();
         let download_url = dependency.download_url.as_str();
 
-        let lockfile_modules: Vec<LockfileModule> = modules.iter().map(|m| LockfileModule::from_module(package_name, package_version, m, download_url)).collect();
+        let lockfile_modules: Vec<LockfileModule> = modules
+            .iter()
+            .map(|m| LockfileModule::from_module(package_name, package_version, m, download_url))
+            .collect();
         Ok(lockfile_modules)
     }
 }

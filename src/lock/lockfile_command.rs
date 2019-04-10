@@ -1,5 +1,5 @@
-use crate::manifest::Command;
 use crate::dependency_resolver::Dependency;
+use crate::manifest::Command;
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -13,7 +13,11 @@ pub struct LockfileCommand<'a> {
 }
 
 impl<'a> LockfileCommand<'a> {
-    pub fn from_command(package_name: &'a str, package_version: &'a str, command: &'a Command) -> Self {
+    pub fn from_command(
+        package_name: &'a str,
+        package_version: &'a str,
+        command: &'a Command,
+    ) -> Self {
         let lockfile_command = LockfileCommand {
             name: command.name.as_str(),
             package_name,
@@ -29,11 +33,18 @@ impl<'a> LockfileCommand<'a> {
         if let None = dependency.manifest.command {
             return Ok(vec![]);
         }
-        let commands = dependency.manifest.command.as_ref().unwrap().iter().map(|c| {
-            let package_name = dependency.manifest.package.name.as_str();
-            let package_version = dependency.manifest.package.version.as_str();
-            LockfileCommand::from_command(package_name, package_version, &c)
-        }).collect::<Vec<_>>();
+        let commands = dependency
+            .manifest
+            .command
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|c| {
+                let package_name = dependency.manifest.package.name.as_str();
+                let package_version = dependency.manifest.package.version.as_str();
+                LockfileCommand::from_command(package_name, package_version, &c)
+            })
+            .collect::<Vec<_>>();
         Ok(commands)
     }
 }

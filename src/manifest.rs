@@ -103,14 +103,20 @@ impl Manifest {
 
     pub fn extract_dependencies(&self) -> Result<Vec<(&str, &str)>, failure::Error> {
         if let None = self.dependencies {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
         let dependencies = self.dependencies.as_ref().unwrap();
         let mut extracted_dependencies = vec![];
         for (name, version_value) in dependencies.iter() {
             match version_value {
-                Value::String(version) => extracted_dependencies.push((name.as_str(), version.as_str())),
-                _ => return Err(ManifestError::DependencyVersionMustBeString(name.to_string()).into()),
+                Value::String(version) => {
+                    extracted_dependencies.push((name.as_str(), version.as_str()))
+                }
+                _ => {
+                    return Err(
+                        ManifestError::DependencyVersionMustBeString(name.to_string()).into(),
+                    );
+                }
             }
         }
         Ok(extracted_dependencies)

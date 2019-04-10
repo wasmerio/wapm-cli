@@ -36,11 +36,15 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let lockfile_string = Lockfile::read_lockfile_string(&current_dir)?;
     let lockfile: Lockfile = toml::from_str(&lockfile_string)?;
     let lockfile_command = lockfile.get_command(command_name)?;
-        let lockfile_module = lockfile.get_module(lockfile_command.package_name, lockfile_command.package_version, lockfile_command.module)?;
-        let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
-        let command = Command::new("wasmer").args(&command_vec).output()?;
-        io::stdout().lock().write_all(&command.stdout)?;
-        io::stderr().lock().write_all(&command.stderr)?;
+    let lockfile_module = lockfile.get_module(
+        lockfile_command.package_name,
+        lockfile_command.package_version,
+        lockfile_command.module,
+    )?;
+    let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
+    let command = Command::new("wasmer").args(&command_vec).output()?;
+    io::stdout().lock().write_all(&command.stdout)?;
+    io::stderr().lock().write_all(&command.stderr)?;
     Ok(())
 }
 
