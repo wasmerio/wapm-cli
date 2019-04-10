@@ -40,6 +40,7 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         let temp_out_dir = tempdir::TempDir::new("temp").unwrap();
         let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());
+        // TODO: consider doing this entirely in memory with multiple passes
         archive
             .unpack(&out_dir)
             .map_err(|err| ValidationError::CannotUnpackArchive {
@@ -59,13 +60,7 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
             ar_path
         };
 
-        let ret = validate_directory(archive_path);
-
-        if let Err(_) = fs::remove_dir_all(&out_dir) {
-            // warn?
-        }
-
-        ret
+        validate_directory(archive_path)
     }
 }
 
