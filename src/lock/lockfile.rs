@@ -307,6 +307,147 @@ mod get_command_tests {
     }
 }
 
+#[cfg(test)]
+mod create_from_manifest_tests {
+    use crate::manifest::Manifest;
+    use crate::lock::Lockfile;
+    use crate::dependency_resolver::TestRegistry;
+    use crate::dependency_resolver::Dependency;
+    use crate::manifest::Package;
+    use std::path::PathBuf;
+    use std::collections::BTreeMap;
+    use crate::manifest::Module;
+
+    #[test]
+    fn create_from_manifest() {
+        let foo_toml: toml::Value = toml! {
+            [package]
+            name = "_/root_pkg"
+            description = "foo in the ns namespace"
+            version = "1.1.1"
+            [dependencies]
+            "_/test_dep_a" = "1.0.0"
+            "_/test_dep_b" = "2.0.0"
+            [[module]]
+            name = "root_module"
+            source = "root.wasm"
+            [[command]]
+            module = "root_module"
+            name = "root_pkg_command_a"
+            [[command]]
+            module = "root_module"
+            name = "root_pkg_command_b"
+        };
+        let toml_string = foo_toml.to_string();
+        let foo_manifest: Manifest = toml::from_str(&toml_string).unwrap();
+
+        let test_dep_a_manifest_toml = toml! {
+            [package]
+            name = "_/test_dep_a"
+            version = "1.0.0"
+            description = "test dep a"
+            [[module]]
+            name = "test_dep_a_module"
+            source = "a.wasm"
+            [[command]]
+            name = "mod_a_command"
+            module = "test_dep_a_module"
+        };
+        let test_dep_a_manifest_string = test_dep_a_manifest_toml.to_string();
+        let test_dep_a_manifest: Manifest = toml::from_str(&test_dep_a_manifest_string).unwrap();
+
+        let test_dep_a = Dependency {
+            name: "_/test_dep_a".to_string(),
+            version: "1.0.0".to_string(),
+            manifest: test_dep_a_manifest,
+            download_url: "dep_a_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let test_dep_b_manifest_toml = toml! {
+            [package]
+            name = "_/test_dep_b"
+            version = "2.0.0"
+            description = "test dep b"
+            [[module]]
+            name = "test_dep_b_module"
+            source = "b.wasm"
+            [[command]]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+        };
+        let test_dep_b_manifest_string = test_dep_b_manifest_toml.to_string();
+        let test_dep_b_manifest: Manifest = toml::from_str(&test_dep_b_manifest_string).unwrap();
+
+        let test_dep_b = Dependency {
+            name: "_/test_dep_b".to_string(),
+            version: "2.0.0".to_string(),
+            manifest: test_dep_b_manifest,
+            download_url: "dep_b_test.com".to_string(),
+            is_top_level_dependency: true
+        };
+
+        let mut test_registry_map = BTreeMap::new();
+        let version_vec_a = vec![test_dep_a];
+        let version_vec_b = vec![test_dep_b];
+        test_registry_map.insert("_/test_dep_a", version_vec_a);
+        test_registry_map.insert("_/test_dep_b", version_vec_b);
+        let mut test_registry = TestRegistry(test_registry_map);
+        let actual_lockfile = Lockfile::new_from_manifest(&foo_manifest, &mut test_registry).unwrap();
+
+        let expected_lockfile_toml = toml! {
+            [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
+            name = "test_dep_a_module"
+            package_name = "_/test_dep_a"
+            package_version = "1.0.0"
+            source = "registry+test_dep_a_module"
+            resolved = "dep_a_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "a.wasm"
+            [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
+            name = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.0.0"
+            source = "registry+test_dep_b_module"
+            resolved = "dep_b_test.com"
+            integrity = ""
+            hash = ""
+            abi = "None"
+            entry = "b.wasm"
+            [commands."mod_a_command"]
+            name = "mod_a_command"
+            module = "test_dep_a_module"
+            package_name = "_/test_dep_a"
+            package_version = "1.0.0"
+            is_top_level_dependency = true
+            [commands."mod_b_command"]
+            name = "mod_b_command"
+            module = "test_dep_b_module"
+            package_name = "_/test_dep_b"
+            package_version = "2.0.0"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_a"]
+            name = "root_pkg_command_a"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.1.1"
+            is_top_level_dependency = true
+            [commands."root_pkg_command_b"]
+            name = "root_pkg_command_b"
+            module = "root_module"
+            package_name = "_/root_pkg"
+            package_version = "1.1.1"
+            is_top_level_dependency = true
+        };
+        let expected_lockfile_string = expected_lockfile_toml.to_string();
+        let expected_lockfile: Lockfile = toml::from_str(&expected_lockfile_string).unwrap();
+
+        assert_eq!(expected_lockfile, actual_lockfile);
+    }
+}
+
 //#[cfg(test)]
 //mod get_lockfile_data_from_manifest_tests {
 //    use crate::dependency_resolver::Dependency;

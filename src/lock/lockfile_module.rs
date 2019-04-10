@@ -26,7 +26,7 @@ impl<'a> LockfileModule<'a> {
             integrity: "".to_string(),
             hash: "".to_string(),
             abi: module.abi.clone(),
-            entry: module.name.clone() // TODO fix
+            entry: module.source.to_string_lossy().into_owned(),
         };
         lockfile_module
     }

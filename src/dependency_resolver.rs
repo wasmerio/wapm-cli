@@ -27,19 +27,27 @@ pub trait PackageRegistryLike {
 }
 
 #[cfg(test)]
-pub struct TestRegistry(pub std::collections::BTreeMap<(String, String), Dependency>);
+pub struct TestRegistry(pub BTreeMap<&'static str, Vec<Dependency>>);
 
 #[cfg(test)]
 impl PackageRegistryLike for TestRegistry {
     fn get_all_dependencies<'a>(&'a mut self, root_pkg_name: &str, root_pkg_version: &str, root_dependencies: Vec<(&str, &str)>) -> Result<Vec<&'a Dependency>, failure::Error> {
-        unimplemented!()
+        // for now, only fetch root dependencies
+        let mut dependencies = vec![];
+        for (package_name, package_version) in root_dependencies {
+            match self.0.get(package_name) {
+                Some(versions) => {
+                    let version = versions.iter().find(|v| v.version.as_str() == package_version);
+                    let dependency = version.ok_or(DependencyResolverError::MissingDependency(package_name.to_string(), package_version.to_string()))?;
+                    dependencies.push(dependency);
+                }
+                None => {
+                    return Err(DependencyResolverError::MissingDependency(package_name.to_string(), package_version.to_string()).into());
+                }
+            }
+        }
+        Ok(dependencies)
     }
-//    fn resolve(&self, pkg_name: &str, pkg_version: &str) -> Result<Dependency, failure::Error> {
-//        let key = (pkg_name.to_string(), pkg_version.to_string());
-//        ensure!(self.0.contains_key(&key), "pkg not found");
-//        let dependency: Dependency = self.0.get(&key).unwrap().clone();
-//        Ok(dependency)
-//    }
 }
 
 pub struct PackageRegistry(pub BTreeMap<String, Vec<Dependency>>);
