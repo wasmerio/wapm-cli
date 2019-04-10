@@ -65,7 +65,8 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
 
     let mut maybe_manifest = Manifest::open(&manifest_file_path);
-    let maybe_lockfile = Lockfile::open(current_dir);
+    let lockfile_string = Lockfile::read_lockfile_string(current_dir)?;
+    let maybe_lockfile = toml::from_str(&lockfile_string).map_err(|e| e.into());
 
     match maybe_manifest {
         Ok(ref mut manifest) => {
