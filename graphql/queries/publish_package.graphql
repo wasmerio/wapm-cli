@@ -1,4 +1,4 @@
-mutation PublishPackageMutation($name: String!, $version: String!, $description: String!, $manifest: String!, $license: String, $readme: String, $fileName:String) {
+mutation PublishPackageMutation($name: String!, $version: String!, $description: String!, $manifest: String!, $license: String, $readme: String, $fileName:String, $repository:String, $homepage:String) {
   publishPackage(input: {
     name: $name,
     version: $version,
@@ -7,6 +7,8 @@ mutation PublishPackageMutation($name: String!, $version: String!, $description:
     license: $license,
     readme: $readme,
     file: $fileName,
+    repository: $repository,
+    homepage: $homepage,
     clientMutationId: ""
   }) {
     success
