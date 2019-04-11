@@ -5,6 +5,7 @@ mod logout;
 mod publish;
 mod run;
 mod search;
+mod validate;
 mod whoami;
 
 pub use self::config::{config, ConfigOpt};
@@ -14,4 +15,5 @@ pub use self::logout::logout;
 pub use self::publish::publish;
 pub use self::run::{run, RunOpt};
 pub use self::search::{search, SearchOpt};
+pub use self::validate::{validate, ValidateOpt};
 pub use self::whoami::whoami;

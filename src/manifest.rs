@@ -74,7 +74,17 @@ impl Manifest {
     /// Construct a manifest by searching in the current directory for a manifest file
     pub fn find_in_current_directory() -> Result<Self, failure::Error> {
         let cwd = env::current_dir()?;
-        let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
+        Self::find_in_directory(cwd)
+    }
+
+    /// Construct a manifest by searching in the specified directory for a manifest file
+    pub fn find_in_directory<T: Into<PathBuf>>(path: T) -> Result<Self, failure::Error> {
+        let path = path.into();
+        if !path.is_dir() {
+            return Err(ManifestError::MissingManifestInCwd.into());
+        }
+
+        let manifest_path_buf = path.join(MANIFEST_FILE_NAME);
         let contents = fs::read_to_string(&manifest_path_buf)
             .map_err(|_e| ManifestError::MissingManifestInCwd)?;
         let manifest: Self = toml::from_str(contents.as_str())?;
