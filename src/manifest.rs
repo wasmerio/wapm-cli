@@ -10,6 +10,7 @@ use toml::Value;
 
 /// The name of the manifest file. This is hard-coded for now.
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
+pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
