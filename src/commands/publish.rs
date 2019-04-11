@@ -21,7 +21,6 @@ pub fn publish() -> Result<(), failure::Error> {
     let mut builder = Builder::new(Vec::new());
     let cwd = env::current_dir()?;
     let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
-    println!("{}", manifest_path_buf.display());
     let contents =
         fs::read_to_string(&manifest_path_buf).map_err(|_e| PublishError::MissingManifestInCwd)?;
     let manifest: Manifest = toml::from_str(&contents)?;
@@ -30,7 +29,6 @@ pub fn publish() -> Result<(), failure::Error> {
     let package = &manifest.package;
     let modules = manifest.module.as_ref().ok_or(PublishError::NoModule)?;
     let manifest_string = toml::to_string(&manifest)?;
-    println!("{}", manifest_string);
 
     let readme = package.readme.as_ref().and_then(|readme_path| {
         if let Err(_) = builder.append_path(readme_path) {
@@ -65,8 +63,6 @@ pub fn publish() -> Result<(), failure::Error> {
     gz_enc.write_all(&tar_archive_data).unwrap();
     let _compressed_archive = gz_enc.finish().unwrap();
 
-    println!("{}", archive_path.display());
-
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
         version: package.version.clone(),
@@ -74,6 +70,8 @@ pub fn publish() -> Result<(), failure::Error> {
         manifest: manifest_string,
         license: package.license.clone(),
         readme,
+        repository: package.repository.clone(),
+        homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
     });
     assert!(archive_path.exists());
