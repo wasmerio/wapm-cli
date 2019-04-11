@@ -39,15 +39,24 @@ pub fn publish() -> Result<(), failure::Error> {
     for module in modules {
         if module.source.is_relative() {
             let source_path = manifest.base_directory_path.join(&module.source);
-            let source_file_name = source_path.file_name().ok_or(PublishError::NoModule)?;
+            source_path
+                .metadata()
+                .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
+            let source_file_name = source_path
+                .file_name()
+                .ok_or(PublishError::SourceMustBeFile(module.name.clone()))?;
             builder
                 .append_path_with_name(&source_path, source_file_name)
-                .map_err(|_| PublishError::NoModule)?;
+                .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
         } else {
+            module
+                .source
+                .metadata()
+                .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
             let source_file_name = module.source.file_name().ok_or(PublishError::NoModule)?;
             builder
                 .append_path_with_name(&module.source, source_file_name)
-                .map_err(|_| PublishError::NoModule)?;
+                .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
         }
     }
 
@@ -85,6 +94,10 @@ pub fn publish() -> Result<(), failure::Error> {
 enum PublishError {
     #[fail(display = "Cannot publish without a module.")]
     NoModule,
+    #[fail(display = "Module \"{}\" must have a source that is a file.", _0)]
+    SourceMustBeFile(String),
     #[fail(display = "Missing manifest in current directory.")]
     MissingManifestInCwd,
+    #[fail(display = "Error building package when parsing module \"{}\".", _0)]
+    ErrorBuildingPackage(String),
 }
