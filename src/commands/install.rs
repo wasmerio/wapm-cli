@@ -30,6 +30,15 @@ enum InstallError {
 
     #[fail(display = "Can't process package file {} because {}", name, error)]
     CorruptFile { name: String, error: String },
+
+    #[fail(display = "{}: {}", custom_text, error)]
+    MiscError { custom_text: String, error: String },
+
+    #[fail(display = "Failed to regenerate lock file: {}", _0)]
+    CannotRegenLockFile(String),
+
+    #[fail(display = "Failed to decompress or open package: {}", _0)]
+    CannotOpenPackageArchive(String),
 }
 
 #[derive(GraphQLQuery)]
@@ -76,18 +85,34 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let fully_qualified_package_name =
         fully_qualified_package_display_name(&pkg_name, &last_version.version);
     let current_dir = env::current_dir()?;
-    let package_dir = create_package_dir(&current_dir, &namespace, &fully_qualified_package_name)?;
+    let package_dir = create_package_dir(&current_dir, &namespace, &fully_qualified_package_name)
+        .map_err(|err| InstallError::MiscError {
+        custom_text: "Could not create package directory".to_string(),
+        error: format!("{}", err),
+    })?;
     let download_url = last_version.distribution.download_url;
     let mut response = reqwest::get(&download_url)?;
-    let temp_dir = tempdir::TempDir::new("wapm_package_install")?;
+    let temp_dir =
+        tempdir::TempDir::new("wapm_package_install").map_err(|err| InstallError::MiscError {
+            custom_text: "Failed to create temporary directory to open the package in".to_string(),
+            error: format!("{}", err),
+        })?;
     let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
     let mut dest = OpenOptions::new()
         .write(true)
         .read(true)
         .create(true)
-        .open(&temp_tar_gz_path)?;
-    io::copy(&mut response, &mut dest)?;
-    decompress_and_extract_archive(dest, &package_dir)?;
+        .open(&temp_tar_gz_path)
+        .map_err(|err| InstallError::MiscError {
+            custom_text: "Could not open temporary directory for compressed archive".to_string(),
+            error: format!("{}", err),
+        })?;
+    io::copy(&mut response, &mut dest).map_err(|err| InstallError::MiscError {
+        custom_text: "Could not copy response to temporary directory".to_string(),
+        error: format!("{}", err),
+    })?;
+    decompress_and_extract_archive(dest, &package_dir)
+        .map_err(|err| InstallError::CannotOpenPackageArchive(format!("{}", err)))?;
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
     let mut maybe_manifest = Manifest::open(&manifest_file_path);
     let mut lockfile_string = String::new();
@@ -100,7 +125,8 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         _ => {}
     };
     // with the manifest updated, we can now regenerate the lockfile
-    regenerate_lockfile(maybe_manifest, maybe_lockfile)?;
+    regenerate_lockfile(maybe_manifest, maybe_lockfile)
+        .map_err(|err| InstallError::CannotRegenLockFile(format!("{}", err)))?;
     println!("Package installed successfully to wapm_packages!");
     Ok(())
 }

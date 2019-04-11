@@ -107,7 +107,8 @@ impl Manifest {
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(&manifest_path)?;
+            .open(&manifest_path)
+            .map_err(|err| ManifestError::CannotSaveManifest(format!("{}", err)))?;
         file.write_all(manifest_string.as_bytes())?;
         Ok(())
     }
@@ -148,6 +149,8 @@ pub enum ManifestError {
     MissingTarget { path: PathBuf },
     #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
     DependencyVersionMustBeString(String),
+    #[fail(display = "Could not save manifest file: {}.", _0)]
+    CannotSaveManifest(String),
 }
 
 #[cfg(test)]
