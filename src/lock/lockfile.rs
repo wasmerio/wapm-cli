@@ -162,6 +162,43 @@ impl<'a> Lockfile<'a> {
         Ok(new_lockfile)
     }
 
+    pub fn new_from_installed_dependencies<D: PackageRegistryLike>(installed_dependencies: Vec<(&'a str, &'a str)>, dependency_resolver: &'a mut D) -> Result<Self, failure::Error> {
+        let mut lockfile_modules = BTreeMap::new();
+        let mut lockfile_commands = BTreeMap::new();
+        let dependencies = dependency_resolver.get_all_dependencies(
+            "",
+            "",
+            installed_dependencies,
+        )?;
+        for dependency in dependencies.iter() {
+            let package_name = dependency.manifest.package.name.as_str();
+            let package_version = dependency.manifest.package.version.as_str();
+            let lockfile_modules_vec = LockfileModule::from_dependency(*dependency)?;
+            for lockfile_module in lockfile_modules_vec.into_iter() {
+                let module_name = lockfile_module.name.clone();
+                let version_map = lockfile_modules
+                    .entry(package_name)
+                    .or_insert(BTreeMap::new());
+                let module_map = version_map
+                    .entry(package_version)
+                    .or_insert(BTreeMap::new());
+                module_map.insert(module_name, lockfile_module);
+            }
+            let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
+            for lockfile_command in lockfile_commands_vec {
+                if lockfile_command.is_top_level_dependency {
+                    lockfile_commands.insert(lockfile_command.name, lockfile_command);
+                }
+            }
+        }
+
+        let new_lockfile = Lockfile {
+            modules: lockfile_modules,
+            commands: lockfile_commands,
+        };
+        Ok(new_lockfile)
+    }
+
     /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> Result<(), failure::Error> {
         let lockfile_string = toml::to_string(self)?;

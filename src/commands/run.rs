@@ -32,7 +32,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(manifest, lockfile)
+        _ => regenerate_lockfile(manifest, lockfile, vec![])
             .map_err(|err| RunError::CannotRegenLockFile(format!("{}", err)))?,
     }
     let mut lockfile_string = String::new();

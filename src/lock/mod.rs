@@ -13,6 +13,7 @@ pub use crate::lock::lockfile_command::LockfileCommand;
 pub use crate::lock::lockfile_module::LockfileModule;
 use crate::manifest::Manifest;
 use std::path::Path;
+use std::env;
 
 #[inline]
 pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
@@ -36,9 +37,13 @@ pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> Result<bool, fai
 pub fn regenerate_lockfile(
     maybe_manifest: Result<Manifest, failure::Error>,
     maybe_lockfile: Result<Lockfile, failure::Error>,
+    installed_dependencies: Vec<(&str, &str)>,
 ) -> Result<(), failure::Error> {
     match (maybe_manifest, maybe_lockfile) {
-        (Ok(manifest), Ok(existing_lockfile)) => {
+        (Ok(mut manifest), Ok(existing_lockfile)) => {
+            for (dependency_name, dependency_version) in installed_dependencies {
+                manifest.add_dependency(dependency_name, dependency_version);
+            }
             // construct lockfile
             let mut resolver = PackageRegistry::new();
             let lockfile = Lockfile::new_from_manifest_and_lockfile(
@@ -51,7 +56,10 @@ pub fn regenerate_lockfile(
             // write the lockfile
             lockfile.save(&manifest.base_directory_path)?;
         }
-        (Ok(manifest), Err(_lockfile_error)) => {
+        (Ok(mut manifest), Err(_lockfile_error)) => {
+            for (dependency_name, dependency_version) in installed_dependencies {
+                manifest.add_dependency(dependency_name, dependency_version);
+            }
             // construct lockfile
             let mut resolver = PackageRegistry::new();
             let lockfile = Lockfile::new_from_manifest(&manifest, &mut resolver)?;
@@ -60,11 +68,14 @@ pub fn regenerate_lockfile(
             // write the lockfile
             lockfile.save(&manifest.base_directory_path)?;
         }
-        (Err(_manifest_error), Ok(_lockfile)) => {
-            // TODO: Lockfile::new_from_lockfile();
+        (Err(_manifest_error), Ok(lockfile)) => {
+//            Lockfile::new_from_lockfile_and_installed_dependencies(existing_lockfile, installed_dependencies);
         }
         (Err(_), Err(_)) => {
-            // TODO: Lockfile::new();
+            let mut resolver = PackageRegistry::new();
+            let lockfile = Lockfile::new_from_installed_dependencies(installed_dependencies, &mut resolver)?;
+            let cwd = env::current_dir()?;
+            lockfile.save(&cwd)?;
         }
     }
 
