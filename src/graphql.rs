@@ -52,8 +52,6 @@ where
         .send()?;
 
     let response_body: Response<R> = res.json()?;
-    println!("sending request 2...");
-
     if let Some(errors) = response_body.errors {
         let error_messages: Vec<String> = errors.into_iter().map(|err| err.message).collect();
         return Err(GraphQLError::Error {
@@ -61,8 +59,6 @@ where
         }
         .into());
     }
-    println!("sending request...");
-
     Ok(response_body.data.expect("missing response data"))
 }
 

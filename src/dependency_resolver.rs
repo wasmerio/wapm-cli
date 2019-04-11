@@ -77,7 +77,7 @@ impl PackageRegistry {
 
     fn sync_packages(&mut self, package_names: Vec<String>) -> Result<(), failure::Error> {
         let q = GetPackagesQuery::build_query(get_packages_query::Variables {
-            names: Some(package_names),
+            names: package_names,
         });
         let response: get_packages_query::ResponseData = execute_query(&q)?;
         for p in response.package.into_iter().map(Option::unwrap) {
@@ -95,17 +95,27 @@ impl PackageRegistry {
                         .filter_map(|o| o)
                 })
                 .flatten();
-            let mut package_versions = vec![];
-            for v in versions {
-                let manifest: Manifest = toml::from_str(&v.manifest)?;
-                package_versions.push(Dependency {
+
+            // skip old manifests that are no longer valid
+            let package_versions: Vec<Dependency> = versions
+                .into_iter()
+                .map(|v| {
+                    (
+                        toml::from_str::<Manifest>(&v.manifest),
+                        v.version,
+                        v.distribution.download_url,
+                    )
+                })
+                .filter(|v| v.0.is_ok())
+                .map(|v| Dependency {
                     name: package_name.clone(),
-                    version: v.version,
-                    manifest,
-                    download_url: v.distribution.download_url,
+                    version: v.1,
+                    manifest: v.0.unwrap(),
+                    download_url: v.2,
                     is_top_level_dependency: true, // TODO fix this
-                });
-            }
+                })
+                .collect();
+
             self.0.insert(package_name, package_versions);
         }
         Ok(())

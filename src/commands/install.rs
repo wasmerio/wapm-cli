@@ -1,6 +1,4 @@
 use crate::graphql::execute_query;
-use std::fs::File;
-use std::io::{copy, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 
@@ -11,6 +9,8 @@ use tar::Archive;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+use std::fs::OpenOptions;
+use std::io::SeekFrom;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -41,36 +41,19 @@ struct GetPackageQuery;
 
 /// Loads a GZipped tar in to memory, decompresses it, and unpackages the
 /// content to `pkg_name`
-fn decompress_and_extract_archive(
-    mut compressed_archive: File,
-    pkg_name: &str,
+fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(
+    mut compressed_archive: F,
+    pkg_name: P,
 ) -> Result<(), failure::Error> {
-    let mut compressed_archive_data = Vec::new();
-    compressed_archive
-        .read_to_end(&mut compressed_archive_data)
-        .map_err(|err| InstallError::CorruptFile {
-            name: format!("{:?}", compressed_archive),
-            error: format!("{}", err),
-        })?;
-
-    let mut gz = GzDecoder::new(&compressed_archive_data[..]);
-    let mut archive_data = Vec::new();
-    gz.read_to_end(&mut archive_data)
-        .map_err(|err| InstallError::CorruptFile {
-            name: format!("{}", pkg_name),
-            error: format!("{}", err),
-        })?;
-
-    // deal with uncompressed data
-    let mut archive = Archive::new(archive_data.as_slice());
-
+    compressed_archive.seek(SeekFrom::Start(0))?;
+    let gz = GzDecoder::new(compressed_archive);
+    let mut archive = Archive::new(gz);
     archive
-        .unpack(pkg_name)
+        .unpack(&pkg_name)
         .map_err(|err| InstallError::CorruptFile {
-            name: format!("{}", pkg_name),
+            name: format!("{}", pkg_name.as_ref().display()),
             error: format!("{}", err),
         })?;
-
     Ok(())
 }
 
@@ -91,30 +74,23 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
 
     let fully_qualified_package_name =
         fully_qualified_package_display_name(&pkg_name, &last_version.version);
-    println!("Installing package {}", fully_qualified_package_name);
     let current_dir = env::current_dir()?;
-
     let package_dir = create_package_dir(&current_dir, &namespace, &fully_qualified_package_name)?;
     let download_url = last_version.distribution.download_url;
     let mut response = reqwest::get(&download_url)?;
-
-    // REVIEW: where should we put the compressed archive?
-    let compressed_package_archive_path = package_dir.join(&format!("temp/{}.tar.gz", pkg_name));
-    let mut dest = File::create(compressed_package_archive_path.clone())?;
-    copy(&mut response, &mut dest)?;
-
-    let decompress_and_extract_result = decompress_and_extract_archive(dest, pkg_name);
-    if let Err(_) = fs::remove_dir_all(compressed_package_archive_path) {
-        // warn here?
-    }
-    // return after cleaning up if we failed
-    let _ = decompress_and_extract_result?;
-
+    let temp_dir = tempdir::TempDir::new("wapm_package_install")?;
+    let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
+    let mut dest = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open(&temp_tar_gz_path)?;
+    io::copy(&mut response, &mut dest)?;
+    decompress_and_extract_archive(dest, &package_dir)?;
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
-
     let mut maybe_manifest = Manifest::open(&manifest_file_path);
-    let lockfile_string = Lockfile::read_lockfile_string(current_dir)?;
-    let maybe_lockfile = toml::from_str(&lockfile_string).map_err(|e| e.into());
+    let mut lockfile_string = String::new();
+    let maybe_lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
 
     match maybe_manifest {
         Ok(ref mut manifest) => {
@@ -122,10 +98,8 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         }
         _ => {}
     };
-
     // with the manifest updated, we can now regenerate the lockfile
     regenerate_lockfile(maybe_manifest, maybe_lockfile)?;
-
     println!("Package installed successfully to wapm_modules!");
     Ok(())
 }
@@ -138,6 +112,8 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     let mut package_dir = project_dir.as_ref().join("wapm_modules");
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
+    println!("created package_dir {}", package_dir.display());
+
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }

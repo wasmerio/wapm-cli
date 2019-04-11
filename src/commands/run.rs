@@ -25,16 +25,16 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let current_dir = env::current_dir()?;
     let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
     let manifest = Manifest::open(manifest_path);
-    let lockfile_string = Lockfile::read_lockfile_string(&current_dir)?;
-    let lockfile = toml::from_str(&lockfile_string).map_err(|e| e.into());
+    let mut lockfile_string = String::new();
+    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
 
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
         _ => regenerate_lockfile(manifest, lockfile)?,
     }
-    let lockfile_string = Lockfile::read_lockfile_string(&current_dir)?;
-    let lockfile: Lockfile = toml::from_str(&lockfile_string)?;
+    let mut lockfile_string = String::new();
+    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)?;
     let lockfile_command = lockfile.get_command(command_name)?;
     let lockfile_module = lockfile.get_module(
         lockfile_command.package_name,

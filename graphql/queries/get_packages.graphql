@@ -1,4 +1,4 @@
-query GetPackagesQuery ($names: [String!]) {
+query GetPackagesQuery ($names: [String!]!) {
     package: getPackages(names:$names) {
         name
         versions {
