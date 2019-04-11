@@ -71,21 +71,21 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
         for module in modules.iter() {
             let source_path = if module.source.is_relative() {
                 manifest.base_directory_path.join(&module.source)
-            }
-            else {
+            } else {
                 module.source.clone()
             };
             let source_path_string = source_path.to_string_lossy().to_string();
-            let mut wasm_file = fs::File::open(&source_path).map_err(|_| ValidationError::MissingFile {
-                file: source_path_string.clone(),
-            })?;
+            let mut wasm_file =
+                fs::File::open(&source_path).map_err(|_| ValidationError::MissingFile {
+                    file: source_path_string.clone(),
+                })?;
             let mut wasm_buffer = Vec::new();
-            wasm_file
-                .read_to_end(&mut wasm_buffer)
-                .map_err(|err| ValidationError::MiscCannotRead {
+            wasm_file.read_to_end(&mut wasm_buffer).map_err(|err| {
+                ValidationError::MiscCannotRead {
                     file: source_path_string.clone(),
                     error: format!("{}", err),
-                })?;
+                }
+            })?;
             validate_wasm_and_report_errors(&wasm_buffer, source_path_string)?;
         }
     }
@@ -108,7 +108,7 @@ pub fn validate_wasm_and_report_errors(
                     file: file_name,
                     error: format!("{}", e),
                 }
-                .into())
+                .into());
             }
             _ => {}
         }
