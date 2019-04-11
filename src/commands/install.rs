@@ -9,9 +9,9 @@ use tar::Archive;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
-use structopt::StructOpt;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
@@ -80,7 +80,11 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let mut response = reqwest::get(&download_url)?;
     let temp_dir = tempdir::TempDir::new("wapm_package_install")?;
     let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
-    let mut dest = OpenOptions::new().write(true).read(true).create(true).open(&temp_tar_gz_path)?;
+    let mut dest = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open(&temp_tar_gz_path)?;
     io::copy(&mut response, &mut dest)?;
     decompress_and_extract_archive(dest, &package_dir)?;
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);

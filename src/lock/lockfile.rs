@@ -20,7 +20,10 @@ pub struct Lockfile<'a> {
 }
 
 impl<'a> Lockfile<'a> {
-    pub fn open<P: AsRef<Path>>(directory: P, lockfile_string: &'a mut String) -> Result<Lockfile<'a>, failure::Error> {
+    pub fn open<P: AsRef<Path>>(
+        directory: P,
+        lockfile_string: &'a mut String,
+    ) -> Result<Lockfile<'a>, failure::Error> {
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
         let mut lockfile_file = File::open(lockfile_path)?;
         lockfile_file.read_to_string(lockfile_string)?;

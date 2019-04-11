@@ -97,8 +97,15 @@ impl PackageRegistry {
                 .flatten();
 
             // skip old manifests that are no longer valid
-            let package_versions: Vec<Dependency> = versions.into_iter()
-                .map(|v| (toml::from_str::<Manifest>(&v.manifest), v.version, v.distribution.download_url))
+            let package_versions: Vec<Dependency> = versions
+                .into_iter()
+                .map(|v| {
+                    (
+                        toml::from_str::<Manifest>(&v.manifest),
+                        v.version,
+                        v.distribution.download_url,
+                    )
+                })
                 .filter(|v| v.0.is_ok())
                 .map(|v| Dependency {
                     name: package_name.clone(),
