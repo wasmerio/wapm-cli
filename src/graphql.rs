@@ -34,6 +34,7 @@ where
         .text("query", query.query.to_string())
         .text("operationName", query.operation_name.to_string())
         .text("variables", vars);
+
     let form = form_modifier(form);
 
     let user_agent = format!(
@@ -51,6 +52,7 @@ where
         .send()?;
 
     let response_body: Response<R> = res.json()?;
+    println!("sending request 2...");
 
     if let Some(errors) = response_body.errors {
         let error_messages: Vec<String> = errors.into_iter().map(|err| err.message).collect();
@@ -59,6 +61,7 @@ where
         }
         .into());
     }
+    println!("sending request...");
 
     Ok(response_body.data.expect("missing response data"))
 }

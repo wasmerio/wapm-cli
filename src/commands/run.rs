@@ -25,15 +25,22 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let current_dir = env::current_dir()?;
     let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
     let manifest = Manifest::open(manifest_path);
-    let lockfile = Lockfile::open(&current_dir);
+    let lockfile_string = Lockfile::read_lockfile_string(&current_dir)?;
+    let lockfile = toml::from_str(&lockfile_string).map_err(|e| e.into());
+
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
         _ => regenerate_lockfile(manifest, lockfile)?,
     }
-    let lockfile = Lockfile::open(&current_dir)?;
+    let lockfile_string = Lockfile::read_lockfile_string(&current_dir)?;
+    let lockfile: Lockfile = toml::from_str(&lockfile_string)?;
     let lockfile_command = lockfile.get_command(command_name)?;
-    let lockfile_module = lockfile.get_module(&lockfile_command.module)?;
+    let lockfile_module = lockfile.get_module(
+        lockfile_command.package_name,
+        lockfile_command.package_version,
+        lockfile_command.module,
+    )?;
     let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
     let command = Command::new("wasmer").args(&command_vec).output()?;
     io::stdout().lock().write_all(&command.stdout)?;
@@ -47,10 +54,9 @@ fn create_run_command<P: AsRef<Path>>(
     args: &Vec<OsString>,
     directory: P,
 ) -> Result<Vec<OsString>, failure::Error> {
-    let full_package_name = command.module.as_str();
     let wasm_file = module.entry.as_str();
-    let (namespace, pkg_name_with_version) = get_package_namespace_and_name(full_package_name)?;
-    let pkg_dir = pkg_name_with_version.replace(" ", "@");
+    let (namespace, unqualified_pkg_name) = get_package_namespace_and_name(command.package_name)?;
+    let pkg_dir = format!("{}@{}", unqualified_pkg_name, command.package_version);
     let mut path = PathBuf::new();
     path.push(directory);
     path.push("wapm_modules");
@@ -74,18 +80,20 @@ mod test {
     fn create_run_command_vec() {
         // lockfile
         let lock_toml = toml! {
-            [modules."_/foo 1.0.2"]
-            name = "_/foo"
-            version = "1.0.2"
+            [modules."_/foo"."1.0.2"."foo_mod"]
+            package_name = "_/foo"
+            package_version = "1.0.2"
+            name = "foo_mod"
             source = "registry+foo"
             resolved = ""
             integrity = ""
             hash = ""
             abi = "None"
             entry = "foo_entry.wasm"
-            [modules."_/bar 3.0.0"]
-            name = "_/bar"
-            version = "3.0.0"
+            [modules."_/bar"."3.0.0"."bar_mod"]
+            package_name = "_/bar"
+            package_version = "3.0.0"
+            name = "bar_mod"
             source = "registry+bar"
             resolved = ""
             integrity = ""
@@ -93,13 +101,21 @@ mod test {
             abi = "None"
             entry = "bar.wasm"
             [commands.do_more_foo_stuff]
-            module = "_/foo 1.0.2"
+            package_name = "_/foo"
+            package_version = "1.0.2"
+            name = "do_more_foo_stuff"
+            module = "foo_mod"
+            is_top_level_dependency = true
             [commands.do_bar_stuff]
-            module = "_/bar 3.0.0"
+            package_name = "_/bar"
+            package_version = "3.0.0"
+            name = "do_bar_stuff"
+            module = "bar_mod"
+            is_top_level_dependency = true
         };
-        let lockfile: Lockfile = lock_toml.try_into().unwrap();
-
-        let lockfile_module = lockfile.get_module("_/foo 1.0.2").unwrap();
+        let lock_toml_string = lock_toml.to_string();
+        let lockfile: Lockfile = toml::from_str(&lock_toml_string).unwrap();
+        let lockfile_module = lockfile.get_module("_/foo", "1.0.2", "foo_mod").unwrap();
         let lockfile_command = lockfile.get_command("do_more_foo_stuff").unwrap();
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
@@ -116,10 +132,8 @@ mod test {
             OsString::from("arg1"),
             OsString::from("arg2"),
         ];
-
         let actual_command =
             create_run_command(lockfile_command, lockfile_module, &args, &dir).unwrap();
-
         assert_eq!(expected_command, actual_command);
     }
 }
