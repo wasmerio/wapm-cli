@@ -227,12 +227,8 @@ impl<'a> Lockfile<'a> {
             let lockfile_modules_vec = LockfileModule::from_dependency(*dependency)?;
             for lockfile_module in lockfile_modules_vec.into_iter() {
                 let module_name = lockfile_module.name.clone();
-                let version_map = lockfile_modules
-                    .entry(package_name)
-                    .or_insert(BTreeMap::new());
-                let module_map = version_map
-                    .entry(package_version)
-                    .or_insert(BTreeMap::new());
+                let version_map = lockfile_modules.entry(package_name).or_default();
+                let module_map = version_map.entry(package_version).or_default();
                 module_map.insert(module_name, lockfile_module);
             }
             let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
