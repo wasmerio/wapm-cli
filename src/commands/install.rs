@@ -8,6 +8,7 @@ use reqwest;
 use tar::Archive;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
+use crate::manifest::PACKAGES_DIR_NAME;
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
@@ -109,7 +110,7 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     namespace_dir: P2,
     fully_qualified_package_name: &str,
 ) -> Result<PathBuf, io::Error> {
-    let mut package_dir = project_dir.as_ref().join("wapm_modules");
+    let mut package_dir = project_dir.as_ref().join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
     println!("created package_dir {}", package_dir.display());
@@ -126,6 +127,8 @@ fn fully_qualified_package_display_name(package_name: &str, package_version: &st
 #[cfg(test)]
 mod test {
     use crate::commands::install::{create_package_dir, fully_qualified_package_display_name};
+    use crate::manifest::PACKAGES_DIR_NAME;
+    use std::path::PathBuf;
 
     #[test]
     fn creates_package_directory() {
@@ -135,7 +138,11 @@ mod test {
         let expected_fully_qualified_package_name =
             fully_qualified_package_display_name(expected_package_name, expected_package_version);
         let tmp_dir_path = tmp_dir.path();
-        let expected_package_directory = tmp_dir_path.join("wapm_modules/_/my_pkg@0.1.2");
+        let expected_package_directory = tmp_dir_path.join(
+            [PACKAGES_DIR_NAME, "_/my_pkg@0.1.2"]
+                .iter()
+                .collect::<PathBuf>(),
+        );
         let actual_package_directory =
             create_package_dir(tmp_dir_path, "_", &expected_fully_qualified_package_name).unwrap();
         assert!(expected_package_directory.exists());

@@ -2,6 +2,7 @@ use crate::lock::{
     get_package_namespace_and_name, is_lockfile_out_of_date, regenerate_lockfile, Lockfile,
     LockfileCommand, LockfileModule,
 };
+use crate::manifest::PACKAGES_DIR_NAME;
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use std::ffi::OsString;
 use std::io::Write;
@@ -59,7 +60,7 @@ fn create_run_command<P: AsRef<Path>>(
     let pkg_dir = format!("{}@{}", unqualified_pkg_name, command.package_version);
     let mut path = PathBuf::new();
     path.push(directory);
-    path.push("wapm_modules");
+    path.push(PACKAGES_DIR_NAME);
     path.push(namespace);
     path.push(pkg_dir.as_str());
     path.push(wasm_file);
@@ -72,6 +73,7 @@ fn create_run_command<P: AsRef<Path>>(
 mod test {
     use crate::commands::run::create_run_command;
     use crate::lock::Lockfile;
+    use crate::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
@@ -120,7 +122,11 @@ mod test {
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
-        let wapm_module_dir = dir.join("wapm_modules/_/foo@1.0.2");
+        let wapm_module_dir = dir.join(
+            [PACKAGES_DIR_NAME, "_/foo@1.0.2"]
+                .iter()
+                .collect::<PathBuf>(),
+        );
         fs::create_dir_all(&wapm_module_dir).unwrap();
         // calling dunce here to help wih comparing paths on different platforms
         let expected_dir: PathBuf = dunce::canonicalize(&wapm_module_dir).unwrap();
