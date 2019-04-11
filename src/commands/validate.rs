@@ -67,21 +67,27 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
 pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     // validate as dir
     let manifest = Manifest::find_in_directory(pkg_path.clone())?;
-    if let Some(module) = manifest.module {
-        let path_str = module.module.to_string_lossy().to_string();
-        let mut wasm_file =
-            fs::File::open(module.module).map_err(|_| ValidationError::MissingFile {
-                file: path_str.clone(),
+    if let Some(modules) = manifest.module {
+        for module in modules.iter() {
+            let source_path = if module.source.is_relative() {
+                manifest.base_directory_path.join(&module.source)
+            }
+            else {
+                module.source.clone()
+            };
+            let source_path_string = source_path.to_string_lossy().to_string();
+            let mut wasm_file = fs::File::open(&source_path).map_err(|_| ValidationError::MissingFile {
+                file: source_path_string.clone(),
             })?;
-        let mut wasm_buffer = Vec::new();
-        wasm_file
-            .read_to_end(&mut wasm_buffer)
-            .map_err(|err| ValidationError::MiscCannotRead {
-                file: path_str.clone(),
-                error: format!("{}", err),
-            })?;
-
-        validate_wasm_and_report_errors(&wasm_buffer, path_str)?;
+            let mut wasm_buffer = Vec::new();
+            wasm_file
+                .read_to_end(&mut wasm_buffer)
+                .map_err(|err| ValidationError::MiscCannotRead {
+                    file: source_path_string.clone(),
+                    error: format!("{}", err),
+                })?;
+            validate_wasm_and_report_errors(&wasm_buffer, source_path_string)?;
+        }
     }
 
     Ok(())

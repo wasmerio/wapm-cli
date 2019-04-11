@@ -31,7 +31,6 @@ walrus = "0.4"
 wasmparser = "0.29.2"
 whoami = "0.5"
 zstd = "0.4"
-flate2 = "1.0.7"
 
 [dev-dependencies]
 tempdir = "0.3"
