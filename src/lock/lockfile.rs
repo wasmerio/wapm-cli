@@ -121,7 +121,7 @@ impl<'a> Lockfile<'a> {
             let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
             for lockfile_command in lockfile_commands_vec {
                 if lockfile_command.is_top_level_dependency {
-                    let r = existing_lockfile
+                    existing_lockfile
                         .commands
                         .insert(lockfile_command.name, lockfile_command)
                         .is_some();
