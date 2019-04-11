@@ -1,8 +1,13 @@
-use crate::graphql::execute_query_modifier;
 use crate::manifest::Manifest;
 
+use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use std::fs;
+use std::io::Write;
+use tar::Builder;
+use crate::graphql::execute_query_modifier;
+use std::env;
+use crate::manifest::MANIFEST_FILE_NAME;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -13,24 +18,65 @@ use std::fs;
 struct PublishPackageMutation;
 
 pub fn publish() -> Result<(), failure::Error> {
-    let manifest = Manifest::find_in_current_directory()?;
-    let module = manifest.module.as_ref().ok_or(PublishError::NoModule)?;
+    let mut builder = Builder::new(Vec::new());
+    let cwd = env::current_dir()?;
+    let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
+    println!("{}", manifest_path_buf.display());
+    let contents = fs::read_to_string(&manifest_path_buf)
+        .map_err(|_e| PublishError::MissingManifestInCwd)?;
+    let manifest: Manifest = toml::from_str(&contents)?;
+
+    builder.append_path_with_name(&manifest_path_buf, MANIFEST_FILE_NAME)?;
+    let package = &manifest.package;
+    let modules = manifest.module.as_ref().ok_or(PublishError::NoModule)?;
     let manifest_string = toml::to_string(&manifest)?;
-    let readme = module.readme.as_ref().and_then(|readme_path| {
+    println!("{}", manifest_string);
+
+    let readme = package.readme.as_ref().and_then(|readme_path| {
+        if let Err(_) = builder.append_path(readme_path) {
+            // Maybe do something here
+        }
         fs::read_to_string(manifest.base_directory_path.join(readme_path)).ok()
     });
-    let module_path = manifest.module_path()?;
+    for module in modules {
+        if module.source.is_relative() {
+            let source_path = manifest.base_directory_path.join(&module.source);
+            let source_file_name = source_path.file_name().ok_or(PublishError::NoModule)?;
+            builder.append_path_with_name(&source_path, source_file_name).map_err(|_| PublishError::NoModule)?;
+        }
+        else {
+            let source_file_name = module.source.file_name().ok_or(PublishError::NoModule)?;
+            builder.append_path_with_name(&module.source, source_file_name).map_err(|_| PublishError::NoModule)?;
+        }
+    }
+
+    let tar_archive_data = builder.into_inner().map_err(|_|
+                                                        // TODO:
+                                                        PublishError::NoModule)?;
+    let archive_name = "package.tar.gz".to_string();
+    let archive_dir = tempdir::TempDir::new("wapm_package")?;
+    let archive_path = archive_dir.as_ref().join(&archive_name);
+    let mut compressed_archive = fs::File::create(&archive_path).unwrap();
+    let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
+
+    gz_enc.write_all(&tar_archive_data).unwrap();
+    let _compressed_archive = gz_enc.finish().unwrap();
+
+    println!("{}", archive_path.display());
+
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
-        name: module.name.to_string(),
-        version: module.version.clone(),
-        description: module.description.clone(),
+        name: package.name.to_string(),
+        version: package.version.clone(),
+        description: package.description.clone(),
         manifest: manifest_string,
-        license: module.license.clone(),
+        license: package.license.clone(),
         readme,
-        file_name: Some("module".to_string()),
+        file_name: Some(archive_name.clone()),
     });
+    assert!(archive_path.exists());
+    assert!(archive_path.is_file());
     let _response: publish_package_mutation::ResponseData =
-        execute_query_modifier(&q, |f| f.file("module", &module_path).unwrap())?;
+        execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())?;
     Ok(())
 }
 
@@ -38,4 +84,6 @@ pub fn publish() -> Result<(), failure::Error> {
 enum PublishError {
     #[fail(display = "Cannot publish without a module.")]
     NoModule,
+    #[fail(display = "Missing manifest in current directory.")]
+    MissingManifestInCwd,
 }

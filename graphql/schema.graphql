@@ -1,5 +1,5 @@
 # source: http://localhost:8000/graphql
-# timestamp: Fri Apr 05 2019 12:23:05 GMT-0700 (Pacific Daylight Time)
+# timestamp: Wed Apr 10 2019 07:36:19 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -82,6 +82,8 @@ type PackageVersion {
   manifest: String!
   license: String
   readme: String
+  repository: String
+  homepage: String
   versionPosition: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -124,6 +126,8 @@ input PublishPackageInput {
   manifest: String!
   license: String
   readme: String
+  repository: String
+  homepage: String
   file: String
   clientMutationId: String
 }
@@ -140,6 +144,7 @@ type Query {
   packages(before: String, after: String, first: Int, last: Int): PackageConnection
   recentPackageVersions(before: String, after: String, first: Int, last: Int): PackageVersionConnection
   getPackage(name: String!): Package
+  getPackages(names: [String!]!): [Package]!
   getPackageVersion(name: String!, version: String): PackageVersion
   search(query: String!, before: String, after: String, first: Int, last: Int): SearchConnection!
   viewer: User
@@ -186,9 +191,7 @@ type SearchEdge {
 union SearchResult = PackageVersion
 
 type User {
-  """
-  Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-  """
+  """Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."""
   username: String!
   avatar(size: Int): String
 }

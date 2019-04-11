@@ -13,20 +13,28 @@ pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Package {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub license: Option<String>,
+    pub readme: Option<PathBuf>,
+    pub repository: Option<String>,
+    pub homepage: Option<String>,
+}
+
+/// Describes a command for a wapm module
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Command {
     pub name: String,
+    pub module: String,
     pub emscripten_call_arguments: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
-    pub version: String,
-    pub description: String,
-    pub license: Option<String>,
-    pub readme: Option<PathBuf>,
-    source: Option<PathBuf>,
-    pub module: PathBuf,
+    pub source: PathBuf,
     #[serde(default = "Abi::default")]
     pub abi: Abi,
     pub fs: Option<Table>,
@@ -42,7 +50,8 @@ pub struct Module {
 /// These are pairs of paths.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
-    pub module: Option<Module>,
+    pub package: Package,
+    pub module: Option<Vec<Module>>,
     pub dependencies: Option<Table>,
     pub command: Option<Vec<Command>>,
     /// private data
@@ -92,46 +101,25 @@ impl Manifest {
         Ok(())
     }
 
-    /// get a canonical path to the wasm module
-    pub fn module_path(&self) -> Result<PathBuf, failure::Error> {
-        let module = self.module.as_ref().ok_or(ManifestError::NoModule)?;
-        canonicalize_path(&self.base_directory_path, &module.module)
-    }
-
-    /// get the source absolute path
-    pub fn source_path(&self) -> Result<PathBuf, failure::Error> {
-        let module = self.module.as_ref().ok_or(ManifestError::NoModule)?;
-        module
-            .source
-            .as_ref()
-            .map(|source| canonicalize_path(&self.base_directory_path, source))
-            .unwrap_or(Err(ManifestError::MissingSource.into()))
-    }
-}
-
-pub fn extract_dependencies(
-    dependencies_table: &Table,
-) -> Result<Vec<(&str, &str)>, failure::Error> {
-    let mut dependencies = vec![];
-    for (name, version_value) in dependencies_table.iter() {
-        match version_value {
-            Value::String(version) => dependencies.push((name.as_str(), version.as_str())),
-            _ => bail!("Version must be a string"),
+    pub fn extract_dependencies(&self) -> Result<Vec<(&str, &str)>, failure::Error> {
+        if self.dependencies.is_none() {
+            return Ok(vec![]);
         }
-    }
-    Ok(dependencies)
-}
-
-/// internal helper for canonicalizing a path that may be relative or absolute
-fn canonicalize_path<P1: AsRef<Path>, P2: AsRef<Path>>(
-    directory: P1,
-    path: P2,
-) -> Result<PathBuf, failure::Error> {
-    if path.as_ref().is_relative() {
-        let path_buf = directory.as_ref().join(path.as_ref());
-        dunce::canonicalize(&path_buf).map_err(|e| e.into())
-    } else {
-        Ok(path.as_ref().to_path_buf())
+        let dependencies = self.dependencies.as_ref().unwrap();
+        let mut extracted_dependencies = vec![];
+        for (name, version_value) in dependencies.iter() {
+            match version_value {
+                Value::String(version) => {
+                    extracted_dependencies.push((name.as_str(), version.as_str()))
+                }
+                _ => {
+                    return Err(
+                        ManifestError::DependencyVersionMustBeString(name.to_string()).into(),
+                    );
+                }
+            }
+        }
+        Ok(extracted_dependencies)
     }
 }
 
@@ -147,10 +135,8 @@ pub enum ManifestError {
     )]
     #[allow(dead_code)]
     MissingTarget { path: PathBuf },
-    #[fail(display = "Source wasm file not found.")]
-    MissingSource,
-    #[fail(display = "No module.")]
-    NoModule,
+    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
+    DependencyVersionMustBeString(String),
 }
 
 #[cfg(test)]
@@ -160,16 +146,23 @@ mod command_tests {
     #[test]
     fn get_commands() {
         let wapm_toml = toml! {
-            [module]
+            [package]
             name = "test"
             version = "1.0.0"
+            repository = "test.git"
+            homepage = "test.com"
+            description = "The best package."
+            [[module]]
+            name = "test-pkg"
             module = "target.wasm"
             source = "source.wasm"
             description = "description"
             [[command]]
             name = "foo"
+            module = "test"
             [[command]]
             name = "baz"
+            module = "test"
             emscripten_call_arguments = "$@"
         };
         let manifest: Manifest = wapm_toml.try_into().unwrap();
@@ -190,11 +183,13 @@ mod dependency_tests {
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
-            [module]
-            name = "test"
+            [package]
+            name = "_/test"
             version = "1.0.0"
-            module = "target.wasm"
             description = "description"
+            [[module]]
+            name = "test"
+            source = "test.wasm"
             abi = "None"
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
@@ -216,110 +211,5 @@ mod dependency_tests {
         let dependency_version_2 = "0.2.0";
         manifest.add_dependency(dependency_name_2, dependency_version_2);
         assert_eq!(2, manifest.dependencies.as_ref().unwrap().len());
-    }
-}
-
-#[cfg(test)]
-mod module_path_tests {
-    use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
-    use std::fs;
-    use std::fs::File;
-    use std::io::Write;
-
-    #[test]
-    fn target_and_source_paths() {
-        let tmp_dir = tempdir::TempDir::new("target_and_source_paths").unwrap();
-        // setup the source wasm file
-        let source_wasm_path = tmp_dir.path().join("source.wasm");
-        File::create(&source_wasm_path).unwrap();
-        // simulate the creation of the module file
-        let module_wasm_path = tmp_dir.path().join("target.wasm");
-        File::create(&module_wasm_path).unwrap();
-        // open the manifest file
-        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_path).unwrap();
-        let wapm_toml = toml! {
-            [module]
-            name = "test"
-            version = "1.0.0"
-            module = "target.wasm"
-            source = "source.wasm"
-            description = "description"
-        };
-        let toml_string = toml::to_string(&wapm_toml).unwrap();
-        file.write_all(toml_string.as_bytes()).unwrap();
-        let manifest = Manifest::open(manifest_path).unwrap();
-        // assert paths are correct
-        let expected_source_path = source_wasm_path;
-        let actual_source_path = manifest.source_path().unwrap();
-        assert_eq!(actual_source_path, expected_source_path);
-        let expected_target_path = module_wasm_path;
-        let actual_target_path = manifest.module_path().unwrap();
-        assert_eq!(actual_target_path, expected_target_path);
-    }
-
-    #[test]
-    fn nested_target_and_source_paths() {
-        let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
-        // setup the source wasm file
-        let source_dir = tmp_dir.path().join("my/old/boring");
-        let source_wasm_path = source_dir.join("source.wasm");
-        fs::create_dir_all(&source_dir).unwrap();
-        File::create(&source_wasm_path).unwrap();
-        // simulate the creation of the module file
-        let target_dir = tmp_dir.path().join("my/awesome");
-        let module_wasm_path = target_dir.join("target.wasm");
-        fs::create_dir_all(&target_dir).unwrap();
-        File::create(&module_wasm_path).unwrap();
-        // open the manifest file
-        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_path).unwrap();
-        let wapm_toml = toml! {
-            [module]
-            name = "test"
-            version = "1.0.0"
-            module = "my/awesome/target.wasm"
-            source = "my/old/boring/source.wasm"
-            description = "description"
-        };
-        let toml_string = toml::to_string(&wapm_toml).unwrap();
-        file.write_all(toml_string.as_bytes()).unwrap();
-        let manifest = Manifest::open(manifest_path).unwrap();
-        // assert paths are correct
-        let expected_source_path = source_wasm_path;
-        let actual_source_path = manifest.source_path().unwrap();
-        assert_eq!(expected_source_path, actual_source_path);
-        let expected_target_path = target_dir.join("target.wasm");
-        let actual_target_path = manifest.module_path().unwrap();
-        assert_eq!(expected_target_path, actual_target_path);
-    }
-
-    #[test]
-    fn relative_target_path() {
-        let tmp_dir = tempdir::TempDir::new("nested_target_and_source_paths").unwrap();
-        // setup the source wasm file
-        let source_wasm_path = tmp_dir.path().join("source.wasm");
-        File::create(&source_wasm_path).unwrap();
-        // simulate the creation of the module file
-        let module_wasm_path = tmp_dir.path().join("target.wasm");
-        fs::create_dir_all(tmp_dir.path().join("nested/relative")).unwrap();
-        File::create(&module_wasm_path).unwrap();
-        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_path).unwrap();
-        let wapm_toml = toml! {
-            [module]
-            name = "test"
-            version = "1.0.0"
-            module = "nested/relative/../relative/../../target.wasm"
-            source = "source.wasm"
-            description = "description"
-        };
-        let toml_string = toml::to_string(&wapm_toml).unwrap();
-        file.write_all(toml_string.as_bytes()).unwrap();
-        let manifest = Manifest::open(manifest_path).unwrap();
-        // assert
-        let expected_target_path = module_wasm_path;
-        let actual_target_path = manifest.module_path().unwrap();
-        assert_eq!(actual_target_path, expected_target_path);
     }
 }
