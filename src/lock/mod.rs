@@ -68,8 +68,11 @@ pub fn regenerate_lockfile(
             lockfile.save(&manifest.base_directory_path)?;
         }
         (Err(_manifest_error), Ok(existing_lockfile)) => {
-            let lockfile =
-                Lockfile::new_from_lockfile_and_installed_dependencies(installed_dependencies, existing_lockfile, &mut resolver)?;
+            let lockfile = Lockfile::new_from_lockfile_and_installed_dependencies(
+                installed_dependencies,
+                existing_lockfile,
+                &mut resolver,
+            )?;
             let cwd = env::current_dir()?;
             lockfile.save(&cwd)?;
         }
