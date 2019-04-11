@@ -125,8 +125,12 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         _ => {}
     };
     // with the manifest updated, we can now regenerate the lockfile
-    regenerate_lockfile(maybe_manifest, maybe_lockfile, vec![(&package.name, &last_version.version)])
-        .map_err(|err| InstallError::CannotRegenLockFile(format!("{}", err)))?;
+    regenerate_lockfile(
+        maybe_manifest,
+        maybe_lockfile,
+        vec![(&package.name, &last_version.version)],
+    )
+    .map_err(|err| InstallError::CannotRegenLockFile(format!("{}", err)))?;
     println!("Package installed successfully to wapm_packages!");
     Ok(())
 }

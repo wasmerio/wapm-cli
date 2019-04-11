@@ -12,8 +12,8 @@ pub use crate::lock::lockfile::Lockfile;
 pub use crate::lock::lockfile_command::LockfileCommand;
 pub use crate::lock::lockfile_module::LockfileModule;
 use crate::manifest::Manifest;
-use std::path::Path;
 use std::env;
+use std::path::Path;
 
 #[inline]
 pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
@@ -69,11 +69,12 @@ pub fn regenerate_lockfile(
             lockfile.save(&manifest.base_directory_path)?;
         }
         (Err(_manifest_error), Ok(lockfile)) => {
-//            Lockfile::new_from_lockfile_and_installed_dependencies(existing_lockfile, installed_dependencies);
+            //            Lockfile::new_from_lockfile_and_installed_dependencies(existing_lockfile, installed_dependencies);
         }
         (Err(_), Err(_)) => {
             let mut resolver = PackageRegistry::new();
-            let lockfile = Lockfile::new_from_installed_dependencies(installed_dependencies, &mut resolver)?;
+            let lockfile =
+                Lockfile::new_from_installed_dependencies(installed_dependencies, &mut resolver)?;
             let cwd = env::current_dir()?;
             lockfile.save(&cwd)?;
         }
