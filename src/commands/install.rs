@@ -117,13 +117,6 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let mut maybe_manifest = Manifest::open(&manifest_file_path);
     let mut lockfile_string = String::new();
     let maybe_lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
-
-    match maybe_manifest {
-        Ok(ref mut manifest) => {
-            manifest.add_dependency(&package.name, &last_version.version);
-        }
-        _ => {}
-    };
     // with the manifest updated, we can now regenerate the lockfile
     regenerate_lockfile(
         maybe_manifest,

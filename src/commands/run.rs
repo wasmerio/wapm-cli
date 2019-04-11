@@ -57,15 +57,10 @@ fn create_run_command<P: AsRef<Path>>(
     args: &Vec<OsString>,
     directory: P,
 ) -> Result<Vec<OsString>, failure::Error> {
-    let wasm_file = module.entry.as_str();
-    let (namespace, unqualified_pkg_name) = get_package_namespace_and_name(command.package_name)?;
-    let pkg_dir = format!("{}@{}", unqualified_pkg_name, command.package_version);
     let mut path = PathBuf::new();
     path.push(directory);
-    path.push(PACKAGES_DIR_NAME);
-    path.push(namespace);
-    path.push(pkg_dir.as_str());
-    path.push(wasm_file);
+    path.push(&module.entry);
+    println!("{}", path.display());
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string, OsString::from("--")];
     Ok([&command_vec[..], &args[..]].concat())
