@@ -1,5 +1,5 @@
 /target
 /.env
-/wapm_modules
+/wapm_packages
 
 \.idea/
