@@ -217,7 +217,7 @@ impl<'a> Lockfile<'a> {
         installed_dependencies: Vec<(&'a str, &'a str)>,
         dependency_resolver: &'a mut D,
     ) -> Result<Self, failure::Error> {
-        let mut lockfile_modules = BTreeMap::new();
+        let mut lockfile_modules: ModuleMap = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
         let dependencies =
             dependency_resolver.get_all_dependencies("", "", installed_dependencies)?;
