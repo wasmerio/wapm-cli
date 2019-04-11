@@ -32,10 +32,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(manifest, lockfile)?,
+        _ => regenerate_lockfile(manifest, lockfile)
+            .map_err(|err| RunError::CannotRegenLockFile(format!("{}", err)))?,
     }
     let mut lockfile_string = String::new();
-    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)?;
+    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
+        .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
     let lockfile_command = lockfile.get_command(command_name)?;
     let lockfile_module = lockfile.get_module(
         lockfile_command.package_name,
@@ -142,4 +144,13 @@ mod test {
             create_run_command(lockfile_command, lockfile_module, &args, &dir).unwrap();
         assert_eq!(expected_command, actual_command);
     }
+}
+
+#[derive(Debug, Fail)]
+enum RunError {
+    #[fail(display = "Failed to regenerate lock file: {}", _0)]
+    CannotRegenLockFile(String),
+
+    #[fail(display = "Could not find lock file: {}", _0)]
+    MissingLockFile(String),
 }
