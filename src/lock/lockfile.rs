@@ -20,12 +20,11 @@ pub struct Lockfile<'a> {
 }
 
 impl<'a> Lockfile<'a> {
-    pub fn read_lockfile_string<P: AsRef<Path>>(directory: P) -> Result<String, failure::Error> {
+    pub fn open<P: AsRef<Path>>(directory: P, lockfile_string: &'a mut String) -> Result<Lockfile<'a>, failure::Error> {
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
         let mut lockfile_file = File::open(lockfile_path)?;
-        let mut lockfile_string = String::new();
-        lockfile_file.read_to_string(&mut lockfile_string)?;
-        Ok(lockfile_string)
+        lockfile_file.read_to_string(lockfile_string)?;
+        toml::from_str(lockfile_string.as_str()).map_err(|e| e.into())
     }
 
     /// This method constructs a new lockfile with just a manifest. This is typical if no lockfile
