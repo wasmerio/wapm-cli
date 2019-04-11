@@ -260,7 +260,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         lockfile_modules.remove(*removed_package);
         let removed_commands: Vec<_> = lockfile_commands
             .iter()
-            .filter(|(command_name, command)| &command.package_name == removed_package)
+            .filter(|(_command_name, command)| &command.package_name == removed_package)
             .map(|(command_name, _)| command_name.clone())
             .collect();
         for removed_command_name in removed_commands {
