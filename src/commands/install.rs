@@ -101,7 +101,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     };
     // with the manifest updated, we can now regenerate the lockfile
     regenerate_lockfile(maybe_manifest, maybe_lockfile)?;
-    println!("Package installed successfully to wapm_modules!");
+    println!("Package installed successfully to wapm_packages!");
     Ok(())
 }
 
