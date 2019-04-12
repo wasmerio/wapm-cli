@@ -44,6 +44,10 @@ Search for packages related to the `query`.
 
 One can execute a package command with the `run` command. The command will be run with the wasmer runtime.
 
+#### `wapm validate <path_to_wapm_directory>`
+
+Validate the sources of local wapm modules. Will display an error if the sources are not valid WebAssembly.
+
 ## Manifest (`wapm.toml`)
 
 The manifest file describes how to describe a wasm package. The manifest is optional and should live in 
