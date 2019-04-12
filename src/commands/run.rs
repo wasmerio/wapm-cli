@@ -45,9 +45,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         lockfile_command.module,
     )?;
     let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
-    let command = Command::new("wasmer").args(&command_vec).output()?;
-    io::stdout().lock().write_all(&command.stdout)?;
-    io::stderr().lock().write_all(&command.stderr)?;
+    let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
+    child.wait()?;
     Ok(())
 }
 
