@@ -40,42 +40,6 @@ Gets the config `key` contents.
 
 Search for packages related to the `query`.
 
-#### `wapm package`
-
-One can bundle a project by running the package command in a directory with a `wapm.toml` or by passing the path to 
-`wapm.toml` in a command-line flag. 
-
-```
-# In a directory with a manifest
-> wapm package
-
-# Or with a path to the manifest
-> wapm package -m path/to/wapm.toml
-```
-
-Bundled assets are stored in a [custom section][1] of WebAssembly. Assets are archived and compressed before stored in 
-the custom section. Runtimes like [Wasmer][2] can read the custom section and  expose the archived files via virtual 
-filesystem. 
-
-A header is written to the beginning of the custom section containing metadata about the compression and archive. This
-information is useful to runtimes like Wasmer that unpack bundled assets. The header is a 4 bytes block and contains
-the compression type and archive type.
-
-The bundled files may be specified on the command line or in the manifest file:
-
-```
-# cli
-> wapm package -a foo.txt:foo.txt,bar.txt:new_bar.txt,my_dir:my/dir
-```
-
-```toml
-# wapm.toml
-[fs]
-"foo.txt" = "foo.txt"
-"bar.txt" = "new_bar.txt"
-"my_dir" = "my/dir"
-```
-
 #### `wapm run`
 
 One can execute a package command with the `run` command. The command will be run with the wasmer runtime.
