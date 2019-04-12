@@ -30,7 +30,7 @@ Shows the current user logged in.
 
 Sets a config `key` with the given `value`.
 
-_Note: when setting the `registry.url`, the `registry.token` will automatically be resetted._
+_Note: when setting the `registry.url`, the `registry.token` will reset automatically._
 
 #### `wapm config get <key>`
 
