@@ -25,7 +25,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
     let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
-    let manifest = Manifest::open(manifest_path);
+    let manifest = Manifest::open(&manifest_path);
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
 
@@ -39,28 +39,50 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
     let lockfile_command = lockfile.get_command(command_name)?;
-    let lockfile_module = lockfile.get_module(
-        lockfile_command.package_name,
-        lockfile_command.package_version,
-        lockfile_command.module,
-    )?;
-    let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
+
+    // hack to get around running commands for local modules
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(manifest_path) {
+        if lockfile_command.package_name == manifest.package.name {
+            // this is a local module command
+            let modules = manifest.module.unwrap();
+            let source = modules.iter()
+                .find(|m| m.name == lockfile_command.module)
+                .map(|m| m.source.as_path()).unwrap();
+            source.to_path_buf()
+        }
+        else {
+            let lockfile_module = lockfile.get_module(
+                lockfile_command.package_name,
+                lockfile_command.package_version,
+                lockfile_command.module,
+            )?;
+            PathBuf::from(&lockfile_module.entry)
+        }
+    }
+    else {
+        let lockfile_module = lockfile.get_module(
+            lockfile_command.package_name,
+            lockfile_command.package_version,
+            lockfile_command.module,
+        )?;
+        PathBuf::from(&lockfile_module.entry)
+    };
+
+    let command_vec = create_run_command(args, &current_dir, &source_path)?;
     let command = Command::new("wasmer").args(&command_vec).output()?;
     io::stdout().lock().write_all(&command.stdout)?;
     io::stderr().lock().write_all(&command.stderr)?;
     Ok(())
 }
 
-fn create_run_command<P: AsRef<Path>>(
-    command: &LockfileCommand,
-    module: &LockfileModule,
+fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &Vec<OsString>,
     directory: P,
+    wasm_file_path: P2,
 ) -> Result<Vec<OsString>, failure::Error> {
     let mut path = PathBuf::new();
     path.push(directory);
-    path.push(&module.entry);
-    println!("{}", path.display());
+    path.push(wasm_file_path);
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string, OsString::from("--")];
     Ok([&command_vec[..], &args[..]].concat())
@@ -135,8 +157,9 @@ mod test {
             OsString::from("arg1"),
             OsString::from("arg2"),
         ];
+        let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"].iter().collect();
         let actual_command =
-            create_run_command(lockfile_command, lockfile_module, &args, &dir).unwrap();
+            create_run_command(&args, &dir, wasm_relative_path).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
