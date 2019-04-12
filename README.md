@@ -4,6 +4,18 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://dev.azure.com/wasmerio/wapm-cli/_build?definitionId=2">
+    <img src="https://dev.azure.com/wasmerio/wapm-cli/_apis/build/status/wasmerio.wapm-cli?branchName=master" alt="Build Status">
+  </a>
+  <a href="https://github.com/wasmerio/wasmer/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/wasmerio/wasmer.svg" alt="License">
+  </a>
+  <a href="https://spectrum.chat/wasmer">
+    <img src="https://withspectrum.github.io/badge/badge.svg" alt="Join the Wasmer Community">
+  </a>
+</p>
+
 # Introduction
 
 The WebAssembly Package Manager CLI
