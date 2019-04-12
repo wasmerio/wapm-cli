@@ -29,7 +29,7 @@ pub struct Package {
 pub struct Command {
     pub name: String,
     pub module: String,
-    pub emscripten_call_arguments: Option<String>,
+    pub main_args: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -177,7 +177,7 @@ mod command_tests {
             [[command]]
             name = "baz"
             module = "test"
-            emscripten_call_arguments = "$@"
+            main_args = "$@"
         };
         let manifest: Manifest = wapm_toml.try_into().unwrap();
         let commands = &manifest.command.unwrap();

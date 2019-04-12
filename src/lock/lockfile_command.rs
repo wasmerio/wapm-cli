@@ -9,7 +9,7 @@ pub struct LockfileCommand<'a> {
     pub package_version: &'a str,
     pub module: &'a str,
     pub is_top_level_dependency: bool,
-    pub emscripten_arguments: Option<String>,
+    pub main_args: Option<&'a str>,
 }
 
 impl<'a> LockfileCommand<'a> {
@@ -23,7 +23,7 @@ impl<'a> LockfileCommand<'a> {
             package_name,
             package_version,
             module: command.module.as_str(),
-            emscripten_arguments: command.emscripten_call_arguments.clone(),
+            main_args: command.main_args.as_ref().map(|s|  s.as_str()).clone(),
             is_top_level_dependency: true,
         };
         lockfile_command
