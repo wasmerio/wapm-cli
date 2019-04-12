@@ -78,7 +78,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         .ok_or(InstallError::PackageNotFound { name: name.clone() })?;
     let last_version = package
         .last_version
-        .ok_or(InstallError::NoVersionsAvailable { name: name })?;
+        .ok_or(InstallError::NoVersionsAvailable { name })?;
 
     let (namespace, pkg_name) = get_package_namespace_and_name(&package.name)?;
 
@@ -114,7 +114,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     decompress_and_extract_archive(dest, &package_dir)
         .map_err(|err| InstallError::CannotOpenPackageArchive(format!("{}", err)))?;
     let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
-    let mut maybe_manifest = Manifest::open(&manifest_file_path);
+    let maybe_manifest = Manifest::open(&manifest_file_path);
     let mut lockfile_string = String::new();
     let maybe_lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
     // with the manifest updated, we can now regenerate the lockfile

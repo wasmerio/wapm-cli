@@ -1,14 +1,9 @@
-use crate::lock::{
-    get_package_namespace_and_name, is_lockfile_out_of_date, regenerate_lockfile, Lockfile,
-    LockfileCommand, LockfileModule,
-};
-use crate::manifest::PACKAGES_DIR_NAME;
+use crate::lock::{is_lockfile_out_of_date, regenerate_lockfile, Lockfile};
 use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+use std::env;
 use std::ffi::OsString;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, io};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -45,12 +40,13 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         if lockfile_command.package_name == manifest.package.name {
             // this is a local module command
             let modules = manifest.module.unwrap();
-            let source = modules.iter()
+            let source = modules
+                .iter()
                 .find(|m| m.name == lockfile_command.module)
-                .map(|m| m.source.as_path()).unwrap();
+                .map(|m| m.source.as_path())
+                .unwrap();
             source.to_path_buf()
-        }
-        else {
+        } else {
             let lockfile_module = lockfile.get_module(
                 lockfile_command.package_name,
                 lockfile_command.package_version,
@@ -58,8 +54,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             )?;
             PathBuf::from(&lockfile_module.entry)
         }
-    }
-    else {
+    } else {
         let lockfile_module = lockfile.get_module(
             lockfile_command.package_name,
             lockfile_command.package_version,
@@ -156,9 +151,10 @@ mod test {
             OsString::from("arg1"),
             OsString::from("arg2"),
         ];
-        let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"].iter().collect();
-        let actual_command =
-            create_run_command(&args, &dir, wasm_relative_path).unwrap();
+        let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"]
+            .iter()
+            .collect();
+        let actual_command = create_run_command(&args, &dir, wasm_relative_path).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
