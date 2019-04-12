@@ -545,8 +545,16 @@ mod create_from_manifest_tests {
         let actual_lockfile =
             Lockfile::new_from_manifest(&foo_manifest, &mut test_registry).unwrap();
 
-        let dep_a_entry = ["wapm_packages","_","test_dep_a@1.0.0","a.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
-        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.0.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_a_entry = ["wapm_packages", "_", "test_dep_a@1.0.0", "a.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
+        let dep_b_entry = ["wapm_packages", "_", "test_dep_b@2.0.0", "b.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
 
         let expected_lockfile_toml = toml! {
             [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
@@ -746,8 +754,16 @@ mod create_from_manifest_and_lockfile_tests {
 
         let mut test_registry = TestRegistry(test_registry_map);
 
-        let dep_a_entry = ["wapm_packages","_","test_dep_a@1.0.0","a.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
-        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.0.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_a_entry = ["wapm_packages", "_", "test_dep_a@1.0.0", "a.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
+        let dep_b_entry = ["wapm_packages", "_", "test_dep_b@2.0.0", "b.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
 
         let existing_lockfile_toml = toml! {
             [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
@@ -799,8 +815,16 @@ mod create_from_manifest_and_lockfile_tests {
         let existing_lockfile_string = existing_lockfile_toml.to_string();
         let existing_lockfile: Lockfile = toml::from_str(&existing_lockfile_string).unwrap();
 
-        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.1.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
-        let dep_c_entry = ["wapm_packages","_","test_dep_c@4.0.0","c.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_b_entry = ["wapm_packages", "_", "test_dep_b@2.1.0", "b.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
+        let dep_c_entry = ["wapm_packages", "_", "test_dep_c@4.0.0", "c.wasm"]
+            .iter()
+            .collect::<PathBuf>()
+            .to_string_lossy()
+            .to_string();
         let expected_lockfile_toml = toml! {
             [modules."_/test_dep_b"."2.1.0"."test_dep_b_module"]
             name = "test_dep_b_module"
