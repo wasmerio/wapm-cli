@@ -162,6 +162,90 @@ impl<'a> Lockfile<'a> {
         Ok(new_lockfile)
     }
 
+    pub fn new_from_lockfile_and_installed_dependencies<D: PackageRegistryLike>(
+        installed_dependencies: Vec<(&'a str, &'a str)>,
+        mut existing_lockfile: Lockfile<'a>,
+        dependency_resolver: &'a mut D,
+    ) -> Result<Self, failure::Error> {
+        let dependencies =
+            dependency_resolver.get_all_dependencies("", "", installed_dependencies)?;
+        for dependency in dependencies.iter() {
+            let package_name = dependency.manifest.package.name.as_str();
+            let package_version = dependency.manifest.package.version.as_str();
+            let lockfile_modules_vec = LockfileModule::from_dependency(*dependency)?;
+            // if the package is already in the lockfile, then we are changing the version,
+            // simply clear the map and below we will re-insert the new version
+            if existing_lockfile.modules.contains_key(package_name) {
+                existing_lockfile.modules.clear();
+                // remove the commands for the module
+                let commands_to_remove = existing_lockfile
+                    .commands
+                    .iter()
+                    .filter(|(_, command)| command.package_name == package_name)
+                    .map(|(command_name, _)| command_name.clone())
+                    .collect::<Vec<_>>();
+                for command_to_remove in commands_to_remove {
+                    existing_lockfile.commands.remove(command_to_remove);
+                }
+            }
+            for lockfile_module in lockfile_modules_vec.into_iter() {
+                let module_name = lockfile_module.name.clone();
+                let version_map = existing_lockfile.modules.entry(package_name).or_default();
+                let module_map = version_map.entry(package_version).or_default();
+                module_map.insert(module_name, lockfile_module);
+            }
+            let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
+            for lockfile_command in lockfile_commands_vec {
+                if lockfile_command.is_top_level_dependency {
+                    existing_lockfile
+                        .commands
+                        .insert(lockfile_command.name, lockfile_command)
+                        .is_some();
+                }
+            }
+        }
+
+        let new_lockfile = Lockfile {
+            modules: existing_lockfile.modules,
+            commands: existing_lockfile.commands,
+        };
+
+        Ok(new_lockfile)
+    }
+
+    pub fn new_from_installed_dependencies<D: PackageRegistryLike>(
+        installed_dependencies: Vec<(&'a str, &'a str)>,
+        dependency_resolver: &'a mut D,
+    ) -> Result<Self, failure::Error> {
+        let mut lockfile_modules: ModuleMap = BTreeMap::new();
+        let mut lockfile_commands = BTreeMap::new();
+        let dependencies =
+            dependency_resolver.get_all_dependencies("", "", installed_dependencies)?;
+        for dependency in dependencies.iter() {
+            let package_name = dependency.manifest.package.name.as_str();
+            let package_version = dependency.manifest.package.version.as_str();
+            let lockfile_modules_vec = LockfileModule::from_dependency(*dependency)?;
+            for lockfile_module in lockfile_modules_vec.into_iter() {
+                let module_name = lockfile_module.name.clone();
+                let version_map = lockfile_modules.entry(package_name).or_default();
+                let module_map = version_map.entry(package_version).or_default();
+                module_map.insert(module_name, lockfile_module);
+            }
+            let lockfile_commands_vec = LockfileCommand::from_dependency(*dependency)?;
+            for lockfile_command in lockfile_commands_vec {
+                if lockfile_command.is_top_level_dependency {
+                    lockfile_commands.insert(lockfile_command.name, lockfile_command);
+                }
+            }
+        }
+
+        let new_lockfile = Lockfile {
+            modules: lockfile_modules,
+            commands: lockfile_commands,
+        };
+        Ok(new_lockfile)
+    }
+
     /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> Result<(), failure::Error> {
         let lockfile_string = toml::to_string(self)?;
@@ -381,6 +465,7 @@ mod create_from_manifest_tests {
     use crate::lock::Lockfile;
     use crate::manifest::Manifest;
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
 
     #[test]
     fn create_from_manifest() {
@@ -460,6 +545,9 @@ mod create_from_manifest_tests {
         let actual_lockfile =
             Lockfile::new_from_manifest(&foo_manifest, &mut test_registry).unwrap();
 
+        let dep_a_entry = ["wapm_packages","_","test_dep_a@1.0.0","a.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.0.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+
         let expected_lockfile_toml = toml! {
             [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
             name = "test_dep_a_module"
@@ -470,7 +558,7 @@ mod create_from_manifest_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "a.wasm"
+            entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
             name = "test_dep_b_module"
             package_name = "_/test_dep_b"
@@ -480,7 +568,7 @@ mod create_from_manifest_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "b.wasm"
+            entry = dep_b_entry
             [commands."mod_a_command"]
             name = "mod_a_command"
             module = "test_dep_a_module"
@@ -521,6 +609,7 @@ mod create_from_manifest_and_lockfile_tests {
     use crate::lock::Lockfile;
     use crate::manifest::Manifest;
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
 
     #[test]
     fn create_from_manifest_and_lockfile() {
@@ -657,6 +746,9 @@ mod create_from_manifest_and_lockfile_tests {
 
         let mut test_registry = TestRegistry(test_registry_map);
 
+        let dep_a_entry = ["wapm_packages","_","test_dep_a@1.0.0","a.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.0.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+
         let existing_lockfile_toml = toml! {
             [modules."_/test_dep_a"."1.0.0"."test_dep_a_module"]
             name = "test_dep_a_module"
@@ -667,7 +759,7 @@ mod create_from_manifest_and_lockfile_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "a.wasm"
+            entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
             name = "test_dep_b_module"
             package_name = "_/test_dep_b"
@@ -677,7 +769,7 @@ mod create_from_manifest_and_lockfile_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "b.wasm"
+            entry = dep_b_entry
             [commands."mod_a_command"]
             name = "mod_a_command"
             module = "test_dep_a_module"
@@ -707,6 +799,8 @@ mod create_from_manifest_and_lockfile_tests {
         let existing_lockfile_string = existing_lockfile_toml.to_string();
         let existing_lockfile: Lockfile = toml::from_str(&existing_lockfile_string).unwrap();
 
+        let dep_b_entry = ["wapm_packages","_","test_dep_b@2.1.0","b.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
+        let dep_c_entry = ["wapm_packages","_","test_dep_c@4.0.0","c.wasm"].iter().collect::<PathBuf>().to_string_lossy().to_string();
         let expected_lockfile_toml = toml! {
             [modules."_/test_dep_b"."2.1.0"."test_dep_b_module"]
             name = "test_dep_b_module"
@@ -717,7 +811,7 @@ mod create_from_manifest_and_lockfile_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "b.wasm"
+            entry = dep_b_entry
             [modules."_/test_dep_c"."4.0.0"."test_dep_c_module"]
             name = "test_dep_c_module"
             package_name = "_/test_dep_c"
@@ -727,7 +821,7 @@ mod create_from_manifest_and_lockfile_tests {
             integrity = ""
             hash = ""
             abi = "None"
-            entry = "c.wasm"
+            entry = dep_c_entry
             [commands."mod_b_command"]
             name = "mod_b_command"
             module = "test_dep_b_module"

@@ -25,47 +25,63 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
     let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
-    let manifest = Manifest::open(manifest_path);
+    let manifest = Manifest::open(&manifest_path);
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
 
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(manifest, lockfile)
+        _ => regenerate_lockfile(manifest, lockfile, vec![])
             .map_err(|err| RunError::CannotRegenLockFile(format!("{}", err)))?,
     }
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
     let lockfile_command = lockfile.get_command(command_name)?;
-    let lockfile_module = lockfile.get_module(
-        lockfile_command.package_name,
-        lockfile_command.package_version,
-        lockfile_command.module,
-    )?;
-    let command_vec = create_run_command(lockfile_command, lockfile_module, args, &current_dir)?;
-    let command = Command::new("wasmer").args(&command_vec).output()?;
-    io::stdout().lock().write_all(&command.stdout)?;
-    io::stderr().lock().write_all(&command.stderr)?;
+
+    // hack to get around running commands for local modules
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(manifest_path) {
+        if lockfile_command.package_name == manifest.package.name {
+            // this is a local module command
+            let modules = manifest.module.unwrap();
+            let source = modules.iter()
+                .find(|m| m.name == lockfile_command.module)
+                .map(|m| m.source.as_path()).unwrap();
+            source.to_path_buf()
+        }
+        else {
+            let lockfile_module = lockfile.get_module(
+                lockfile_command.package_name,
+                lockfile_command.package_version,
+                lockfile_command.module,
+            )?;
+            PathBuf::from(&lockfile_module.entry)
+        }
+    }
+    else {
+        let lockfile_module = lockfile.get_module(
+            lockfile_command.package_name,
+            lockfile_command.package_version,
+            lockfile_command.module,
+        )?;
+        PathBuf::from(&lockfile_module.entry)
+    };
+
+    let command_vec = create_run_command(args, &current_dir, &source_path)?;
+    let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
+    child.wait()?;
     Ok(())
 }
 
-fn create_run_command<P: AsRef<Path>>(
-    command: &LockfileCommand,
-    module: &LockfileModule,
+fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &Vec<OsString>,
     directory: P,
+    wasm_file_path: P2,
 ) -> Result<Vec<OsString>, failure::Error> {
-    let wasm_file = module.entry.as_str();
-    let (namespace, unqualified_pkg_name) = get_package_namespace_and_name(command.package_name)?;
-    let pkg_dir = format!("{}@{}", unqualified_pkg_name, command.package_version);
     let mut path = PathBuf::new();
     path.push(directory);
-    path.push(PACKAGES_DIR_NAME);
-    path.push(namespace);
-    path.push(pkg_dir.as_str());
-    path.push(wasm_file);
+    path.push(wasm_file_path);
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string, OsString::from("--")];
     Ok([&command_vec[..], &args[..]].concat())
@@ -140,8 +156,9 @@ mod test {
             OsString::from("arg1"),
             OsString::from("arg2"),
         ];
+        let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"].iter().collect();
         let actual_command =
-            create_run_command(lockfile_command, lockfile_module, &args, &dir).unwrap();
+            create_run_command(&args, &dir, wasm_relative_path).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
