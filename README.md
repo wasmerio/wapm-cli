@@ -46,13 +46,28 @@ One can execute a package command with the `run` command. The command will be ru
 
 ## Manifest (`wapm.toml`)
 
-The manifest file describes how to bundle a wasm package. A simple example manifest with all required fields:
+The manifest file describes how to describe a wasm package. The manifest is optional and should live in 
+the root directory of a wapm project. A corresponding `wapm.lock` file is generated when running `wapm`
+commands.
+
+An example manifest:
+
 ```toml
-name = "app"
+[package]
+name = "username/app"
 description = "My awesome app is awesome."
 version = "0.1.0"
+
+[dependencies]
+dep_name = "0.1.0"
+
+[[module]]
+name = "my_app"
 source = "app.wasm"
-module = "app_bundle.wasm"
+
+[[command]]
+name = "run"
+module = "my_app"
 ```
 
 ## Development
