@@ -35,7 +35,6 @@ impl Dependency {
         let (namespace, unqualified_pkg_name) =
             get_package_namespace_and_name(name.as_ref()).unwrap();
         let pkg_dir = format!("{}@{}", unqualified_pkg_name, version.as_ref());
-        let wapm_package_directory = [PACKAGES_DIR_NAME, namespace, &pkg_dir].iter().collect();
         let wapm_package_directory: PathBuf = [PACKAGES_DIR_NAME, namespace, &pkg_dir].iter().collect();
         Dependency {
             name: name.as_ref().to_string(),
