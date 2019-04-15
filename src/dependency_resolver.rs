@@ -2,6 +2,8 @@ use crate::graphql::execute_query;
 use crate::manifest::Manifest;
 use graphql_client::*;
 use std::collections::BTreeMap;
+use std::env;
+use crate::install::install_package;
 
 #[derive(GraphQLQuery)]
 #[graphql(
