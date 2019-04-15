@@ -184,7 +184,8 @@ mod test {
         let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"]
             .iter()
             .collect();
-        let actual_command = create_run_command(&args, &dir, wasm_relative_path, None).unwrap();
+        let actual_command =
+            create_run_command(&args, None, &dir, wasm_relative_path, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
