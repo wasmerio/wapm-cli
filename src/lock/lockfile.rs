@@ -501,13 +501,12 @@ mod create_from_manifest_tests {
         let test_dep_a_manifest_string = test_dep_a_manifest_toml.to_string();
         let test_dep_a_manifest: Manifest = toml::from_str(&test_dep_a_manifest_string).unwrap();
 
-        let test_dep_a = Dependency {
-            name: "_/test_dep_a".to_string(),
-            version: "1.0.0".to_string(),
-            manifest: test_dep_a_manifest,
-            download_url: "dep_a_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_a = Dependency::new(
+            "_/test_dep_a",
+            "1.0.0",
+            test_dep_a_manifest,
+            "dep_a_test.com",
+        );
 
         let test_dep_b_manifest_toml = toml! {
             [package]
@@ -524,13 +523,12 @@ mod create_from_manifest_tests {
         let test_dep_b_manifest_string = test_dep_b_manifest_toml.to_string();
         let test_dep_b_manifest: Manifest = toml::from_str(&test_dep_b_manifest_string).unwrap();
 
-        let test_dep_b = Dependency {
-            name: "_/test_dep_b".to_string(),
-            version: "2.0.0".to_string(),
-            manifest: test_dep_b_manifest,
-            download_url: "dep_b_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_b = Dependency::new(
+            "_/test_dep_b",
+            "2.0.0",
+            test_dep_b_manifest,
+            "dep_b_test.com",
+        );
 
         let mut test_registry_map = BTreeMap::new();
         let version_vec_a = vec![test_dep_a];
@@ -661,13 +659,12 @@ mod create_from_manifest_and_lockfile_tests {
         let test_dep_a_manifest_string = test_dep_a_manifest_toml.to_string();
         let test_dep_a_manifest: Manifest = toml::from_str(&test_dep_a_manifest_string).unwrap();
 
-        let test_dep_a = Dependency {
-            name: "_/test_dep_a".to_string(),
-            version: "1.0.0".to_string(),
-            manifest: test_dep_a_manifest,
-            download_url: "dep_a_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_a = Dependency::new(
+            "_/test_dep_a",
+            "1.0.0",
+            test_dep_a_manifest,
+            "dep_a_test.com",
+        );
 
         let test_dep_b_manifest_toml = toml! {
             [package]
@@ -684,13 +681,12 @@ mod create_from_manifest_and_lockfile_tests {
         let test_dep_b_manifest_string = test_dep_b_manifest_toml.to_string();
         let test_dep_b_manifest: Manifest = toml::from_str(&test_dep_b_manifest_string).unwrap();
 
-        let test_dep_b = Dependency {
-            name: "_/test_dep_b".to_string(),
-            version: "2.0.0".to_string(),
-            manifest: test_dep_b_manifest,
-            download_url: "dep_b_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_b = Dependency::new(
+            "_/test_dep_b",
+            "2.0.0",
+            test_dep_b_manifest,
+            "dep_b_test.com",
+        );
 
         let test_dep_b_manifest_update_toml = toml! {
             [package]
@@ -712,13 +708,12 @@ mod create_from_manifest_and_lockfile_tests {
         let test_dep_b_manifest_update: Manifest =
             toml::from_str(&test_dep_b_manifest_update_string).unwrap();
 
-        let test_dep_b_update = Dependency {
-            name: "_/test_dep_b".to_string(),
-            version: "2.1.0".to_string(),
-            manifest: test_dep_b_manifest_update,
-            download_url: "dep_b_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_b_update = Dependency::new(
+            "_/test_dep_b",
+            "2.1.0",
+            test_dep_b_manifest_update,
+            "dep_b_test.com",
+        );
 
         let test_dep_c_manifest_toml = toml! {
             [package]
@@ -732,13 +727,12 @@ mod create_from_manifest_and_lockfile_tests {
         let test_dep_c_manifest_string = test_dep_c_manifest_toml.to_string();
         let test_dep_c_manifest: Manifest = toml::from_str(&test_dep_c_manifest_string).unwrap();
 
-        let test_dep_c = Dependency {
-            name: "_/test_dep_c".to_string(),
-            version: "4.0.0".to_string(),
-            manifest: test_dep_c_manifest,
-            download_url: "dep_c_test.com".to_string(),
-            is_top_level_dependency: true,
-        };
+        let test_dep_c = Dependency::new(
+            "_/test_dep_c",
+            "4.0.0",
+            test_dep_c_manifest,
+            "dep_c_test.com",
+        );
 
         let mut test_registry_map = BTreeMap::new();
         let version_vec_a = vec![test_dep_a];
