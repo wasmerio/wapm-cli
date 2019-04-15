@@ -39,9 +39,7 @@ impl<'a> Lockfile<'a> {
         let mut lockfile_modules = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
         let unresolved_dependencies = manifest.extract_dependencies()?;
-        let dependencies = dependency_resolver.get_all_dependencies(
-            unresolved_dependencies,
-        )?;
+        let dependencies = dependency_resolver.get_all_dependencies(unresolved_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
@@ -96,9 +94,7 @@ impl<'a> Lockfile<'a> {
             &mut existing_lockfile.modules,
             &mut existing_lockfile.commands,
         );
-        let dependencies = dependency_resolver.get_all_dependencies(
-            changed_dependencies,
-        )?;
+        let dependencies = dependency_resolver.get_all_dependencies(changed_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
@@ -163,8 +159,7 @@ impl<'a> Lockfile<'a> {
         mut existing_lockfile: Lockfile<'a>,
         dependency_resolver: &'a mut D,
     ) -> Result<Self, failure::Error> {
-        let dependencies =
-            dependency_resolver.get_all_dependencies(installed_dependencies)?;
+        let dependencies = dependency_resolver.get_all_dependencies(installed_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
@@ -215,8 +210,7 @@ impl<'a> Lockfile<'a> {
     ) -> Result<Self, failure::Error> {
         let mut lockfile_modules: ModuleMap = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
-        let dependencies =
-            dependency_resolver.get_all_dependencies(installed_dependencies)?;
+        let dependencies = dependency_resolver.get_all_dependencies(installed_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
@@ -344,11 +338,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
             .map(|(command_name, _)| command_name.clone())
             .collect();
         for removed_command_name in removed_commands {
-            let r = lockfile_commands.remove(removed_command_name).is_some();
-            eprintln!(
-                "second round: removing command: {}, succeded: {}",
-                removed_command_name, r
-            );
+            lockfile_commands.remove(removed_command_name);
         }
     }
 
@@ -361,11 +351,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
             .map(|(cmd_name, _)| *cmd_name)
             .collect();
         for removed_command_name in removed_commands {
-            let r = lockfile_commands.remove(removed_command_name).is_some();
-            eprintln!(
-                "second round: removing command: {}, succeded: {}",
-                removed_command_name, r
-            );
+            lockfile_commands.remove(removed_command_name);
         }
     }
     changes
@@ -873,7 +859,6 @@ mod create_from_manifest_and_lockfile_tests {
         .unwrap();
 
         let actual_lockfile_string = toml::to_string(&actual_lockfile).unwrap();
-        eprintln!("{}", actual_lockfile_string);
         assert_eq!(expected_lockfile, actual_lockfile);
     }
 }

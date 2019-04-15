@@ -1,13 +1,16 @@
-use std::fs::OpenOptions;
 use crate::dependency_resolver::Dependency;
-use std::path::{Path, PathBuf};
-use std::{io, fs};
 use crate::manifest::PACKAGES_DIR_NAME;
-use std::io::SeekFrom;
 use flate2::read::GzDecoder;
+use std::fs::OpenOptions;
+use std::io::SeekFrom;
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 use tar::Archive;
 
-pub fn install_package<P: AsRef<Path>>(dependency: &Dependency, directory: P) -> Result<(), failure::Error> {
+pub fn install_package<P: AsRef<Path>>(
+    dependency: &Dependency,
+    directory: P,
+) -> Result<(), failure::Error> {
     let (namespace, pkg_name) = get_package_namespace_and_name(&dependency.name)?;
     let fully_qualified_package_name =
         fully_qualified_package_display_name(pkg_name, &dependency.version);
@@ -23,7 +26,11 @@ pub fn install_package<P: AsRef<Path>>(dependency: &Dependency, directory: P) ->
             error: format!("{}", err),
         })?;
     let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
-    let mut dest = OpenOptions::new().read(true).write(true).create(true).open(&temp_tar_gz_path)?;
+    let mut dest = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&temp_tar_gz_path)?;
     io::copy(&mut response, &mut dest).map_err(|err| InstallError::MiscError {
         custom_text: "Could not copy response to temporary directory".to_string(),
         error: format!("{}", err),
@@ -33,7 +40,6 @@ pub fn install_package<P: AsRef<Path>>(dependency: &Dependency, directory: P) ->
     Ok(())
 }
 
-
 fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     project_dir: P,
     namespace_dir: P2,
@@ -42,8 +48,6 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     let mut package_dir = project_dir.as_ref().join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
-    println!("created package_dir {}", package_dir.display());
-
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }

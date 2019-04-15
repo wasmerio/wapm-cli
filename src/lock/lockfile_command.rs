@@ -23,7 +23,7 @@ impl<'a> LockfileCommand<'a> {
             package_name,
             package_version,
             module: command.module.as_str(),
-            main_args: command.main_args.as_ref().map(|s|  s.as_str()).clone(),
+            main_args: command.main_args.as_ref().map(|s| s.as_str()).clone(),
             is_top_level_dependency: true,
         };
         lockfile_command

@@ -136,7 +136,6 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     let mut package_dir = project_dir.as_ref().join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
-    println!("created package_dir {}", package_dir.display());
 
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
