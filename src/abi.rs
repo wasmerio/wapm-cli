@@ -6,8 +6,7 @@ use std::fmt;
 pub enum Abi {
     #[serde(rename = "emscripten")]
     Emscripten,
-    // TODO: figure out if this makes sense
-    #[serde(rename = "")]
+    #[serde(rename = "none")]
     None,
     #[serde(rename = "wasi")]
     Wasi,
@@ -21,7 +20,7 @@ impl fmt::Display for Abi {
             match self {
                 Abi::Emscripten => "emscripten",
                 Abi::Wasi => "wasi",
-                Abi::None => "undefined ABI",
+                Abi::None => "generic ABI",
             }
         )
     }
