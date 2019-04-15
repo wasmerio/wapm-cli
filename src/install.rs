@@ -10,7 +10,7 @@ use tar::Archive;
 pub fn install_package<P: AsRef<Path>>(dependency: &Dependency, directory: P) -> Result<(), failure::Error> {
     let (namespace, pkg_name) = get_package_namespace_and_name(&dependency.name)?;
     let fully_qualified_package_name =
-        fully_qualified_package_display_name(&dependency.name, &dependency.version);
+        fully_qualified_package_display_name(pkg_name, &dependency.version);
     let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
         .map_err(|err| InstallError::MiscError {
             custom_text: "Could not create package directory".to_string(),
@@ -82,20 +82,11 @@ fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(
 
 #[derive(Debug, Fail)]
 enum InstallError {
-    #[fail(display = "Package not found in the registry: {}", name)]
-    PackageNotFound { name: String },
-
-    #[fail(display = "No package versions available for package {}", name)]
-    NoVersionsAvailable { name: String },
-
     #[fail(display = "Can't process package file {} because {}", name, error)]
     CorruptFile { name: String, error: String },
 
     #[fail(display = "{}: {}", custom_text, error)]
     MiscError { custom_text: String, error: String },
-
-    #[fail(display = "Failed to regenerate lock file: {}", _0)]
-    CannotRegenLockFile(String),
 
     #[fail(display = "Failed to decompress or open package: {}", _0)]
     CannotOpenPackageArchive(String),

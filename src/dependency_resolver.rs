@@ -4,7 +4,7 @@ use crate::manifest::{Manifest, PACKAGES_DIR_NAME};
 use graphql_client::*;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::{env, io};
+use std::{env};
 use crate::install::install_package;
 
 #[derive(GraphQLQuery)]
@@ -36,6 +36,7 @@ impl Dependency {
             get_package_namespace_and_name(name.as_ref()).unwrap();
         let pkg_dir = format!("{}@{}", unqualified_pkg_name, version.as_ref());
         let wapm_package_directory = [PACKAGES_DIR_NAME, namespace, &pkg_dir].iter().collect();
+        let wapm_package_directory: PathBuf = [PACKAGES_DIR_NAME, namespace, &pkg_dir].iter().collect();
         Dependency {
             name: name.as_ref().to_string(),
             version: version.as_ref().to_string(),
