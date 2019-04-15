@@ -63,7 +63,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         PathBuf::from(&lockfile_module.entry)
     };
 
-    let command_vec = create_run_command(args, &current_dir, &source_path)?;
+    let command_vec = create_run_command(
+        args,
+        &current_dir,
+        &source_path,
+        Some(format!("wapm run {}", command_name)),
+    )?;
     let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
     child.wait()?;
     Ok(())
@@ -73,13 +78,25 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &Vec<OsString>,
     directory: P,
     wasm_file_path: P2,
+    override_command_name: Option<String>,
 ) -> Result<Vec<OsString>, failure::Error> {
     let mut path = PathBuf::new();
     path.push(directory);
     path.push(wasm_file_path);
     let path_string = path.into_os_string();
-    let command_vec = vec![OsString::from("run"), path_string, OsString::from("--")];
-    Ok([&command_vec[..], &args[..]].concat())
+    let command_vec = vec![OsString::from("run"), path_string];
+    let override_command_name_vec = if let Some(cn) = override_command_name {
+        vec![OsString::from("--command-name"), OsString::from(cn)]
+    } else {
+        vec![]
+    };
+    Ok([
+        &command_vec[..],
+        &override_command_name_vec[..],
+        &[OsString::from("--")],
+        &args[..],
+    ]
+    .concat())
 }
 
 #[cfg(test)]
@@ -154,7 +171,7 @@ mod test {
         let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"]
             .iter()
             .collect();
-        let actual_command = create_run_command(&args, &dir, wasm_relative_path).unwrap();
+        let actual_command = create_run_command(&args, &dir, wasm_relative_path, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
