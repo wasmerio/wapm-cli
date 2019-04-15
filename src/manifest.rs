@@ -22,6 +22,8 @@ pub struct Package {
     pub readme: Option<PathBuf>,
     pub repository: Option<String>,
     pub homepage: Option<String>,
+    #[serde(rename = "wasmer-extra-flags")]
+    pub wasmer_extra_flags: Option<String>,
 }
 
 /// Describes a command for a wapm module

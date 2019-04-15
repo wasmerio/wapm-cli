@@ -35,8 +35,20 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
     let lockfile_command = lockfile.get_command(command_name)?;
 
+    let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
-    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(manifest_path) {
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(dbg!(manifest_path)) {
+        wasmer_extra_flags = manifest
+            .package
+            .wasmer_extra_flags
+            .clone()
+            .map(|extra_flags| {
+                extra_flags
+                    .split_whitespace()
+                    .map(|str| OsString::from(str))
+                    .collect()
+            });
+
         if lockfile_command.package_name == manifest.package.name {
             // this is a local module command
             let modules = manifest.module.unwrap();
@@ -65,6 +77,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let command_vec = create_run_command(
         args,
+        wasmer_extra_flags,
         &current_dir,
         &source_path,
         Some(format!("wapm run {}", command_name)),
@@ -76,6 +89,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
 fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &Vec<OsString>,
+    wasmer_extra_flags: Option<Vec<OsString>>,
     directory: P,
     wasm_file_path: P2,
     override_command_name: Option<String>,
@@ -85,14 +99,13 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     path.push(wasm_file_path);
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string];
-    let override_command_name_vec = if let Some(cn) = override_command_name {
-        vec![OsString::from("--command-name"), OsString::from(cn)]
-    } else {
-        vec![]
-    };
+    let override_command_name_vec = override_command_name
+        .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
+        .unwrap_or_default();
     Ok([
         &command_vec[..],
         &override_command_name_vec[..],
+        &wasmer_extra_flags.unwrap_or_default()[..],
         &[OsString::from("--")],
         &args[..],
     ]
@@ -171,7 +184,8 @@ mod test {
         let wasm_relative_path: PathBuf = ["wapm_packages", "_", "foo@1.0.2", "foo_entry.wasm"]
             .iter()
             .collect();
-        let actual_command = create_run_command(&args, &dir, wasm_relative_path, None).unwrap();
+        let actual_command =
+            create_run_command(&args, None, &dir, wasm_relative_path, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
