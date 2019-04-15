@@ -40,8 +40,6 @@ impl<'a> Lockfile<'a> {
         let mut lockfile_commands = BTreeMap::new();
         let unresolved_dependencies = manifest.extract_dependencies()?;
         let dependencies = dependency_resolver.get_all_dependencies(
-            &manifest.package.name,
-            &manifest.package.version,
             unresolved_dependencies,
         )?;
         for dependency in dependencies.iter() {
@@ -99,8 +97,6 @@ impl<'a> Lockfile<'a> {
             &mut existing_lockfile.commands,
         );
         let dependencies = dependency_resolver.get_all_dependencies(
-            &manifest.package.name,
-            &manifest.package.version,
             changed_dependencies,
         )?;
         for dependency in dependencies.iter() {
@@ -168,7 +164,7 @@ impl<'a> Lockfile<'a> {
         dependency_resolver: &'a mut D,
     ) -> Result<Self, failure::Error> {
         let dependencies =
-            dependency_resolver.get_all_dependencies("", "", installed_dependencies)?;
+            dependency_resolver.get_all_dependencies(installed_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
@@ -220,7 +216,7 @@ impl<'a> Lockfile<'a> {
         let mut lockfile_modules: ModuleMap = BTreeMap::new();
         let mut lockfile_commands = BTreeMap::new();
         let dependencies =
-            dependency_resolver.get_all_dependencies("", "", installed_dependencies)?;
+            dependency_resolver.get_all_dependencies(installed_dependencies)?;
         for dependency in dependencies.iter() {
             let package_name = dependency.manifest.package.name.as_str();
             let package_version = dependency.manifest.package.version.as_str();
