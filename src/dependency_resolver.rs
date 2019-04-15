@@ -159,6 +159,13 @@ impl PackageRegistryLike for PackageRegistry {
             }
         }
 
+        let cwd = env::current_dir()?;
+        for dependency in dependencies.iter().cloned() {
+            let dependency: &Dependency = dependency;
+            if !dependency.wapm_package_directory.exists() {
+                install_package(dependency, &cwd)?;
+            }
+        }
         Ok(dependencies)
     }
 }
