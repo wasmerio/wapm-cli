@@ -17,5 +17,6 @@ pub mod commands;
 mod config;
 mod dependency_resolver;
 mod graphql;
+mod install;
 pub mod lock;
 mod manifest;

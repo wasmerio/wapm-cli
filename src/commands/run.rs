@@ -172,7 +172,7 @@ mod test {
         );
         fs::create_dir_all(&wapm_module_dir).unwrap();
         // calling dunce here to help wih comparing paths on different platforms
-        let expected_dir: PathBuf = dunce::canonicalize(&wapm_module_dir).unwrap();
+        let expected_dir: PathBuf = wapm_module_dir.clone();
         let expected_dir = expected_dir.join("foo_entry.wasm");
         let expected_command = vec![
             OsString::from("run"),

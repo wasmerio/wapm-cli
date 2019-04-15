@@ -1,7 +1,11 @@
 use crate::graphql::execute_query;
-use crate::manifest::Manifest;
+use crate::install::install_package;
+use crate::lock::get_package_namespace_and_name;
+use crate::manifest::{Manifest, PACKAGES_DIR_NAME};
 use graphql_client::*;
 use std::collections::BTreeMap;
+use std::env;
+use std::path::PathBuf;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -18,14 +22,35 @@ pub struct Dependency {
     pub manifest: Manifest,
     pub download_url: String,
     pub is_top_level_dependency: bool,
+    pub wapm_package_directory: PathBuf,
+}
+
+impl Dependency {
+    pub fn new<S1: AsRef<str>, S2: AsRef<str>, S3: AsRef<str>>(
+        name: S1,
+        version: S2,
+        manifest: Manifest,
+        download_url: S3,
+    ) -> Self {
+        let (namespace, unqualified_pkg_name) =
+            get_package_namespace_and_name(name.as_ref()).unwrap();
+        let pkg_dir = format!("{}@{}", unqualified_pkg_name, version.as_ref());
+        let wapm_package_directory: PathBuf =
+            [PACKAGES_DIR_NAME, namespace, &pkg_dir].iter().collect();
+        Dependency {
+            name: name.as_ref().to_string(),
+            version: version.as_ref().to_string(),
+            manifest,
+            download_url: download_url.as_ref().to_string(),
+            is_top_level_dependency: true, // TODO fix this
+            wapm_package_directory,
+        }
+    }
 }
 
 pub trait PackageRegistryLike {
-    //    fn resolve(&self, pkg_name: &str, pkg_version: &str) -> Result<Dependency, failure::Error>;
     fn get_all_dependencies<'a>(
         &'a mut self,
-        root_pkg_name: &'a str,
-        root_pkg_version: &'a str,
         root_dependencies: Vec<(&'a str, &'a str)>,
     ) -> Result<Vec<&'a Dependency>, failure::Error>;
 }
@@ -37,8 +62,6 @@ pub struct TestRegistry(pub BTreeMap<&'static str, Vec<Dependency>>);
 impl PackageRegistryLike for TestRegistry {
     fn get_all_dependencies<'a>(
         &'a mut self,
-        _root_pkg_name: &'a str,
-        _root_pkg_version: &'a str,
         root_dependencies: Vec<(&'a str, &'a str)>,
     ) -> Result<Vec<&'a Dependency>, failure::Error> {
         // for now, only fetch root dependencies
@@ -107,13 +130,7 @@ impl PackageRegistry {
                     )
                 })
                 .filter(|v| v.0.is_ok())
-                .map(|v| Dependency {
-                    name: package_name.clone(),
-                    version: v.1,
-                    manifest: v.0.unwrap(),
-                    download_url: v.2,
-                    is_top_level_dependency: true, // TODO fix this
-                })
+                .map(|v| Dependency::new(&package_name, v.1.as_str(), v.0.unwrap(), v.2.as_str()))
                 .collect();
 
             self.0.insert(package_name, package_versions);
@@ -125,8 +142,6 @@ impl PackageRegistry {
 impl PackageRegistryLike for PackageRegistry {
     fn get_all_dependencies<'a>(
         &'a mut self,
-        _root_pkg_name: &'a str,
-        _root_pkg_version: &'a str,
         root_dependencies: Vec<(&'a str, &'a str)>,
     ) -> Result<Vec<&'a Dependency>, failure::Error> {
         // for now, only fetch root dependencies
@@ -159,6 +174,13 @@ impl PackageRegistryLike for PackageRegistry {
             }
         }
 
+        let cwd = env::current_dir()?;
+        for dependency in dependencies.iter().cloned() {
+            let dependency: &Dependency = dependency;
+            if !dependency.wapm_package_directory.exists() {
+                install_package(dependency, &cwd)?;
+            }
+        }
         Ok(dependencies)
     }
 }

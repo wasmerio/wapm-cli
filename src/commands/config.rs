@@ -50,7 +50,6 @@ fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::E
         }
     };
     config.save()?;
-    // println!("{:?}", config);
     Ok(())
 }
 
