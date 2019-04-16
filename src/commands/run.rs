@@ -28,11 +28,14 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
-    let lockfile_command = lockfile.get_command(command_name)?;
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
     let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_directory(&current_dir) {
+        let lockfile_command = lockfile
+            .get_command(command_name)
+            .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
+
         wasmer_extra_flags = manifest
             .package
             .wasmer_extra_flags
@@ -62,6 +65,10 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             PathBuf::from(&lockfile_module.entry)
         }
     } else {
+        let lockfile_command = lockfile
+            .get_command(command_name)
+            .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
+
         let lockfile_module = lockfile.get_module(
             lockfile_command.package_name,
             lockfile_command.package_version,
@@ -110,7 +117,6 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 #[cfg(test)]
 mod test {
     use crate::commands::run::create_run_command;
-    use crate::lock::Lockfile;
     use crate::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
@@ -118,41 +124,6 @@ mod test {
 
     #[test]
     fn create_run_command_vec() {
-        // lockfile
-        let lock_toml = toml! {
-            [modules."_/foo"."1.0.2"."foo_mod"]
-            package_name = "_/foo"
-            package_version = "1.0.2"
-            name = "foo_mod"
-            source = "registry+foo"
-            resolved = ""
-            integrity = ""
-            hash = ""
-            abi = "none"
-            entry = "foo_entry.wasm"
-            [modules."_/bar"."3.0.0"."bar_mod"]
-            package_name = "_/bar"
-            package_version = "3.0.0"
-            name = "bar_mod"
-            source = "registry+bar"
-            resolved = ""
-            integrity = ""
-            hash = ""
-            abi = "none"
-            entry = "bar.wasm"
-            [commands.do_more_foo_stuff]
-            package_name = "_/foo"
-            package_version = "1.0.2"
-            name = "do_more_foo_stuff"
-            module = "foo_mod"
-            is_top_level_dependency = true
-            [commands.do_bar_stuff]
-            package_name = "_/bar"
-            package_version = "3.0.0"
-            name = "do_bar_stuff"
-            module = "bar_mod"
-            is_top_level_dependency = true
-        };
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
@@ -187,4 +158,14 @@ enum RunError {
     CannotRegenLockfile(String, failure::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
+    #[fail(
+        display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.",
+        _0
+    )]
+    CommandNotFound(String),
+    #[fail(
+        display = "Command \"{}\" not found in the installed dependencies.",
+        _0
+    )]
+    CommandNotFoundInDependencies(String),
 }
