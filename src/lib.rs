@@ -20,3 +20,4 @@ mod graphql;
 mod install;
 pub mod lock;
 mod manifest;
+mod validate;

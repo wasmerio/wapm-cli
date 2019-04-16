@@ -1,4 +1,5 @@
 use crate::manifest::Manifest;
+use crate::validate;
 
 use crate::graphql::execute_query_modifier;
 use crate::manifest::MANIFEST_FILE_NAME;
@@ -20,6 +21,9 @@ struct PublishPackageMutation;
 pub fn publish() -> Result<(), failure::Error> {
     let mut builder = Builder::new(Vec::new());
     let cwd = env::current_dir()?;
+
+    validate::validate_directory(cwd.clone())?;
+
     let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
     let contents =
         fs::read_to_string(&manifest_path_buf).map_err(|_e| PublishError::MissingManifestInCwd)?;
