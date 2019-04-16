@@ -115,7 +115,6 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 #[cfg(test)]
 mod test {
     use crate::commands::run::create_run_command;
-    use crate::lock::Lockfile;
     use crate::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
@@ -123,41 +122,6 @@ mod test {
 
     #[test]
     fn create_run_command_vec() {
-        // lockfile
-        let lock_toml = toml! {
-            [modules."_/foo"."1.0.2"."foo_mod"]
-            package_name = "_/foo"
-            package_version = "1.0.2"
-            name = "foo_mod"
-            source = "registry+foo"
-            resolved = ""
-            integrity = ""
-            hash = ""
-            abi = "none"
-            entry = "foo_entry.wasm"
-            [modules."_/bar"."3.0.0"."bar_mod"]
-            package_name = "_/bar"
-            package_version = "3.0.0"
-            name = "bar_mod"
-            source = "registry+bar"
-            resolved = ""
-            integrity = ""
-            hash = ""
-            abi = "none"
-            entry = "bar.wasm"
-            [commands.do_more_foo_stuff]
-            package_name = "_/foo"
-            package_version = "1.0.2"
-            name = "do_more_foo_stuff"
-            module = "foo_mod"
-            is_top_level_dependency = true
-            [commands.do_bar_stuff]
-            package_name = "_/bar"
-            package_version = "3.0.0"
-            name = "do_bar_stuff"
-            module = "bar_mod"
-            is_top_level_dependency = true
-        };
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
