@@ -1,6 +1,5 @@
 use crate::abi::Abi;
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -64,22 +63,6 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    /// Construct a manifest by searching for a manifest file with a file path
-    pub fn open<P: AsRef<Path>>(manifest_file_path: P) -> Result<Self, failure::Error> {
-        let contents =
-            fs::read_to_string(&manifest_file_path).map_err(|_e| ManifestError::MissingManifest)?;
-        let mut manifest: Self = toml::from_str(contents.as_str())?;
-        let parent_directory = manifest_file_path.as_ref().parent().unwrap();
-        manifest.base_directory_path = dunce::canonicalize(parent_directory)?;
-        Ok(manifest)
-    }
-
-    /// Construct a manifest by searching in the current directory for a manifest file
-    pub fn find_in_current_directory() -> Result<Self, ManifestError> {
-        let cwd = env::current_dir().map_err(|_| ManifestError::CouldNotOpenCurrentDirectory)?;
-        Self::find_in_directory(cwd)
-    }
-
     /// Construct a manifest by searching in the specified directory for a manifest file
     pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
         if !path.as_ref().is_dir() {
@@ -216,7 +199,7 @@ mod dependency_tests {
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
-        let mut manifest = Manifest::open(manifest_path).unwrap();
+        let mut manifest = Manifest::find_in_directory(tmp_dir.as_ref()).unwrap();
 
         let dependency_name = "dep_pkg";
         let dependency_version = "0.1.0";

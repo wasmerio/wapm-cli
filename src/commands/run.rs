@@ -32,7 +32,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
-    let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_current_directory() {
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_directory(&current_dir) {
         wasmer_extra_flags = manifest
             .package
             .wasmer_extra_flags
