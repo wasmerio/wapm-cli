@@ -1,6 +1,5 @@
 use crate::abi::Abi;
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -64,33 +63,18 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    /// Construct a manifest by searching for a manifest file with a file path
-    pub fn open<P: AsRef<Path>>(manifest_file_path: P) -> Result<Self, failure::Error> {
-        let contents =
-            fs::read_to_string(&manifest_file_path).map_err(|_e| ManifestError::MissingManifest)?;
-        let mut manifest: Self = toml::from_str(contents.as_str())?;
-        let parent_directory = manifest_file_path.as_ref().parent().unwrap();
-        manifest.base_directory_path = dunce::canonicalize(parent_directory)?;
-        Ok(manifest)
-    }
-
-    /// Construct a manifest by searching in the current directory for a manifest file
-    pub fn find_in_current_directory() -> Result<Self, failure::Error> {
-        let cwd = env::current_dir()?;
-        Self::find_in_directory(cwd)
-    }
-
     /// Construct a manifest by searching in the specified directory for a manifest file
-    pub fn find_in_directory<T: Into<PathBuf>>(path: T) -> Result<Self, failure::Error> {
-        let path = path.into();
-        if !path.is_dir() {
-            return Err(ManifestError::MissingManifestInCwd.into());
+    pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
+        if !path.as_ref().is_dir() {
+            return Err(ManifestError::MissingManifest);
         }
-
-        let manifest_path_buf = path.join(MANIFEST_FILE_NAME);
-        let contents = fs::read_to_string(&manifest_path_buf)
-            .map_err(|_e| ManifestError::MissingManifestInCwd)?;
-        let manifest: Self = toml::from_str(contents.as_str())?;
+        let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
+        let contents =
+            fs::read_to_string(&manifest_path_buf).map_err(|_e| ManifestError::MissingManifest)?;
+        let manifest: Self =
+            toml::from_str(contents.as_str()).map_err(|e| {
+                ManifestError::TomlParseError(e.to_string())
+            })?;
         Ok(manifest)
     }
 
@@ -141,18 +125,15 @@ impl Manifest {
 pub enum ManifestError {
     #[fail(display = "Manifest file not found.")]
     MissingManifest,
-    #[fail(display = "Manifest file not found in current directory.")]
-    MissingManifestInCwd,
-    #[fail(
-        display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm package`?",
-        path
-    )]
-    #[allow(dead_code)]
-    MissingTarget { path: PathBuf },
     #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
     DependencyVersionMustBeString(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
+    #[fail(
+        display = "Could not parse manifest because {}.",
+        _0
+    )]
+    TomlParseError(String),
 }
 
 #[cfg(test)]
@@ -206,11 +187,11 @@ mod dependency_tests {
             [[module]]
             name = "test"
             source = "test.wasm"
-            abi = "None"
+            abi = "none"
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
-        let mut manifest = Manifest::open(manifest_path).unwrap();
+        let mut manifest = Manifest::find_in_directory(tmp_dir.as_ref()).unwrap();
 
         let dependency_name = "dep_pkg";
         let dependency_version = "0.1.0";

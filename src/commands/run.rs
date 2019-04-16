@@ -1,5 +1,5 @@
 use crate::lock::{is_lockfile_out_of_date, regenerate_lockfile, Lockfile};
-use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+use crate::manifest::Manifest;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -19,16 +19,10 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
-    let manifest = Manifest::open(&manifest_path);
-    let mut lockfile_string = String::new();
-    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
-
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(manifest, lockfile, vec![])
-            .map_err(|err| RunError::CannotRegenLockFile(format!("{}", err)))?,
+        _ => regenerate_lockfile(vec![]).map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
@@ -37,7 +31,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
-    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(dbg!(manifest_path)) {
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_directory(&current_dir) {
         wasmer_extra_flags = manifest
             .package
             .wasmer_extra_flags
@@ -133,7 +127,7 @@ mod test {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "foo_entry.wasm"
             [modules."_/bar"."3.0.0"."bar_mod"]
             package_name = "_/bar"
@@ -143,7 +137,7 @@ mod test {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "bar.wasm"
             [commands.do_more_foo_stuff]
             package_name = "_/foo"
@@ -160,8 +154,6 @@ mod test {
         };
         let lock_toml_string = lock_toml.to_string();
         let lockfile: Lockfile = toml::from_str(&lock_toml_string).unwrap();
-        let lockfile_module = lockfile.get_module("_/foo", "1.0.2", "foo_mod").unwrap();
-        let lockfile_command = lockfile.get_command("do_more_foo_stuff").unwrap();
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
@@ -192,9 +184,9 @@ mod test {
 
 #[derive(Debug, Fail)]
 enum RunError {
-    #[fail(display = "Failed to regenerate lock file: {}", _0)]
-    CannotRegenLockFile(String),
-
+    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
+    CannotRegenLockfile(String, failure::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
+
 }

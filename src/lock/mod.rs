@@ -35,13 +35,30 @@ pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> Result<bool, fai
 }
 
 pub fn regenerate_lockfile(
-    maybe_manifest: Result<Manifest, failure::Error>,
-    maybe_lockfile: Result<Lockfile, failure::Error>,
     installed_dependencies: Vec<(&str, &str)>,
 ) -> Result<(), failure::Error> {
+    use crate::lock::lockfile::LockfileError;
+    use crate::manifest::ManifestError;
+    let current_dir = env::current_dir()?;
+    let manifest_result = Manifest::find_in_directory(&current_dir);
+    let maybe_manifest: Result<Option<Manifest>, failure::Error> = match manifest_result {
+        Err(ManifestError::MissingManifest) => Ok(None),
+        Ok(manifest) => Ok(Some(manifest)),
+        Err(e) => Err(e.into()),
+    };
+    let maybe_manifest = maybe_manifest?;
+    let mut lockfile_string = String::new();
+    let lockfile_result = Lockfile::open(&current_dir, &mut lockfile_string);
+    let maybe_lockfile: Result<Option<Lockfile>, failure::Error> = match lockfile_result {
+        Err(LockfileError::MissingLockfile) => Ok(None),
+        Ok(lockfile) => Ok(Some(lockfile)),
+        Err(e) => Err(e.into()),
+    };
+    let maybe_lockfile = maybe_lockfile?;
+
     let mut resolver = PackageRegistry::new();
     match (maybe_manifest, maybe_lockfile) {
-        (Ok(mut manifest), Ok(existing_lockfile)) => {
+        (Some(mut manifest), Some(existing_lockfile)) => {
             for (dependency_name, dependency_version) in installed_dependencies {
                 manifest.add_dependency(dependency_name, dependency_version);
             }
@@ -56,7 +73,7 @@ pub fn regenerate_lockfile(
             // write the lockfile
             lockfile.save(&manifest.base_directory_path)?;
         }
-        (Ok(mut manifest), Err(_lockfile_error)) => {
+        (Some(mut manifest), None) => {
             for (dependency_name, dependency_version) in installed_dependencies {
                 manifest.add_dependency(dependency_name, dependency_version);
             }
@@ -67,7 +84,7 @@ pub fn regenerate_lockfile(
             // write the lockfile
             lockfile.save(&manifest.base_directory_path)?;
         }
-        (Err(_manifest_error), Ok(existing_lockfile)) => {
+        (None, Some(existing_lockfile)) => {
             let lockfile = Lockfile::new_from_lockfile_and_installed_dependencies(
                 installed_dependencies,
                 existing_lockfile,
@@ -76,7 +93,7 @@ pub fn regenerate_lockfile(
             let cwd = env::current_dir()?;
             lockfile.save(&cwd)?;
         }
-        (Err(_), Err(_)) => {
+        (None, None) => {
             let lockfile =
                 Lockfile::new_from_installed_dependencies(installed_dependencies, &mut resolver)?;
             let cwd = env::current_dir()?;
