@@ -71,10 +71,8 @@ impl Manifest {
         let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
         let contents =
             fs::read_to_string(&manifest_path_buf).map_err(|_e| ManifestError::MissingManifest)?;
-        let manifest: Self =
-            toml::from_str(contents.as_str()).map_err(|e| {
-                ManifestError::TomlParseError(e.to_string())
-            })?;
+        let manifest: Self = toml::from_str(contents.as_str())
+            .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
         Ok(manifest)
     }
 
@@ -129,10 +127,7 @@ pub enum ManifestError {
     DependencyVersionMustBeString(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
-    #[fail(
-        display = "Could not parse manifest because {}.",
-        _0
-    )]
+    #[fail(display = "Could not parse manifest because {}.", _0)]
     TomlParseError(String),
 }
 
