@@ -43,12 +43,17 @@ enum Command {
     /// Create a wasm package with bundled assets
     Package(commands::PackageOpt),
 
+    /// Check if a directory or tar.gz is a valid wapm package
     #[structopt(name = "validate")]
     Validate(commands::ValidateOpt),
 
-    /// Generate autocompletion scripts for your shell
     #[structopt(name = "completions")]
-    Completions(commands::CompletionOpts),
+    /// Generate autocompletion scripts for your shell
+    Completions(commands::CompletionOpt),
+
+    #[structopt(name = "init")]
+    /// Set up current directory for use with wapm
+    Init(commands::InitOpt),
 }
 
 fn main() {
@@ -69,6 +74,7 @@ fn main() {
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),
         Command::Validate(validate_options) => commands::validate(validate_options),
+        Command::Init(init_options) => commands::init(init_options),
         Command::Completions(completion_options) => {
             Command::clap().gen_completions_to(
                 "wapm",
