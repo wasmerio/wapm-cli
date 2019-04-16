@@ -28,7 +28,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
-    let lockfile_command = lockfile.get_command(command_name)?;
+    let lockfile_command = lockfile.get_command(command_name)
+        .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
@@ -187,4 +188,6 @@ enum RunError {
     CannotRegenLockfile(String, failure::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
+    #[fail(display = "Command \"{}\" not found in the manifest and not imported from any dependencies.", _0)]
+    CommandNotFound(String)
 }
