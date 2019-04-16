@@ -45,6 +45,10 @@ enum Command {
 
     #[structopt(name = "validate")]
     Validate(commands::ValidateOpt),
+
+    /// Generate autocompletion scripts for your shell
+    #[structopt(name = "completions")]
+    Completions(commands::CompletionOpts),
 }
 
 fn main() {
@@ -65,6 +69,14 @@ fn main() {
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),
         Command::Validate(validate_options) => commands::validate(validate_options),
+        Command::Completions(completion_options) => {
+            Command::clap().gen_completions_to(
+                "wapm",
+                completion_options.shell,
+                &mut ::std::io::stdout(),
+            );
+            Ok(())
+        }
     };
     if let Err(e) = result {
         eprintln!("\nError: {}\n", e);

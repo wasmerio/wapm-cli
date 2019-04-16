@@ -1,3 +1,4 @@
+mod completions;
 mod config;
 mod install;
 mod login;
@@ -8,6 +9,7 @@ mod search;
 mod validate;
 mod whoami;
 
+pub use self::completions::CompletionOpts;
 pub use self::config::{config, ConfigOpt};
 pub use self::install::{install, InstallOpt};
 pub use self::login::login;
