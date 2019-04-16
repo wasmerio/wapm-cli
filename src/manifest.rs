@@ -72,7 +72,9 @@ impl Manifest {
         let contents =
             fs::read_to_string(&manifest_path_buf).map_err(|_e| ManifestError::MissingManifest)?;
         let manifest: Self =
-            toml::from_str(contents.as_str()).map_err(|e| ManifestError::TomlParseError(e))?;
+            toml::from_str(contents.as_str()).map_err(|e| {
+                ManifestError::TomlParseError(e.to_string())
+            })?;
         Ok(manifest)
     }
 
@@ -128,10 +130,10 @@ pub enum ManifestError {
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
     #[fail(
-        display = "Failed to parse manifest toml. Please correct the toml error: {:?}",
+        display = "Could not parse manifest because {}.",
         _0
     )]
-    TomlParseError(toml::de::Error),
+    TomlParseError(String),
 }
 
 #[cfg(test)]
