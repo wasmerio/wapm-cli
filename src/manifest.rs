@@ -123,20 +123,10 @@ impl Manifest {
 pub enum ManifestError {
     #[fail(display = "Manifest file not found.")]
     MissingManifest,
-    #[fail(display = "Manifest file not found in current directory.")]
-    MissingManifestInCwd,
-    #[fail(
-        display = "Manifest target doesn't  ({:?}). Did you forgot to run `wapm package`?",
-        path
-    )]
-    #[allow(dead_code)]
-    MissingTarget { path: PathBuf },
     #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
     DependencyVersionMustBeString(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
-    #[fail(display = "Could not get current directory to open manifest file.")]
-    CouldNotOpenCurrentDirectory,
     #[fail(
         display = "Failed to parse manifest toml. Please correct the toml error: {:?}",
         _0

@@ -281,18 +281,6 @@ pub enum LockfileError {
     CommandNotFound(String),
     #[fail(display = "Module not found: {}", _0)]
     ModuleNotFound(String),
-    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
-    DependencyVersionMustBeString(String),
-    #[fail(
-        display = "Could not resolve dependency in manifest. Package name: {}. Package version: ",
-        _0
-    )]
-    CouldNotResolveManifestDependency(String, String),
-    #[fail(
-        display = "Multiple errors encountered while constructing lockfile {:?}",
-        _0
-    )]
-    AggregateLockfileError(Vec<failure::Error>),
     #[fail(display = "Lockfile file not found.")]
     MissingLockfile,
     #[fail(display = "File I/O error reading lockfile. I/O error: {:?}", _0)]
@@ -870,8 +858,6 @@ mod create_from_manifest_and_lockfile_tests {
             &mut test_registry,
         )
         .unwrap();
-
-        let actual_lockfile_string = toml::to_string(&actual_lockfile).unwrap();
         assert_eq!(expected_lockfile, actual_lockfile);
     }
 }

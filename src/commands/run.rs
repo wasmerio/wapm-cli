@@ -155,8 +155,6 @@ mod test {
         };
         let lock_toml_string = lock_toml.to_string();
         let lockfile: Lockfile = toml::from_str(&lock_toml_string).unwrap();
-        let lockfile_module = lockfile.get_module("_/foo", "1.0.2", "foo_mod").unwrap();
-        let lockfile_command = lockfile.get_command("do_more_foo_stuff").unwrap();
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
