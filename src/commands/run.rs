@@ -194,6 +194,6 @@ enum RunError {
     MissingLockFile(String),
     #[fail(display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.", _0)]
     CommandNotFound(String),
-    #[fail(display = "Command \"{}\" not found in the installed dependencies", _0)]
+    #[fail(display = "Command \"{}\" not found in the installed dependencies.", _0)]
     CommandNotFoundInDependencies(String),
 }
