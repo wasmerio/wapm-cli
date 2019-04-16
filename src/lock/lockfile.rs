@@ -5,6 +5,7 @@ use crate::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use crate::manifest::Manifest;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -23,11 +24,14 @@ impl<'a> Lockfile<'a> {
     pub fn open<P: AsRef<Path>>(
         directory: P,
         lockfile_string: &'a mut String,
-    ) -> Result<Lockfile<'a>, failure::Error> {
+    ) -> Result<Lockfile<'a>, LockfileError> {
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
-        let mut lockfile_file = File::open(lockfile_path)?;
-        lockfile_file.read_to_string(lockfile_string)?;
-        toml::from_str(lockfile_string.as_str()).map_err(|e| e.into())
+        let mut lockfile_file =
+            File::open(lockfile_path).map_err(|_| LockfileError::MissingLockfile)?;
+        lockfile_file
+            .read_to_string(lockfile_string)
+            .map_err(|e| LockfileError::FileIoErrorReadingLockfile(e))?;
+        toml::from_str(lockfile_string.as_str()).map_err(|e| LockfileError::TomlParseError(e))
     }
 
     /// This method constructs a new lockfile with just a manifest. This is typical if no lockfile
@@ -289,6 +293,15 @@ pub enum LockfileError {
         _0
     )]
     AggregateLockfileError(Vec<failure::Error>),
+    #[fail(display = "Lockfile file not found.")]
+    MissingLockfile,
+    #[fail(display = "File I/O error reading lockfile. I/O error: {:?}", _0)]
+    FileIoErrorReadingLockfile(io::Error),
+    #[fail(
+        display = "Failed to parse lockfile toml. Did you modify the generated lockfile? Toml error: {:?}",
+        _0
+    )]
+    TomlParseError(toml::de::Error),
 }
 
 /// dependencies that are unchanged remain in the BTreeMap. A vec of string refs are returned which
@@ -373,7 +386,7 @@ mod get_command_tests {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "target.wasm"
             [modules."xyz/bar"."3.0.0"."bar_module_a"]
             name = "bar_module_a"
@@ -383,7 +396,7 @@ mod get_command_tests {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "target.wasm"
             [modules."xyz/bar"."3.0.0"."bar_module_b"]
             name = "bar_module_b"
@@ -393,7 +406,7 @@ mod get_command_tests {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "target.wasm"
             // zero commands in the "abc/foo" package
             // one command in module "bar_module_a" of package "xyz/bar"
@@ -545,7 +558,7 @@ mod create_from_manifest_tests {
             resolved = "dep_a_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
             name = "test_dep_b_module"
@@ -555,7 +568,7 @@ mod create_from_manifest_tests {
             resolved = "dep_b_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_b_entry
             [commands."mod_a_command"]
             name = "mod_a_command"
@@ -750,7 +763,7 @@ mod create_from_manifest_and_lockfile_tests {
             resolved = "dep_a_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
             name = "test_dep_b_module"
@@ -760,7 +773,7 @@ mod create_from_manifest_and_lockfile_tests {
             resolved = "dep_b_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_b_entry
             [commands."mod_a_command"]
             name = "mod_a_command"
@@ -810,7 +823,7 @@ mod create_from_manifest_and_lockfile_tests {
             resolved = "dep_b_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_b_entry
             [modules."_/test_dep_c"."4.0.0"."test_dep_c_module"]
             name = "test_dep_c_module"
@@ -820,7 +833,7 @@ mod create_from_manifest_and_lockfile_tests {
             resolved = "dep_c_test.com"
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = dep_c_entry
             [commands."mod_b_command"]
             name = "mod_b_command"

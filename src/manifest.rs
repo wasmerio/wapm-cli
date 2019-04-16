@@ -75,22 +75,21 @@ impl Manifest {
     }
 
     /// Construct a manifest by searching in the current directory for a manifest file
-    pub fn find_in_current_directory() -> Result<Self, failure::Error> {
-        let cwd = env::current_dir()?;
+    pub fn find_in_current_directory() -> Result<Self, ManifestError> {
+        let cwd = env::current_dir().map_err(|_| ManifestError::CouldNotOpenCurrentDirectory)?;
         Self::find_in_directory(cwd)
     }
 
     /// Construct a manifest by searching in the specified directory for a manifest file
-    pub fn find_in_directory<T: Into<PathBuf>>(path: T) -> Result<Self, failure::Error> {
-        let path = path.into();
-        if !path.is_dir() {
-            return Err(ManifestError::MissingManifestInCwd.into());
+    pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
+        if !path.as_ref().is_dir() {
+            return Err(ManifestError::MissingManifest);
         }
-
-        let manifest_path_buf = path.join(MANIFEST_FILE_NAME);
-        let contents = fs::read_to_string(&manifest_path_buf)
-            .map_err(|_e| ManifestError::MissingManifestInCwd)?;
-        let manifest: Self = toml::from_str(contents.as_str())?;
+        let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
+        let contents =
+            fs::read_to_string(&manifest_path_buf).map_err(|_e| ManifestError::MissingManifest)?;
+        let manifest: Self =
+            toml::from_str(contents.as_str()).map_err(|e| ManifestError::TomlParseError(e))?;
         Ok(manifest)
     }
 
@@ -153,6 +152,13 @@ pub enum ManifestError {
     DependencyVersionMustBeString(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
+    #[fail(display = "Could not get current directory to open manifest file.")]
+    CouldNotOpenCurrentDirectory,
+    #[fail(
+        display = "Failed to parse manifest toml. Please correct the toml error: {:?}",
+        _0
+    )]
+    TomlParseError(toml::de::Error),
 }
 
 #[cfg(test)]
@@ -206,7 +212,7 @@ mod dependency_tests {
             [[module]]
             name = "test"
             source = "test.wasm"
-            abi = "None"
+            abi = "none"
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();

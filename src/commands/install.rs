@@ -7,9 +7,8 @@ use graphql_client::*;
 use reqwest;
 use tar::Archive;
 
-use crate::lock::{get_package_namespace_and_name, regenerate_lockfile, Lockfile};
+use crate::lock::{get_package_namespace_and_name, regenerate_lockfile};
 use crate::manifest::PACKAGES_DIR_NAME;
-use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 use structopt::StructOpt;
@@ -113,17 +112,8 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     })?;
     decompress_and_extract_archive(dest, &package_dir)
         .map_err(|err| InstallError::CannotOpenPackageArchive(format!("{}", err)))?;
-    let manifest_file_path = current_dir.join(MANIFEST_FILE_NAME);
-    let maybe_manifest = Manifest::open(&manifest_file_path);
-    let mut lockfile_string = String::new();
-    let maybe_lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
-    // with the manifest updated, we can now regenerate the lockfile
-    regenerate_lockfile(
-        maybe_manifest,
-        maybe_lockfile,
-        vec![(&package.name, &last_version.version)],
-    )
-    .map_err(|err| InstallError::CannotRegenLockFile(format!("{}", err)))?;
+    regenerate_lockfile(vec![(&package.name, &last_version.version)])
+        .map_err(|err| InstallError::CannotRegenLockFile(format!("{}", err)))?;
     println!("Package installed successfully to wapm_packages!");
     Ok(())
 }

@@ -1,5 +1,5 @@
 use crate::lock::{is_lockfile_out_of_date, regenerate_lockfile, Lockfile};
-use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+use crate::manifest::Manifest;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -19,15 +19,10 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    let manifest_path = current_dir.join(MANIFEST_FILE_NAME);
-    let manifest = Manifest::open(&manifest_path);
-    let mut lockfile_string = String::new();
-    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string);
-
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(manifest, lockfile, vec![])
+        _ => regenerate_lockfile(vec![])
             .map_err(|err| RunError::CannotRegenLockFile(format!("{}", err)))?,
     }
     let mut lockfile_string = String::new();
@@ -37,7 +32,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
-    let source_path: PathBuf = if let Ok(manifest) = Manifest::open(dbg!(manifest_path)) {
+    let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_current_directory() {
         wasmer_extra_flags = manifest
             .package
             .wasmer_extra_flags
@@ -133,7 +128,7 @@ mod test {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "foo_entry.wasm"
             [modules."_/bar"."3.0.0"."bar_mod"]
             package_name = "_/bar"
@@ -143,7 +138,7 @@ mod test {
             resolved = ""
             integrity = ""
             hash = ""
-            abi = "None"
+            abi = "none"
             entry = "bar.wasm"
             [commands.do_more_foo_stuff]
             package_name = "_/foo"
