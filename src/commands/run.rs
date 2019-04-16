@@ -28,12 +28,13 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
-    let lockfile_command = lockfile.get_command(command_name)
-        .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     // hack to get around running commands for local modules
     let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_directory(&current_dir) {
+        let lockfile_command = lockfile.get_command(command_name)
+            .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
+
         wasmer_extra_flags = manifest
             .package
             .wasmer_extra_flags
@@ -63,6 +64,9 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             PathBuf::from(&lockfile_module.entry)
         }
     } else {
+        let lockfile_command = lockfile.get_command(command_name)
+            .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
+
         let lockfile_module = lockfile.get_module(
             lockfile_command.package_name,
             lockfile_command.package_version,
@@ -188,6 +192,8 @@ enum RunError {
     CannotRegenLockfile(String, failure::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
-    #[fail(display = "Command \"{}\" not found in the manifest and not imported from any dependencies.", _0)]
-    CommandNotFound(String)
+    #[fail(display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.", _0)]
+    CommandNotFound(String),
+    #[fail(display = "Command \"{}\" not found in the installed dependencies", _0)]
+    CommandNotFoundInDependencies(String),
 }
