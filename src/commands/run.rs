@@ -22,7 +22,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(vec![]).map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
+        _ => regenerate_lockfile(vec![])
+            .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
     let mut lockfile_string = String::new();
     let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
@@ -152,8 +153,6 @@ mod test {
             module = "bar_mod"
             is_top_level_dependency = true
         };
-        let lock_toml_string = lock_toml.to_string();
-        let lockfile: Lockfile = toml::from_str(&lock_toml_string).unwrap();
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
@@ -188,5 +187,4 @@ enum RunError {
     CannotRegenLockfile(String, failure::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
-
 }
