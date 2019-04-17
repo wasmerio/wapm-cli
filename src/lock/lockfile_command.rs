@@ -25,17 +25,13 @@ impl<'a> LockfileCommand<'a> {
             Some(package_string) => {
                 let split = package_string.as_str().split(" ").collect::<Vec<_>>();
                 match &split[..] {
-                    [package_name, package_version] => {
-                        (package_name, package_version)
-                    },
+                    [package_name, package_version] => (package_name, package_version),
                     _ => {
                         panic!("invalid package name!");
                     }
                 }
-            },
-            None => {
-                (local_package_name, local_package_version)
-            },
+            }
+            None => (local_package_name, local_package_version),
         };
 
         let lockfile_command = LockfileCommand {

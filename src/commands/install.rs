@@ -58,12 +58,12 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             regenerate_lockfile(vec![(&package.name, &last_version.version)])
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
             println!("Package installed successfully to wapm_packages!");
-        },
+        }
         None => {
             regenerate_lockfile(vec![])
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
-        },
+        }
     };
     Ok(())
 }

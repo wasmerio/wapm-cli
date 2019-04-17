@@ -148,12 +148,12 @@ impl PackageRegistry {
             // _/package -> Versions
             // package -> Versions
             // Lookups can use either name representation
-            self.0.insert(package_name.clone(), package_versions.clone());
+            self.0
+                .insert(package_name.clone(), package_versions.clone());
             if package_name.starts_with("_/") {
                 let name = package_name[2..].to_string();
                 self.0.insert(name, package_versions);
             }
-
         }
         Ok(())
     }
