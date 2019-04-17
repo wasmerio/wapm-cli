@@ -302,23 +302,23 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
 ) -> Vec<(&'dependencies str, &'dependencies str)> {
     let mut changes = vec![];
     let mut changed_package_names = vec![];
-    for (name, version) in dependencies.iter() {
+    for (name, version) in dependencies.iter().cloned() {
         match lockfile_modules.get(name) {
             Some(ref modules) if !modules.contains_key(version) => {
                 lockfile_modules.remove(name);
                 changed_package_names.push(name);
-                changes.push((*name, *version));
+                changes.push((name, version));
             }
             None => {
-                changes.push((*name, *version));
+                changes.push((name, version));
             }
             Some(_) => {}
         }
     }
 
     // remove all package dependencies modules and commands that were eliminated from the manifest
-    let dependency_packages: Vec<_> = dependencies
-        .iter()
+    let dependency_packages: Vec<&str> = dependencies
+        .into_iter()
         .map(|(package_name, _)| package_name)
         .collect();
     let removed_packages: Vec<_> = lockfile_modules
@@ -326,7 +326,8 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         .filter(|package_name| {
             dependency_packages
                 .iter()
-                .find(|name| name == &package_name)
+                .cloned()
+                .find(|name| &name == package_name)
                 .is_none()
         })
         .map(|n| n.clone())
@@ -348,7 +349,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         let removed_commands: Vec<&str> = lockfile_commands
             .iter()
             .map(|(cmd_name, c)| (cmd_name, c.package_name))
-            .filter(|(_cmd_name, package_name)| *changed_package_name == *package_name)
+            .filter(|(_cmd_name, package_name)| &changed_package_name == package_name)
             .map(|(cmd_name, _)| *cmd_name)
             .collect();
         for removed_command_name in removed_commands {

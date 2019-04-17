@@ -31,6 +31,7 @@ pub struct Command {
     pub name: String,
     pub module: String,
     pub main_args: Option<String>,
+    pub package: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -39,6 +40,7 @@ pub struct Module {
     pub source: PathBuf,
     #[serde(default = "Abi::default")]
     pub abi: Abi,
+    #[cfg(feature = "package")]
     pub fs: Option<Table>,
 }
 
@@ -88,12 +90,7 @@ impl Manifest {
     pub fn save(&self) -> Result<(), failure::Error> {
         let manifest_string = toml::to_string(self)?;
         let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&manifest_path)
-            .map_err(|err| ManifestError::CannotSaveManifest(format!("{}", err)))?;
-        file.write_all(manifest_string.as_bytes())?;
+        fs::write(manifest_path, &manifest_string)?;
         Ok(())
     }
 

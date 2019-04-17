@@ -21,7 +21,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let current_dir = env::current_dir()?;
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
-        Ok(false) => {}
+//    match Ok(true) {
+        Ok::<bool, failure::Error>(false) => {}
         _ => regenerate_lockfile(vec![])
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }

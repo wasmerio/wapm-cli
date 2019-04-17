@@ -14,10 +14,30 @@ pub struct LockfileCommand<'a> {
 
 impl<'a> LockfileCommand<'a> {
     pub fn from_command(
-        package_name: &'a str,
-        package_version: &'a str,
+        local_package_name: &'a str,
+        local_package_version: &'a str,
         command: &'a Command,
     ) -> Self {
+        // split the "package" field of the command if it exists
+        // otherwise assume that this is a command for a local module
+        // extract the package name and version for this command and insert into the lockfile command
+        let (package_name, package_version): (&'a str, &'a str) = match &command.package {
+            Some(package_string) => {
+                let split = package_string.as_str().split(" ").collect::<Vec<_>>();
+                match &split[..] {
+                    [package_name, package_version] => {
+                        (package_name, package_version)
+                    },
+                    _ => {
+                        panic!("invalid package name!");
+                    }
+                }
+            },
+            None => {
+                (local_package_name, local_package_version)
+            },
+        };
+
         let lockfile_command = LockfileCommand {
             name: command.name.as_str(),
             package_name,
