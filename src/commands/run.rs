@@ -68,7 +68,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                 lockfile_command.package_version,
                 lockfile_command.module,
             )?;
-            (lockfile_module.name, &lockfile_module.source)
+            (lockfile_module.name, &lockfile_module.entry)
         }
     } else {
         let lockfile_command = lockfile
@@ -80,7 +80,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             lockfile_command.package_version,
             lockfile_command.module,
         )?;
-        (lockfile_module.name, &lockfile_module.source)
+        (lockfile_module.name, &lockfile_module.entry)
     };
 
     // check that the source exists
