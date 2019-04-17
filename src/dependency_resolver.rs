@@ -98,21 +98,23 @@ impl PackageRegistry {
         PackageRegistry(BTreeMap::new())
     }
 
-    fn sync_packages(&mut self, package_names: Vec<String>) -> Result<(), failure::Error> {
+    fn sync_packages(
+        &mut self,
+        package_names_and_versions: &[(&str, &str)],
+    ) -> Result<(), failure::Error> {
+        let package_names: Vec<String> = package_names_and_versions
+            .iter()
+            .map(|t| t.0.to_string())
+            .collect();
         let q = GetPackagesQuery::build_query(get_packages_query::Variables {
-            names: package_names.clone(),
+            names: package_names,
         });
         let response: get_packages_query::ResponseData = execute_query(&q)?;
         for (i, pkg) in response.package.into_iter().enumerate() {
-            let p = if let Some(p) = pkg {
-                p
-            } else {
-                return Err(DependencyResolverError::MissingDependency(
-                    package_names[i].clone(),
-                    "unknown".to_string(),
-                )
-                .into());
-            };
+            let p = pkg.ok_or(DependencyResolverError::MissingDependency(
+                package_names_and_versions[i].0.to_string(),
+                package_names_and_versions[i].1.to_string(),
+            ))?;
             let package_name: String = p.name;
             let versions = p
                 .versions
@@ -154,10 +156,8 @@ impl PackageRegistryLike for PackageRegistry {
         root_dependencies: Vec<(&'a str, &'a str)>,
     ) -> Result<Vec<&'a Dependency>, failure::Error> {
         // for now, only fetch root dependencies
-        let package_names: Vec<String> =
-            root_dependencies.iter().map(|t| t.0.to_string()).collect();
         // update local map of packages
-        self.sync_packages(package_names)?;
+        self.sync_packages(&root_dependencies)?;
 
         let mut dependencies = vec![];
 
