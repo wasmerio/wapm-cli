@@ -30,8 +30,9 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
+    let manifest_result = Manifest::find_in_directory(&current_dir);
     // hack to get around running commands for local modules
-    let source_path: PathBuf = if let Ok(manifest) = Manifest::find_in_directory(&current_dir) {
+    let (module_name, source_path): (&str, &str) = if let Ok(ref manifest) = manifest_result {
         let lockfile_command = lockfile
             .get_command(command_name)
             .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
@@ -49,20 +50,25 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
         if lockfile_command.package_name == manifest.package.name {
             // this is a local module command
-            let modules = manifest.module.unwrap();
-            let source = modules
-                .iter()
-                .find(|m| m.name == lockfile_command.module)
-                .map(|m| m.source.as_path())
-                .unwrap();
-            source.to_path_buf()
+            let module = manifest.module.as_ref().map(|modules| {
+                let module = modules.iter().find(|m| m.name == lockfile_command.module);
+                module
+            });
+            module
+                .unwrap_or(None)
+                .map(|module| (module.name.as_str(), module.source.to_str().unwrap()))
+                .ok_or(RunError::FoundCommandInLockfileButMissingModule(
+                    command_name.to_string(),
+                    lockfile_command.module.to_string(),
+                    lockfile_command.package_name.to_string(),
+                ))?
         } else {
             let lockfile_module = lockfile.get_module(
                 lockfile_command.package_name,
                 lockfile_command.package_version,
                 lockfile_command.module,
             )?;
-            PathBuf::from(&lockfile_module.entry)
+            (lockfile_module.name, &lockfile_module.entry)
         }
     } else {
         let lockfile_command = lockfile
@@ -74,8 +80,18 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             lockfile_command.package_version,
             lockfile_command.module,
         )?;
-        PathBuf::from(&lockfile_module.entry)
+        (lockfile_module.name, &lockfile_module.entry)
     };
+
+    // check that the source exists
+    let source_path_buf = PathBuf::from(source_path);
+    source_path_buf.metadata().map_err(|_| {
+        RunError::SourceForCommandNotFound(
+            command_name.to_string(),
+            module_name.to_string(),
+            source_path.to_string(),
+        )
+    })?;
 
     let command_vec = create_run_command(
         args,
@@ -168,4 +184,14 @@ enum RunError {
         _0
     )]
     CommandNotFoundInDependencies(String),
+    #[fail(
+        display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
+        _0, _1, _2
+    )]
+    SourceForCommandNotFound(String, String, String),
+    #[fail(
+        display = "Command \"{}\" was found in the lockfile but the module \"{}\" from package \"{}\" was not found in the lockfile. Did you modify the lockfile?",
+        _0, _1, _2
+    )]
+    FoundCommandInLockfileButMissingModule(String, String, String),
 }
