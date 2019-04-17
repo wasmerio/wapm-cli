@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{get, set, Config};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -25,46 +25,6 @@ pub struct ConfigKeyValue {
 pub struct ConfigKey {
     #[structopt(parse(from_str))]
     key: String,
-}
-
-#[derive(Debug, Fail)]
-enum ConfigError {
-    #[fail(display = "Key not found: {}", key)]
-    KeyNotFound { key: String },
-}
-
-fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
-    match key.as_ref() {
-        "registry.url" => {
-            if config.registry.url != value {
-                config.registry.url = value;
-                // Resets the registry token automatically
-                config.registry.token = None;
-            }
-        }
-        "registry.token" => {
-            config.registry.token = Some(value);
-        }
-        _ => {
-            return Err(ConfigError::KeyNotFound { key }.into());
-        }
-    };
-    config.save()?;
-    Ok(())
-}
-
-fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
-    let value = match key.as_ref() {
-        "registry.url" => &config.registry.url,
-        "registry.token" => {
-            unimplemented!()
-            // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
-        }
-        _ => {
-            return Err(ConfigError::KeyNotFound { key }.into());
-        }
-    };
-    Ok(value)
 }
 
 pub fn config(config_opt: ConfigOpt) -> Result<(), failure::Error> {

@@ -79,6 +79,46 @@ pub enum GlobalConfigError {
     Toml(toml::de::Error),
 }
 
+#[derive(Debug, Fail)]
+pub enum ConfigError {
+    #[fail(display = "Key not found: {}", key)]
+    KeyNotFound { key: String },
+}
+
+pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
+    match key.as_ref() {
+        "registry.url" => {
+            if config.registry.url != value {
+                config.registry.url = value;
+                // Resets the registry token automatically
+                config.registry.token = None;
+            }
+        }
+        "registry.token" => {
+            config.registry.token = Some(value);
+        }
+        _ => {
+            return Err(ConfigError::KeyNotFound { key }.into());
+        }
+    };
+    config.save()?;
+    Ok(())
+}
+
+pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
+    let value = match key.as_ref() {
+        "registry.url" => &config.registry.url,
+        "registry.token" => {
+            unimplemented!()
+            // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
+        }
+        _ => {
+            return Err(ConfigError::KeyNotFound { key }.into());
+        }
+    };
+    Ok(value)
+}
+
 #[cfg(test)]
 mod test {
     use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME};
