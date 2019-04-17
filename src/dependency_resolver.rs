@@ -100,20 +100,29 @@ impl PackageRegistry {
 
     fn sync_packages(&mut self, package_names: Vec<String>) -> Result<(), failure::Error> {
         let q = GetPackagesQuery::build_query(get_packages_query::Variables {
-            names: package_names,
+            names: package_names.clone(),
         });
         let response: get_packages_query::ResponseData = execute_query(&q)?;
-        for p in response.package.into_iter().map(Option::unwrap) {
+        for (i, pkg) in response.package.into_iter().enumerate() {
+            let p = if let Some(p) = pkg {
+                p
+            } else {
+                return Err(DependencyResolverError::MissingDependency(
+                    package_names[i].clone(),
+                    "unknown".to_string(),
+                )
+                .into());
+            };
             let package_name: String = p.name;
             let versions = p
                 .versions
-                .unwrap_or(vec![])
+                .unwrap_or_default()
                 .into_iter()
                 .filter_map(|o| o)
                 .map(|v| {
                     v.package
                         .versions
-                        .unwrap_or(vec![])
+                        .unwrap_or_default()
                         .into_iter()
                         .filter_map(|o| o)
                 })
