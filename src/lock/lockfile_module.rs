@@ -12,8 +12,6 @@ pub struct LockfileModule<'a> {
     pub package_name: &'a str,
     pub source: String,
     pub resolved: String,
-    pub integrity: String,
-    pub hash: String,
     pub abi: Abi,
     pub entry: String,
 }
@@ -42,8 +40,6 @@ impl<'a> LockfileModule<'a> {
             package_name: name,
             source: format!("registry+{}", module.name),
             resolved: download_url.to_string(),
-            integrity: "".to_string(),
-            hash: "".to_string(),
             abi: module.abi.clone(),
             entry,
         };

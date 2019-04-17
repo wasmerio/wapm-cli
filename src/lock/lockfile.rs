@@ -398,8 +398,6 @@ mod get_command_tests {
             package_version = "1.0.0"
             source = ""
             resolved = ""
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = "target.wasm"
             [modules."xyz/bar"."3.0.0"."bar_module_a"]
@@ -408,8 +406,6 @@ mod get_command_tests {
             package_version = "3.0.0"
             source = ""
             resolved = ""
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = "target.wasm"
             [modules."xyz/bar"."3.0.0"."bar_module_b"]
@@ -418,8 +414,6 @@ mod get_command_tests {
             package_version = "3.0.0"
             source = ""
             resolved = ""
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = "target.wasm"
             // zero commands in the "abc/foo" package
@@ -570,8 +564,6 @@ mod create_from_manifest_tests {
             package_version = "1.0.0"
             source = "registry+test_dep_a_module"
             resolved = "dep_a_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
@@ -580,8 +572,6 @@ mod create_from_manifest_tests {
             package_version = "2.0.0"
             source = "registry+test_dep_b_module"
             resolved = "dep_b_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_b_entry
             [commands."mod_a_command"]
@@ -775,8 +765,6 @@ mod create_from_manifest_and_lockfile_tests {
             package_version = "1.0.0"
             source = "registry+test_dep_a_module"
             resolved = "dep_a_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_a_entry
             [modules."_/test_dep_b"."2.0.0"."test_dep_b_module"]
@@ -785,8 +773,6 @@ mod create_from_manifest_and_lockfile_tests {
             package_version = "2.0.0"
             source = "registry+test_dep_b_module"
             resolved = "dep_b_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_b_entry
             [commands."mod_a_command"]
@@ -835,8 +821,6 @@ mod create_from_manifest_and_lockfile_tests {
             package_version = "2.1.0"
             source = "registry+test_dep_b_module"
             resolved = "dep_b_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_b_entry
             [modules."_/test_dep_c"."4.0.0"."test_dep_c_module"]
@@ -845,8 +829,6 @@ mod create_from_manifest_and_lockfile_tests {
             package_version = "4.0.0"
             source = "registry+test_dep_c_module"
             resolved = "dep_c_test.com"
-            integrity = ""
-            hash = ""
             abi = "none"
             entry = dep_c_entry
             [commands."mod_b_command"]
