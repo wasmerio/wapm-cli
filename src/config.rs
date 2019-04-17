@@ -8,12 +8,30 @@ pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
     pub registry: Registry,
+    #[cfg(feature = "telemetry")]
+    #[serde(default)]
+    pub telemetry: Telemetry,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Registry {
     pub url: String,
     pub token: Option<String>,
+}
+
+#[cfg(feature = "telemetry")]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct Telemetry {
+    pub enabled: String,
+}
+
+#[cfg(feature = "telemetry")]
+impl Default for Telemetry {
+    fn default() -> Telemetry {
+        Telemetry {
+            enabled: "true".to_string(),
+        }
+    }
 }
 
 impl Config {
@@ -23,6 +41,8 @@ impl Config {
                 url: "https://registry.wapm.dev".to_string(),
                 token: None,
             },
+            #[cfg(feature = "telemetry")]
+            telemetry: Telemetry::default(),
         }
     }
 
@@ -97,6 +117,10 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
         "registry.token" => {
             config.registry.token = Some(value);
         }
+        #[cfg(feature = "telemetry")]
+        "telemetry.enabled" => {
+            config.telemetry.enabled = value;
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
@@ -112,6 +136,8 @@ pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
             unimplemented!()
             // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
         }
+        #[cfg(feature = "telemetry")]
+        "telemetry.enabled" => &config.telemetry.enabled,
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
