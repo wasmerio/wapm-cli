@@ -1,5 +1,6 @@
 //! logic to init a directory for use with wapm
 
+use crate::manifest::MANIFEST_FILE_NAME;
 use crate::util;
 use std::{
     fs,
@@ -35,7 +36,7 @@ pub fn init(dir: PathBuf, package_name: String) -> Result<(), failure::Error> {
 pub fn init_manifest(dir: PathBuf, package_name: String) -> Result<(), failure::Error> {
     let manifest = {
         let mut dir = dir.clone();
-        dir.push("wapm.toml");
+        dir.push(MANIFEST_FILE_NAME);
         dir
     };
     if manifest.exists() {
