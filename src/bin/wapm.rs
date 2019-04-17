@@ -61,6 +61,18 @@ fn main() {
     // env_logger::init();
     // let config: Env = envy::from_env()?;
 
+    #[cfg(feature = "telemetry")]
+    let _guard = {
+        let telemetry_is_enabled = dbg!(wapm_cli::util::telemetry_is_enabled());
+        if telemetry_is_enabled {
+            let _guard = sentry::init("https://aea870c3a5e54439999d8fed773bd8a5@sentry.io/1441509");
+            sentry::integrations::panic::register_panic_handler();
+            Some(_guard)
+        } else {
+            None
+        }
+    };
+
     let args = Command::from_args();
     let result = match args {
         Command::WhoAmI => commands::whoami(),
@@ -85,6 +97,16 @@ fn main() {
         }
     };
     if let Err(e) = result {
+        #[cfg(feature = "telemetry")]
+        {
+            // check if telemetry is enabled
+            if _guard.is_some() {
+                sentry::capture_message(&format!("Error: {}", e), sentry::Level::Error);
+                // manually flush guard because we exit the process below
+                drop(_guard);
+            }
+        }
+
         eprintln!("\nError: {}\n", e);
         std::process::exit(-1);
     }

@@ -50,3 +50,20 @@ pub fn get_username() -> Result<Option<String>, failure::Error> {
     let response: who_am_i_query::ResponseData = execute_query(&q)?;
     Ok(response.viewer.map(|viewer| viewer.username))
 }
+
+#[cfg(feature = "telemetry")]
+pub fn telemetry_is_enabled() -> bool {
+    let mut config = if let Ok(c) = crate::config::Config::from_file() {
+        c
+    } else {
+        // TODO: change this to false when wapm becomes more stable
+        // defaulting to on is for the alpha and we should be very conservative about
+        // telemetry once we have more confidence in wapm's stability/userbase size
+        return true;
+    };
+    let telemetry_str =
+        crate::config::get(&mut config, "telemetry.enabled".to_string()).unwrap_or("true");
+
+    // if we fail to parse, someone probably tried to turn it off
+    telemetry_str.parse::<bool>().unwrap_or(false)
+}

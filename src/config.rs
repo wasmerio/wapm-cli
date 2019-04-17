@@ -8,12 +8,30 @@ pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
     pub registry: Registry,
+    #[cfg(feature = "telemetry")]
+    #[serde(default)]
+    pub telemetry: Telemetry,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Registry {
     pub url: String,
     pub token: Option<String>,
+}
+
+#[cfg(feature = "telemetry")]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct Telemetry {
+    pub enabled: String,
+}
+
+#[cfg(feature = "telemetry")]
+impl Default for Telemetry {
+    fn default() -> Telemetry {
+        Telemetry {
+            enabled: "true".to_string(),
+        }
+    }
 }
 
 impl Config {
@@ -23,6 +41,8 @@ impl Config {
                 url: "https://registry.wapm.dev".to_string(),
                 token: None,
             },
+            #[cfg(feature = "telemetry")]
+            telemetry: Telemetry::default(),
         }
     }
 
@@ -77,6 +97,52 @@ pub enum GlobalConfigError {
     Io(std::io::Error),
     #[fail(display = "Error while reading config: [{}]", _0)]
     Toml(toml::de::Error),
+}
+
+#[derive(Debug, Fail)]
+pub enum ConfigError {
+    #[fail(display = "Key not found: {}", key)]
+    KeyNotFound { key: String },
+}
+
+pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
+    match key.as_ref() {
+        "registry.url" => {
+            if config.registry.url != value {
+                config.registry.url = value;
+                // Resets the registry token automatically
+                config.registry.token = None;
+            }
+        }
+        "registry.token" => {
+            config.registry.token = Some(value);
+        }
+        #[cfg(feature = "telemetry")]
+        "telemetry.enabled" => {
+            config.telemetry.enabled = value;
+        }
+        _ => {
+            return Err(ConfigError::KeyNotFound { key }.into());
+        }
+    };
+    config.save()?;
+    Ok(())
+}
+
+pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
+    let value = match key.as_ref() {
+        "registry.url" => &config.registry.url,
+        "registry.token" => {
+            unimplemented!()
+            // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
+        }
+        #[cfg(feature = "telemetry")]
+        "telemetry.enabled" => &config.telemetry.enabled,
+        _ => {
+            return Err(ConfigError::KeyNotFound { key }.into());
+        }
+    };
+    Ok(value)
 }
 
 #[cfg(test)]
