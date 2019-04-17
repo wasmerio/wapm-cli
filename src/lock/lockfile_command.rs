@@ -23,11 +23,11 @@ impl<'a> LockfileCommand<'a> {
         // extract the package name and version for this command and insert into the lockfile command
         let (package_name, package_version): (&'a str, &'a str) = match &command.package {
             Some(package_string) => {
-                let split = package_string.as_str().split(" ").collect::<Vec<_>>();
+                let split = package_string.as_str().split(' ').collect::<Vec<_>>();
                 match &split[..] {
                     [package_name, package_version] => (package_name, package_version),
                     _ => {
-                        panic!("invalid package name!");
+                        panic!("invalid package name: {}", package_string);
                     }
                 }
             }
