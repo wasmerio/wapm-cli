@@ -41,7 +41,7 @@ members = ["."]
 
 [features]
 telemetry = ["sentry"]
-default = ["telemetry"]
+default = []
 
 #[profile.release]
 #lto = true
