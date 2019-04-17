@@ -22,3 +22,4 @@ mod install;
 pub mod lock;
 mod manifest;
 pub mod util;
+mod validate;
