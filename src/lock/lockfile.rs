@@ -263,13 +263,28 @@ impl<'a> Lockfile<'a> {
         module_name: &str,
     ) -> Result<&LockfileModule, failure::Error> {
         let version_map = self.modules.get(package_name).ok_or::<failure::Error>(
-            LockfileError::ModuleNotFound(module_name.to_string()).into(),
+            LockfileError::PackageWithVersionNotFoundWhenFindingModule(
+                package_name.to_string(),
+                package_version.to_string(),
+                module_name.to_string(),
+            )
+            .into(),
         )?;
         let module_map = version_map.get(package_version).ok_or::<failure::Error>(
-            LockfileError::ModuleNotFound(module_name.to_string()).into(),
+            LockfileError::VersionNotFoundForPackageWhenFindingModule(
+                package_name.to_string(),
+                package_version.to_string(),
+                module_name.to_string(),
+            )
+            .into(),
         )?;
         let module = module_map.get(module_name).ok_or::<failure::Error>(
-            LockfileError::ModuleNotFound(module_name.to_string()).into(),
+            LockfileError::ModuleForPackageVersionNotFound(
+                package_name.to_string(),
+                package_version.to_string(),
+                module_name.to_string(),
+            )
+            .into(),
         )?;
         Ok(module)
     }
@@ -279,8 +294,18 @@ impl<'a> Lockfile<'a> {
 pub enum LockfileError {
     #[fail(display = "Command not found: {}", _0)]
     CommandNotFound(String),
-    #[fail(display = "Module not found: {}", _0)]
-    ModuleNotFound(String),
+    #[fail(display = "module {} in package \"{} {}\" was not found", _2, _0, _1)]
+    ModuleForPackageVersionNotFound(String, String, String),
+    #[fail(
+        display = "Package \"{}\" with version \"{}\" was nto found searching for module \"{}\"",
+        _0, _1, _2
+    )]
+    PackageWithVersionNotFoundWhenFindingModule(String, String, String),
+    #[fail(
+        display = "version \"{}\" for package \"{}\" was not found when searching for module \"{}\".",
+        _1, _0, _2
+    )]
+    VersionNotFoundForPackageWhenFindingModule(String, String, String),
     #[fail(display = "Lockfile file not found.")]
     MissingLockfile,
     #[fail(display = "File I/O error reading lockfile. I/O error: {:?}", _0)]
@@ -302,23 +327,23 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
 ) -> Vec<(&'dependencies str, &'dependencies str)> {
     let mut changes = vec![];
     let mut changed_package_names = vec![];
-    for (name, version) in dependencies.iter() {
+    for (name, version) in dependencies.iter().cloned() {
         match lockfile_modules.get(name) {
             Some(ref modules) if !modules.contains_key(version) => {
                 lockfile_modules.remove(name);
                 changed_package_names.push(name);
-                changes.push((*name, *version));
+                changes.push((name, version));
             }
             None => {
-                changes.push((*name, *version));
+                changes.push((name, version));
             }
             Some(_) => {}
         }
     }
 
     // remove all package dependencies modules and commands that were eliminated from the manifest
-    let dependency_packages: Vec<_> = dependencies
-        .iter()
+    let dependency_packages: Vec<&str> = dependencies
+        .into_iter()
         .map(|(package_name, _)| package_name)
         .collect();
     let removed_packages: Vec<_> = lockfile_modules
@@ -326,7 +351,8 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         .filter(|package_name| {
             dependency_packages
                 .iter()
-                .find(|name| name == &package_name)
+                .cloned()
+                .find(|name| &name == package_name)
                 .is_none()
         })
         .map(|n| n.clone())
@@ -348,7 +374,7 @@ fn resolve_changes<'dependencies, 'modules: 'dependencies>(
         let removed_commands: Vec<&str> = lockfile_commands
             .iter()
             .map(|(cmd_name, c)| (cmd_name, c.package_name))
-            .filter(|(_cmd_name, package_name)| *changed_package_name == *package_name)
+            .filter(|(_cmd_name, package_name)| &changed_package_name == package_name)
             .map(|(cmd_name, _)| *cmd_name)
             .collect();
         for removed_command_name in removed_commands {

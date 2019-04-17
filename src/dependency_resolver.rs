@@ -144,7 +144,16 @@ impl PackageRegistry {
                 .map(|v| Dependency::new(&package_name, v.1.as_str(), v.0.unwrap(), v.2.as_str()))
                 .collect();
 
-            self.0.insert(package_name, package_versions);
+            // if the dependency is a global package, we insert two records:
+            // _/package -> Versions
+            // package -> Versions
+            // Lookups can use either name representation
+            self.0
+                .insert(package_name.clone(), package_versions.clone());
+            if package_name.starts_with("_/") {
+                let name = package_name[2..].to_string();
+                self.0.insert(name, package_versions);
+            }
         }
         Ok(())
     }
