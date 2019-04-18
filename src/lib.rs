@@ -15,6 +15,7 @@ extern crate prettytable;
 extern crate toml;
 
 mod abi;
+mod bonjour;
 pub mod commands;
 mod config;
 mod dependency_resolver;
