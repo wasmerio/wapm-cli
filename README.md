@@ -18,73 +18,20 @@
 
 # Introduction
 
-The WebAssembly Package Manager CLI
+The WebAssembly Package Manager CLI. This tool enables installing, managing, and publishing wasm packages on the [wapm.io][wapmio] registry. 
 
-```
-wapm
-```
+## Get Started
 
-## Commands
+Read the [`wapm-cli` user guide on `wapm.io`][guide] to get started using the tool and use the [`wapm-cli` reference][reference]
+for information about the cli commands.
 
-#### `wapm login`
+## Get Help
 
-Logins the user in the registry with the given credentials.
+Join the discussion on [spectrum chat][spectrum] in the `wapm-cli` channel, or create a GitHub issue. We love to help!
 
-#### `wapm logout`
+## Contributing
 
-Logouts the user from the registry, resetting the token.
-
-#### `wapm whoami`
-
-Shows the current user logged in.
-
-#### `wapm config set <key> <value>`
-
-Sets a config `key` with the given `value`.
-
-_Note: when setting the `registry.url`, the `registry.token` will reset automatically._
-
-#### `wapm config get <key>`
-
-Gets the config `key` contents.
-
-#### `wapm search <query>`
-
-Search for packages related to the `query`.
-
-#### `wapm run`
-
-One can execute a package command with the `run` command. The command will be run with the wasmer runtime.
-
-#### `wapm validate <wapm_package_location>`
-
-Validate the sources of local wapm modules. Will display an error if the sources are not valid WebAssembly.
-
-## Manifest (`wapm.toml`)
-
-The manifest file describes how to describe a wasm package. The manifest is optional and should live in 
-the root directory of a wapm project. A corresponding `wapm.lock` file is generated when running `wapm`
-commands.
-
-An example manifest:
-
-```toml
-[package]
-name = "username/app"
-description = "My awesome app is awesome."
-version = "0.1.0"
-
-[dependencies]
-dep_name = "0.1.0"
-
-[[module]]
-name = "my_app"
-source = "app.wasm"
-
-[[command]]
-name = "run"
-module = "my_app"
-```
+See the [contributing guide][contributing] for instruction on contributing to `wapm-cli`.
 
 ## Development
 
@@ -98,5 +45,9 @@ graphql get-schema -e dev
 
 _Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
 
-[1]: https://webassembly.github.io/spec/core/appendix/custom.html
-[2]: https://wasmer.io
+[contributing]: CONTRIBUTING.md
+[guide]: https://wapm.io/help/guide
+[reference]: https://wapm.io/help/reference
+[spectrum]: https://spectrum.chat/wasmer
+[wasmer]: https://wasmer.io
+[wapmio]: https://wapm.io
