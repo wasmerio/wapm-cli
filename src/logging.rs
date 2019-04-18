@@ -10,7 +10,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
         .warn(Color::Yellow)
         .trace(Color::BrightBlack);
 
-    let colors_level = colors_line.clone().info(Color::Green);
+    let colors_level = colors_line.info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
         .level(log::LevelFilter::Debug)
