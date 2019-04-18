@@ -1,8 +1,0 @@
-name = "standupx"
-version = "0.0.9"
-description = 'the simple package, now improved'
-license = 'MIT'
-source = "../target/wasm32-unknown-unknown/debug/simple.wasm"
-readme = "README"
-target = "simple_bundle.wasm"
-
