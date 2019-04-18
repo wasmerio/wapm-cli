@@ -62,7 +62,13 @@ pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str)
     let split: Vec<&str> = package_name.split('/').collect();
     match &split[..] {
         [namespace, name] => Ok((*namespace, *name)),
-        [global_package_name] => Ok(("_", *global_package_name)),
+        [global_package_name] => {
+            info!(
+                "Interpreting unqualified global package name \"{}\" as \"_/{}\"",
+                package_name, global_package_name
+            );
+            Ok(("_", *global_package_name))
+        }
         _ => bail!("Package name is invalid"),
     }
 }

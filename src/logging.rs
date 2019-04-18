@@ -1,6 +1,9 @@
+//! Utilities for setting up logging
+
 use fern::colors::{Color, ColoredLevelConfig};
 use std::{fs, path::PathBuf};
 
+/// Subroutine to instantiate the loggers
 pub fn set_up_logging() -> Result<(), failure::Error> {
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
@@ -65,6 +68,8 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                     ));
                 })
                 .level(log::LevelFilter::Debug)
+                .level_for("hyper", log::LevelFilter::Info)
+                .level_for("tokio_reactor", log::LevelFilter::Info)
                 .chain(
                     fs::OpenOptions::new()
                         .write(true)
