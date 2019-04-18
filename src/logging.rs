@@ -13,6 +13,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
     let colors_level = colors_line.clone().info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
+        .level(log::LevelFilter::Debug)
         .chain(
             fern::Dispatch::new()
                 .format(move |out, message, record| {
