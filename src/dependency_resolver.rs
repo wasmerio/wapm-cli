@@ -164,6 +164,10 @@ impl PackageRegistryLike for PackageRegistry {
         &'a mut self,
         root_dependencies: Vec<(&'a str, &'a str)>,
     ) -> Result<Vec<&'a Dependency>, failure::Error> {
+        // return early if there are no dependencies to resolve
+        if root_dependencies.is_empty() {
+            return Ok(vec![])
+        }
         // for now, only fetch root dependencies
         // update local map of packages
         self.sync_packages(&root_dependencies)?;
