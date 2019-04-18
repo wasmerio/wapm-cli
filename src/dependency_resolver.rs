@@ -166,7 +166,7 @@ impl PackageRegistryLike for PackageRegistry {
     ) -> Result<Vec<&'a Dependency>, failure::Error> {
         // return early if there are no dependencies to resolve
         if root_dependencies.is_empty() {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
         // for now, only fetch root dependencies
         // update local map of packages
@@ -200,7 +200,13 @@ impl PackageRegistryLike for PackageRegistry {
         for dependency in dependencies.iter().cloned() {
             let dependency: &Dependency = dependency;
             if !dependency.wapm_package_directory.exists() {
+                info!("Installing {}@{}", dependency.name, dependency.version);
                 install_package(dependency, &cwd)?;
+            } else {
+                debug!(
+                    "Package {}@{} already exists; doing nothing",
+                    dependency.name, dependency.version
+                );
             }
         }
         Ok(dependencies)

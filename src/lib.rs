@@ -1,4 +1,6 @@
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate failure;
 #[cfg(feature = "package")]
 #[macro_use]
@@ -20,6 +22,7 @@ mod graphql;
 mod init;
 mod install;
 pub mod lock;
+pub mod logging;
 mod manifest;
 pub mod util;
 mod validate;
