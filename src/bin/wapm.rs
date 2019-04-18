@@ -1,5 +1,5 @@
 use structopt::{clap::AppSettings, StructOpt};
-use wapm_cli::commands;
+use wapm_cli::{commands, logging};
 
 #[derive(StructOpt, Debug)]
 enum Command {
@@ -57,9 +57,9 @@ enum Command {
 }
 
 fn main() {
-    // dotenv::dotenv().ok();
-    // env_logger::init();
-    // let config: Env = envy::from_env()?;
+    if let Err(e) = logging::set_up_logging() {
+        eprintln!("Error: {}", e);
+    }
 
     #[cfg(feature = "telemetry")]
     let _guard = {
@@ -107,7 +107,7 @@ fn main() {
             }
         }
 
-        eprintln!("\nError: {}\n", e);
+        eprintln!("Fatal Error: {}", e);
         std::process::exit(-1);
     }
 }
