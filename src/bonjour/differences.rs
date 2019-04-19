@@ -1,10 +1,11 @@
 use crate::bonjour::lockfile::LockfileData;
 use crate::bonjour::manifest::ManifestData;
-use crate::bonjour::{PackageData, PackageId};
+use crate::bonjour::{PackageData, PackageId, BonjourError};
 use crate::dependency_resolver::{Dependency};
-use crate::lock::{LockfileCommand, LockfileModule};
+use crate::lock::{LockfileCommand, LockfileModule, Lockfile};
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct PackageDataDifferences<'a> {
@@ -16,72 +17,45 @@ pub struct PackageDataDifferences<'a> {
 
 impl<'a> PackageDataDifferences<'a> {
     pub fn calculate_differences(
-        manifest_data: Option<ManifestData<'a>>,
-        lockfile_data: Option<LockfileData<'a>>,
+        manifest_data: ManifestData<'a>,
+        lockfile_data: LockfileData<'a>,
     ) -> Self {
-        match (manifest_data, lockfile_data) {
-            (Some(manifest_data), Some(lockfile_data)) => {
-                let manifest_packages_set: BTreeSet<PackageId> =
-                    manifest_data.package_data.keys().cloned().collect();
-                let lockfile_packages_set: BTreeSet<PackageId> =
-                    lockfile_data.package_data.keys().cloned().collect();
-                let added_set: BTreeSet<PackageId> = manifest_packages_set
-                    .difference(&lockfile_packages_set)
-                    .cloned()
-                    .collect();
-                let removed_set: BTreeSet<PackageId> = lockfile_packages_set
-                    .difference(&manifest_packages_set)
-                    .cloned()
-                    .collect();
-                let retained_set: BTreeSet<PackageId> = manifest_packages_set
-                    .union(&lockfile_packages_set)
-                    .cloned()
-                    .collect();
-                let (_removed_packages_map, mut new_state): (BTreeMap<_, _>, BTreeMap<_, _>) =
-                    lockfile_data
-                        .package_data
-                        .into_iter()
-                        .partition(|(id, _data)| removed_set.contains(id));
+        let manifest_package_data = manifest_data.package_data.unwrap_or_default();
+        let lockfile_package_data = lockfile_data.package_data.unwrap_or_default();
 
-                let mut added_packages: BTreeMap<PackageId, PackageData> = manifest_data
-                    .package_data
-                    .into_iter()
-                    .filter(|(id, _data)| added_set.contains(id))
-                    .collect();
+        let manifest_packages_set: BTreeSet<PackageId> =
+            manifest_package_data.keys().cloned().collect();
+        let lockfile_packages_set: BTreeSet<PackageId> =
+            lockfile_package_data.keys().cloned().collect();
+        let added_set: BTreeSet<PackageId> = manifest_packages_set
+            .difference(&lockfile_packages_set)
+            .cloned()
+            .collect();
+        let removed_set: BTreeSet<PackageId> = lockfile_packages_set
+            .difference(&manifest_packages_set)
+            .cloned()
+            .collect();
+        let retained_set: BTreeSet<PackageId> = manifest_packages_set
+            .union(&lockfile_packages_set)
+            .cloned()
+            .collect();
+        let (_removed_packages_map, mut new_state): (BTreeMap<_, _>, BTreeMap<_, _>) =
+            lockfile_package_data
+                .into_iter()
+                .partition(|(id, _data)| removed_set.contains(id));
 
-                new_state.append(&mut added_packages);
+        let mut added_packages: BTreeMap<PackageId, PackageData> = manifest_package_data
+            .into_iter()
+            .filter(|(id, _data)| added_set.contains(id))
+            .collect();
 
-                PackageDataDifferences {
-                    added_set,
-                    removed_set,
-                    retained_set,
-                    new_state,
-                }
-            }
-            (Some(manifest_data), None) => {
-                let manifest_packages_set = manifest_data.package_data.keys().cloned().collect();
-                PackageDataDifferences {
-                    added_set: manifest_packages_set,
-                    removed_set: BTreeSet::new(),
-                    retained_set: BTreeSet::new(),
-                    new_state: manifest_data.package_data,
-                }
-            }
-            (None, Some(lockfile_data)) => {
-                let lockfile_packages_set = lockfile_data.package_data.keys().cloned().collect();
-                PackageDataDifferences {
-                    added_set: BTreeSet::new(),
-                    removed_set: BTreeSet::new(),
-                    retained_set: lockfile_packages_set,
-                    new_state: lockfile_data.package_data,
-                }
-            }
-            (None, None) => PackageDataDifferences {
-                added_set: BTreeSet::new(),
-                removed_set: BTreeSet::new(),
-                retained_set: BTreeSet::new(),
-                new_state: BTreeMap::new(),
-            },
+        new_state.append(&mut added_packages);
+
+        PackageDataDifferences {
+            added_set,
+            removed_set,
+            retained_set,
+            new_state,
         }
     }
 
@@ -99,5 +73,44 @@ impl<'a> PackageDataDifferences<'a> {
             let lockfile_package = PackageData::LockfilePackage { modules, commands };
             self.new_state.insert(id, lockfile_package);
         }
+    }
+
+    pub fn generate_lockfile(
+        &self,
+        directory: &'a Path,
+    ) -> Result<(), BonjourError> {
+        let mut lockfile = Lockfile {
+            modules: BTreeMap::new(),
+            commands: BTreeMap::new(),
+        };
+
+        self
+            .new_state
+            .iter()
+            .map(|(id, data)| match (id, data) {
+                (
+                    PackageId::WapmRegistryPackage { name, version },
+                    PackageData::LockfilePackage { modules, commands },
+                ) => {
+                    for module in modules {
+                        let versions: &mut BTreeMap<&str, BTreeMap<&str, LockfileModule>> =
+                            lockfile.modules.entry(name).or_default();
+                        let modules: &mut BTreeMap<&str, LockfileModule> =
+                            versions.entry(version).or_default();
+                        modules.insert(module.name.clone(), module.clone());
+                    }
+                    for command in commands {
+                        lockfile
+                            .commands
+                            .insert(command.name.clone(), command.clone());
+                    }
+                }
+                _ => {}
+            })
+            .for_each(drop);
+
+        lockfile
+            .save(&directory)
+            .map_err(|e| BonjourError::LockfileSaveError(e.to_string()))
     }
 }

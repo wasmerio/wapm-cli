@@ -1,6 +1,24 @@
 use crate::bonjour::{BonjourError, PackageData, PackageId};
-use crate::lock::{Lockfile, LockfileCommand};
+use crate::lock::{Lockfile, LockfileCommand, LOCKFILE_NAME};
 use std::collections::btree_map::BTreeMap;
+use std::path::Path;
+use std::fs;
+
+pub struct LockfileSource {
+    source: Option<String>,
+}
+
+impl LockfileSource {
+    pub fn new<P: AsRef<Path>>(directory: P) -> Self {
+        let directory = directory.as_ref();
+        if !directory.is_dir() {
+            return Self { source: None };
+        }
+        let lockfile_path_buf = directory.join(LOCKFILE_NAME);
+        let source = fs::read_to_string(&lockfile_path_buf).ok();
+        Self { source }
+    }
+}
 
 #[derive(Debug)]
 pub enum LockfileResult<'a> {
@@ -10,8 +28,8 @@ pub enum LockfileResult<'a> {
 }
 
 impl<'a> LockfileResult<'a> {
-    pub fn from_optional_source(source: &'a Option<String>) -> LockfileResult {
-        source
+    pub fn from_source(source: &'a LockfileSource) -> LockfileResult {
+        source.source
             .as_ref()
             .map(|source| match toml::from_str::<Lockfile>(source) {
                 Ok(l) => LockfileResult::Lockfile(l),
@@ -30,14 +48,14 @@ impl<'a> Default for LockfileResult<'a> {
 }
 
 pub struct LockfileData<'a> {
-    pub package_data: BTreeMap<PackageId<'a>, PackageData<'a>>,
+    pub package_data: Option<BTreeMap<PackageId<'a>, PackageData<'a>>>,
 }
 
 impl<'a> LockfileData<'a> {
-    pub fn new_from_result(result: LockfileResult<'a>) -> Result<Option<Self>, BonjourError> {
+    pub fn new_from_result(result: LockfileResult<'a>) -> Result<Self, BonjourError> {
         match result {
-            LockfileResult::Lockfile(l) => Ok(Some(Self::new_from_lockfile(l))),
-            LockfileResult::NoLockfile => Ok(None),
+            LockfileResult::Lockfile(l) => Ok(Self::new_from_lockfile(l)),
+            LockfileResult::NoLockfile => Ok(Self {package_data: None}),
             LockfileResult::LockfileError(e) => return Err(e),
         }
     }
@@ -78,6 +96,6 @@ impl<'a> LockfileData<'a> {
             .flatten()
             .collect::<BTreeMap<_, _>>();
 
-        Self { package_data }
+        Self { package_data: Some(package_data) }
     }
 }

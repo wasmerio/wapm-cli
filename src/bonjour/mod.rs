@@ -2,14 +2,13 @@ use std::cmp::Ordering;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::{env};
 
 use crate::bonjour::differences::PackageDataDifferences;
-use crate::bonjour::lockfile::{LockfileData, LockfileResult};
-use crate::bonjour::manifest::{ManifestData, ManifestResult};
+use crate::bonjour::lockfile::{LockfileData, LockfileResult, LockfileSource};
+use crate::bonjour::manifest::{ManifestData, ManifestResult, ManifestSource};
 use crate::dependency_resolver::{Dependency, PackageRegistry, PackageRegistryLike};
-use crate::lock::{Lockfile, LockfileCommand, LockfileModule, LOCKFILE_NAME};
-use crate::manifest::MANIFEST_FILE_NAME;
+use crate::lock::{Lockfile, LockfileCommand, LockfileModule};
 
 pub mod differences;
 pub mod lockfile;
@@ -82,22 +81,6 @@ pub enum PackageData<'a> {
 //    ManifestPackage,
 }
 
-fn open_manifest_file(directory: &Path) -> Option<String> {
-    if !directory.is_dir() {
-        return None;
-    }
-    let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
-    fs::read_to_string(&manifest_path_buf).ok()
-}
-
-fn open_lockfile(directory: &Path) -> Option<String> {
-    if !directory.is_dir() {
-        return None;
-    }
-    let lockfile_path_buf = directory.join(LOCKFILE_NAME);
-    fs::read_to_string(&lockfile_path_buf).ok()
-}
-
 fn install_added_dependencies<'a>(
     added_set: BTreeSet<PackageId<'a>>,
     registry: &'a mut PackageRegistry,
@@ -118,62 +101,18 @@ fn install_added_dependencies<'a>(
         .map_err(|e| BonjourError::InstallError(e.to_string()))
 }
 
-fn generate_lockfile<'a>(
-    differences: &PackageDataDifferences<'a>,
-    directory: &'a Path,
-) -> Result<(), BonjourError> {
-    let mut lockfile = Lockfile {
-        modules: BTreeMap::new(),
-        commands: BTreeMap::new(),
-    };
-
-    differences
-        .new_state
-        .iter()
-        .map(|(id, data)| match (id, data) {
-            (
-                PackageId::WapmRegistryPackage { name, version },
-                PackageData::LockfilePackage { modules, commands },
-            ) => {
-                for module in modules {
-                    let versions: &mut BTreeMap<&str, BTreeMap<&str, LockfileModule>> =
-                        lockfile.modules.entry(name).or_default();
-                    let modules: &mut BTreeMap<&str, LockfileModule> =
-                        versions.entry(version).or_default();
-                    modules.insert(module.name.clone(), module.clone());
-                }
-                for command in commands {
-                    lockfile
-                        .commands
-                        .insert(command.name.clone(), command.clone());
-                }
-            }
-            _ => {}
-        })
-        .for_each(drop);
-
-    lockfile
-        .save(&directory)
-        .map_err(|e| BonjourError::LockfileSaveError(e.to_string()))
-}
-
 pub fn update(added_packages: Vec<(&str, &str)>) -> Result<(), BonjourError> {
     let directory: PathBuf = env::current_dir().unwrap(); // TODO: will panic, move this up later
     // get manifest data
-    let manifest_string_source: Option<String> = open_manifest_file(&directory);
-    let manifest_result: ManifestResult = ManifestResult::from_optional_source(&manifest_string_source);
-    let mut manifest_data: Option<ManifestData> = ManifestData::new_from_result(&manifest_result)?;
-    // add additional dependencies to deserialized manifest data
-    if let Some(ref mut manifest_data) = manifest_data {
-        for (name, version) in added_packages {
-            let id = PackageId::new_registry_package(name, version);
-            manifest_data.package_data.insert(id, PackageData::ManifestDependencyPackage);
-        }
-    }
+    let manifest_source = ManifestSource::new(&directory);
+    let manifest_result = ManifestResult::from_source(&manifest_source);
+    let mut manifest_data = ManifestData::new_from_result(&manifest_result)?;
+    // add the extra packages
+    manifest_data.add_additional_packages(&added_packages);
     // get lockfile data
-    let lockfile_string: Option<String> = open_lockfile(&directory); // None indicates file is unavailable
-    let lockfile_result: LockfileResult = LockfileResult::from_optional_source(&lockfile_string);
-    let lockfile_data: Option<LockfileData> = LockfileData::new_from_result(lockfile_result)?;
+    let lockfile_string = LockfileSource::new(&directory);
+    let lockfile_result: LockfileResult = LockfileResult::from_source(&lockfile_string);
+    let lockfile_data= LockfileData::new_from_result(lockfile_result)?;
     // construct a pacakge registry for accessing external dependencies
     let mut registry = PackageRegistry::new();
     // create a differences object. It has added, removed, and unchanged package ids.
@@ -184,6 +123,6 @@ pub fn update(added_packages: Vec<(&str, &str)>) -> Result<(), BonjourError> {
     let dependencies = install_added_dependencies(added_set, &mut registry)?;
     differences.insert_dependencies_as_lockfile_packages(&dependencies);
     // generate and save a lockfile
-    generate_lockfile(&differences, &directory)?;
+    differences.generate_lockfile(&directory)?;
     Ok(())
 }
