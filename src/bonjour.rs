@@ -159,42 +159,49 @@ fn open_lockfile(directory: &Path) -> Option<String> {
 }
 
 fn calculate_differences<'a>(
-    manifest_data: &'a Option<ManifestData<'a>>,
-    lockfile_data: &'a Option<LockfileData<'a>>,
-) -> (&'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>) {
+    manifest_data: Option<ManifestData<'a>>,
+    lockfile_data: Option<LockfileData<'a>>,
+) -> (BTreeSet<PackageId<'a>>, BTreeSet<PackageId<'a>>, BTreeSet<PackageId<'a>>, BTreeMap<PackageId<'a>, PackageData<'a>>) {
     match (manifest_data, lockfile_data) {
         (Some(manifest_data), Some(lockfile_data)) => {
-            let manifest_packages_set: &BTreeMap<PackageId, PackageData> = &manifest_data.package_data;
-            let lockfile_packages_set: &BTreeMap<PackageId, PackageData> = &lockfile_data.package_data;
-            let added = manifest_packages_set
-                .difference(lockfile_packages_set)
+            let manifest_packages_set: BTreeSet<PackageId> = manifest_data.package_data.keys().cloned().collect();
+            let lockfile_packages_set: BTreeSet<PackageId> = lockfile_data.package_data.keys().cloned().collect();
+            let added: BTreeSet<PackageId> = manifest_packages_set
+                .difference(&lockfile_packages_set)
                 .cloned()
-                .collect::<BTreeMap<_,_>>();
-            let removed = lockfile_packages_set
-                .difference(manifest_packages_set)
+                .collect();
+            let removed: BTreeSet<PackageId> = lockfile_packages_set
+                .difference(&manifest_packages_set)
                 .cloned()
-                .collect::<BTreeMap<_,_>>();
-            let unchanged = manifest_packages_set
-                .union(lockfile_packages_set)
+                .collect();
+            let unchanged: BTreeSet<PackageId> = manifest_packages_set
+                .union(&lockfile_packages_set)
                 .cloned()
-                .collect::<BTreeMap<_,_>>();
-            let current_state = [&unchanged.clone()[..], &added.clone()[..]].concat();
-            (added, removed, unchanged, current_state)
+                .collect();
+            let (removed_packages_map, mut current_packages): (BTreeMap<_,_>, BTreeMap<_,_>) = lockfile_data.package_data.into_iter().partition(|(id, data)| {
+                removed.contains(id)
+            });
+
+            let mut added_packages: BTreeMap<PackageId, PackageData> = manifest_data.package_data.into_iter().filter(|(id, data)| {
+                added.contains(id)
+            }).collect();
+
+            current_packages.append(&mut added_packages);
+
+            (added, removed, unchanged, current_packages)
         },
         (Some(manifest_data), None) => {
-            let manifest_packages_set = &manifest_data.package_data;
-            (manifest_packages_set, BTreeMap::New(), BTreeMap::New(), manifest_packages_set)
+            let manifest_packages_set = manifest_data.package_data.keys().cloned().collect();
+            (manifest_packages_set, BTreeSet::new(), BTreeSet::new(), manifest_data.package_data)
         },
         (None, Some(lockfile_data)) => {
-            let lockfile_packages_set = &lockfile_data.package_data;
-            (BTreeMap::New(), BTreeMap::New(), lockfile_packages_set, lockfile_packages_set)
+            let lockfile_packages_set = lockfile_data.package_data.keys().cloned().collect();
+            (BTreeSet::new(), BTreeSet::new(), lockfile_packages_set, lockfile_data.package_data)
         },
         (None, None) => {
-            (BTreeMap::New(), BTreeMap::New(), BTreeMap::New(), BTreeMap::New())
+            (BTreeSet::new(), BTreeSet::new(), BTreeSet::new(), BTreeMap::new())
         },
-
     }
-
 }
 
 enum ManifestResult {
@@ -230,9 +237,12 @@ pub fn update() -> Result<(), BonjourError> {
         Some(result) => Some(result?),
         None => None,
     };
-    let (added, removed, unchanged, new_state) = calculate_differences(&manifest_data, &lockfile_data);
+    let (added, removed, unchanged, new_state) = calculate_differences(manifest_data, lockfile_data);
+
+    // install missing dependencies
+
     // serialize
-    let lockfile_data = LockfileData::new_from_packages(new_state);
+    let lockfile_data = LockfileData::new_from_packages(&new_state);
     lockfile_data.save(&directory)?;
     Ok(())
 }
