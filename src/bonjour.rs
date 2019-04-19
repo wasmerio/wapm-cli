@@ -7,6 +7,7 @@ use std::collections::btree_set::BTreeSet;
 use std::path::Path;
 use std::{env, fs};
 use toml::Value;
+use crate::bonjour::PackageData::ManifestDependencyPackage;
 
 #[derive(Clone, Debug, Fail)]
 pub enum BonjourError {
@@ -67,63 +68,33 @@ pub enum PackageData<'a> {
         modules: Vec<LockfileModule<'a>>,
         commands: Vec<LockfileCommand<'a>>,
     },
-    ManifestDependencyPackage {},
-    ManifestPackage {},
+    ManifestDependencyPackage,
+    ManifestPackage,
 }
 
 struct ManifestData<'a> {
-//    pub value: Option<Manifest>,
     pub package_data: BTreeMap<PackageId<'a>, PackageData<'a>>,
 }
 
 impl<'a> ManifestData<'a> {
-    pub fn new_from_string(source: &String) -> Result<Self, BonjourError> {
-        if let Manifest { package, dependencies: Some(dependencies), .. } = toml::from_str::<Manifest>(source)
-            .map(|m| m)
-            .map_err(|e| BonjourError::ManifestTomlParseError(e.to_string()))? {
-            let package_ids = dependencies
+    pub fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, BonjourError> {
+        let package_data = if let Manifest { package, dependencies: Some(ref dependencies), .. } = manifest {
+            dependencies
                 .iter()
                 .map(|(name, value)| match value {
-                    Value::String(version) => Ok(PackageId::WapmRegistryPackage {
+                    Value::String(ref version) => Ok((PackageId::WapmRegistryPackage {
                         name,
-                        version: &version,
-                    }),
+                        version,
+                    }, PackageData::ManifestDependencyPackage)),
                     _ => Err(BonjourError::DependencyVersionMustBeString(
                         name.to_string(),
                     )),
                 })
-                .collect::<Result<BTreeSet<_>, BonjourError>>()
-                .map(|d| if d.is_empty() { None } else { Some(d) });
-            package_ids
+                .collect::<Result<BTreeMap<PackageId, PackageData>, BonjourError>>()?
+        } else {
+            BTreeMap::new()
         };
-        unimplemented!()
-    }
-
-    pub fn get_packages(&'a self) -> Result<Option<BTreeSet<PackageId<'a>>>, BonjourError> {
-        match self.value {
-            Some(Manifest {
-                ref package,
-                dependencies: Some(ref dependencies),
-                ..
-            }) => {
-                // TODO, also pass along local package key
-                let package_ids = dependencies
-                    .iter()
-                    .map(|(name, value)| match value {
-                        Value::String(version) => Ok(PackageId::WapmRegistryPackage {
-                            name,
-                            version: &version,
-                        }),
-                        _ => Err(BonjourError::DependencyVersionMustBeString(
-                            name.to_string(),
-                        )),
-                    })
-                    .collect::<Result<BTreeSet<_>, BonjourError>>()
-                    .map(|d| if d.is_empty() { None } else { Some(d) });
-                package_ids
-            }
-            _ => Ok(None),
-        }
+        Ok(ManifestData { package_data })
     }
 }
 
@@ -162,7 +133,7 @@ impl<'a> LockfileData<'a> {
         })
     }
 
-    pub fn new_from_packages(packages: BTreeMap<PackageId<'a>, PackageData<'a>>) -> Self {
+    pub fn new_from_packages(packages: &BTreeMap<PackageId<'a>, PackageData<'a>>) -> Self {
         unimplemented!()
     }
 
@@ -188,73 +159,80 @@ fn open_lockfile(directory: &Path) -> Option<String> {
 }
 
 fn calculate_differences<'a>(
-    manifest_packages_set: Option<BTreeSet<PackageId<'a>>>,
-    lockfile_packages_set: Option<BTreeSet<PackageId<'a>>>,
-) -> (Vec<PackageId<'a>>, Vec<PackageId<'a>>, Vec<PackageId<'a>>) {
-    match (manifest_packages_set, lockfile_packages_set) {
-        (Some(manifest_pkgs), Some(lockfile_pkgs)) => {
-            let added = manifest_pkgs
-                .difference(&lockfile_pkgs)
+    manifest_data: &'a Option<ManifestData<'a>>,
+    lockfile_data: &'a Option<LockfileData<'a>>,
+) -> (&'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>, &'a BTreeMap<PackageId<'a>, PackageData<'a>>) {
+    match (manifest_data, lockfile_data) {
+        (Some(manifest_data), Some(lockfile_data)) => {
+            let manifest_packages_set: &BTreeMap<PackageId, PackageData> = &manifest_data.package_data;
+            let lockfile_packages_set: &BTreeMap<PackageId, PackageData> = &lockfile_data.package_data;
+            let added = manifest_packages_set
+                .difference(lockfile_packages_set)
                 .cloned()
-                .collect::<Vec<_>>();
-            let removed = lockfile_pkgs
-                .difference(&manifest_pkgs)
+                .collect::<BTreeMap<_,_>>();
+            let removed = lockfile_packages_set
+                .difference(manifest_packages_set)
                 .cloned()
-                .collect::<Vec<_>>();
-            let unchanged = manifest_pkgs
-                .union(&lockfile_pkgs)
+                .collect::<BTreeMap<_,_>>();
+            let unchanged = manifest_packages_set
+                .union(lockfile_packages_set)
                 .cloned()
-                .collect::<Vec<_>>();
-            (added, removed, unchanged)
+                .collect::<BTreeMap<_,_>>();
+            let current_state = [&unchanged.clone()[..], &added.clone()[..]].concat();
+            (added, removed, unchanged, current_state)
+        },
+        (Some(manifest_data), None) => {
+            let manifest_packages_set = &manifest_data.package_data;
+            (manifest_packages_set, BTreeMap::New(), BTreeMap::New(), manifest_packages_set)
+        },
+        (None, Some(lockfile_data)) => {
+            let lockfile_packages_set = &lockfile_data.package_data;
+            (BTreeMap::New(), BTreeMap::New(), lockfile_packages_set, lockfile_packages_set)
+        },
+        (None, None) => {
+            (BTreeMap::New(), BTreeMap::New(), BTreeMap::New(), BTreeMap::New())
+        },
+
+    }
+
+}
+
+enum ManifestResult {
+    Manifest(Manifest),
+    NoManifest,
+    ManifestError(BonjourError),
+}
+
+impl ManifestResult {
+    pub fn from_source(source: &String) -> ManifestResult {
+        match toml::from_str::<Manifest>(source) {
+            Ok(m) => ManifestResult::Manifest(m),
+            Err(e) => ManifestResult::ManifestError(BonjourError::ManifestTomlParseError(e.to_string())),
         }
-        (Some(manifest_pkgs), None) => {
-            let added = manifest_pkgs.into_iter().collect::<Vec<_>>();
-            (added, vec![], vec![])
-        }
-        (None, Some(lockfile_pkgs)) => {
-            let unchanged = lockfile_pkgs.into_iter().collect::<Vec<_>>();
-            (vec![], vec![], unchanged)
-        }
-        (None, None) => (vec![], vec![], vec![]),
     }
 }
 
 pub fn update() -> Result<(), BonjourError> {
     let directory = env::current_dir().unwrap(); // TODO: will panic, move this up later
-    let manifest_string = open_manifest_file(&directory);
+    let manifest_string_source = open_manifest_file(&directory);
+    let manifest = manifest_string_source.as_ref()
+        .map(ManifestResult::from_source)
+        .unwrap_or(ManifestResult::NoManifest);
+    let manifest_data: Option<ManifestData> = match manifest {
+        ManifestResult::Manifest(ref manifest) => Some(ManifestData::new_from_manifest(manifest)),
+        ManifestResult::NoManifest => None,
+        ManifestResult::ManifestError(e) => return Err(e)
+    }.map_or(Ok(None), |r| r.map(Some))?;
+//    let manifest_string = manifest_string_source.as_ref();
     let lockfile_string = open_lockfile(&directory); // None indicates file is unavailable
-                                                     // deserialize and create manifest data
-    let manifest_data = match manifest_string.as_ref().map(ManifestData::new_from_string) {
-        Some(result) => Some(result?),
-        None => None,
-    };
-    // collect manifest dependency and local package keys, used later for diffing
-    let manifest_packages = manifest_data
-        .as_ref()
-        .map(ManifestData::get_packages)
-        .unwrap_or(Ok(None))?;
     // deserialize and create lockfile data
     let lockfile_data = match lockfile_string.as_ref().map(LockfileData::new_from_string) {
         Some(result) => Some(result?),
         None => None,
     };
-    let lockfile_packages = lockfile_data.as_ref().map(|ld| ld.package_data.keys().cloned().collect::<BTreeSet<_>>());
-
-    // calculate diffs
-    let (added, removed, _unchanged) = calculate_differences(manifest_packages, lockfile_packages);
-
-    let mut packages_map = lockfile_data.map(|ld| ld.package_data).unwrap_or_default();
-
-    // prune dependencies that have been removed from dependencies list
-    removed
-        .iter()
-        .map(|p| packages_map.remove(p))
-        .for_each(drop);
-    // fetch and insert added packages
-    // TODO!
-
+    let (added, removed, unchanged, new_state) = calculate_differences(&manifest_data, &lockfile_data);
     // serialize
-    let lockfile_data = LockfileData::new_from_packages(packages_map);
+    let lockfile_data = LockfileData::new_from_packages(new_state);
     lockfile_data.save(&directory)?;
     Ok(())
 }
