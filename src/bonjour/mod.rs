@@ -17,8 +17,6 @@ pub mod manifest;
 
 #[derive(Clone, Debug, Fail)]
 pub enum BonjourError {
-    #[fail(display = "Manifest file not found.")]
-    MissingManifest,
     #[fail(display = "Could not parse manifest because {}.", _0)]
     ManifestTomlParseError(String),
     #[fail(display = "Could not parse lockfile because {}.", _0)]
@@ -80,8 +78,8 @@ pub enum PackageData<'a> {
         commands: Vec<LockfileCommand<'a>>,
     },
     ManifestDependencyPackage,
-    ResolvedManifestDependencyPackage(Dependency),
-    ManifestPackage,
+//    ResolvedManifestDependencyPackage(Dependency),
+//    ManifestPackage,
 }
 
 fn open_manifest_file(directory: &Path) -> Option<String> {

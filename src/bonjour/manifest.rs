@@ -42,8 +42,8 @@ impl<'a> ManifestData<'a> {
 
     fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, BonjourError> {
         let package_data = if let Manifest {
-            package,
             dependencies: Some(ref dependencies),
+//            package,
             ..
         } = manifest
         {

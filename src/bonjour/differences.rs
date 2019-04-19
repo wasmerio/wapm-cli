@@ -1,7 +1,7 @@
 use crate::bonjour::lockfile::LockfileData;
 use crate::bonjour::manifest::ManifestData;
 use crate::bonjour::{PackageData, PackageId};
-use crate::dependency_resolver::{Dependency, PackageRegistry};
+use crate::dependency_resolver::{Dependency};
 use crate::lock::{LockfileCommand, LockfileModule};
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
@@ -37,7 +37,7 @@ impl<'a> PackageDataDifferences<'a> {
                     .union(&lockfile_packages_set)
                     .cloned()
                     .collect();
-                let (removed_packages_map, mut new_state): (BTreeMap<_, _>, BTreeMap<_, _>) =
+                let (_removed_packages_map, mut new_state): (BTreeMap<_, _>, BTreeMap<_, _>) =
                     lockfile_data
                         .package_data
                         .into_iter()

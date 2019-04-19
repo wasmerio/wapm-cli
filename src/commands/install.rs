@@ -4,7 +4,6 @@ use graphql_client::*;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile};
 use structopt::StructOpt;
-use crate::bonjour;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
