@@ -4,6 +4,7 @@ use graphql_client::*;
 
 use crate::lock::{get_package_namespace_and_name, regenerate_lockfile};
 use structopt::StructOpt;
+use crate::bonjour;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
@@ -57,6 +58,9 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             };
             regenerate_lockfile(vec![(&package.name, &last_version.version)])
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
+
+            // insert record into manifest file
+
             println!("Package installed successfully to wapm_packages!");
         }
         None => {

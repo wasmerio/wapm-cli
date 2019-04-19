@@ -91,6 +91,7 @@ impl PackageRegistryLike for TestRegistry {
     }
 }
 
+#[derive(Debug)]
 pub struct PackageRegistry(pub BTreeMap<String, Vec<Dependency>>);
 
 impl PackageRegistry {
