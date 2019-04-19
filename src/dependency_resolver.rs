@@ -1,11 +1,11 @@
 use crate::graphql::execute_query;
 use crate::install::install_package;
-use crate::lock::get_package_namespace_and_name;
-use crate::manifest::{Manifest, PACKAGES_DIR_NAME};
 use graphql_client::*;
 use std::collections::BTreeMap;
 use std::env;
 use std::path::PathBuf;
+use crate::cfg_toml::manifest::{Manifest, PACKAGES_DIR_NAME};
+use crate::util::get_package_namespace_and_name;
 
 #[derive(GraphQLQuery)]
 #[graphql(

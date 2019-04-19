@@ -1,9 +1,9 @@
 use crate::bonjour::{BonjourError, PackageData, PackageId};
-use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
 use std::collections::btree_map::BTreeMap;
-use toml::Value;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
+use toml::Value;
+use crate::cfg_toml::manifest::{MANIFEST_FILE_NAME, Manifest};
 
 pub struct ManifestSource {
     source: Option<String>,
@@ -21,7 +21,6 @@ impl ManifestSource {
     }
 }
 
-
 #[derive(Debug)]
 pub enum ManifestResult {
     Manifest(Manifest),
@@ -31,7 +30,8 @@ pub enum ManifestResult {
 
 impl ManifestResult {
     pub fn from_source(source: &ManifestSource) -> ManifestResult {
-        source.source
+        source
+            .source
             .as_ref()
             .map(|s| match toml::from_str::<Manifest>(s) {
                 Ok(m) => ManifestResult::Manifest(m),
@@ -51,7 +51,7 @@ impl<'a> ManifestData<'a> {
     pub fn new_from_result(result: &'a ManifestResult) -> Result<Self, BonjourError> {
         match result {
             ManifestResult::Manifest(ref manifest) => Self::new_from_manifest(manifest),
-            ManifestResult::NoManifest => Ok(Self {package_data: None}),
+            ManifestResult::NoManifest => Ok(Self { package_data: None }),
             ManifestResult::ManifestError(e) => Err(e.clone()),
         }
     }
@@ -59,7 +59,7 @@ impl<'a> ManifestData<'a> {
     fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, BonjourError> {
         let package_data = if let Manifest {
             dependencies: Some(ref dependencies),
-//            package,
+            //            package,
             ..
         } = manifest
         {
@@ -78,7 +78,9 @@ impl<'a> ManifestData<'a> {
         } else {
             BTreeMap::new()
         };
-        Ok(ManifestData { package_data: Some(package_data) })
+        Ok(ManifestData {
+            package_data: Some(package_data),
+        })
     }
 
     pub fn add_additional_packages(&mut self, added_packages: &Vec<(&'a str, &'a str)>) {
@@ -87,8 +89,7 @@ impl<'a> ManifestData<'a> {
                 let id = PackageId::new_registry_package(name, version);
                 package_data.insert(id, PackageData::ManifestDependencyPackage);
             }
-        }
-        else {
+        } else {
             let mut package_data = BTreeMap::new();
             for (name, version) in added_packages {
                 let id = PackageId::new_registry_package(name, version);

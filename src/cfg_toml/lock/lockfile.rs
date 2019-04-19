@@ -1,11 +1,11 @@
-use crate::lock::lockfile_command::LockfileCommand;
-use crate::lock::lockfile_module::LockfileModule;
-use crate::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
+use crate::cfg_toml::lock::{LOCKFILE_NAME, LOCKFILE_HEADER};
+use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
+use crate::cfg_toml::lock::lockfile_module::LockfileModule;
 
 type ModuleMap<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeMap<&'a str, LockfileModule<'a>>>>;
 type CommandMap<'a> = BTreeMap<&'a str, LockfileCommand<'a>>;

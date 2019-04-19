@@ -1,9 +1,8 @@
 use crate::abi::Abi;
 use crate::dependency_resolver::Dependency;
-use crate::lock::get_package_namespace_and_name;
-use crate::manifest::Module;
-use crate::manifest::PACKAGES_DIR_NAME;
 use std::path::PathBuf;
+use crate::cfg_toml::manifest::{Module, PACKAGES_DIR_NAME};
+use crate::util::get_package_namespace_and_name;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule<'a> {

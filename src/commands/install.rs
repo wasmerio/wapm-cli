@@ -2,8 +2,11 @@ use crate::graphql::execute_query;
 
 use graphql_client::*;
 
-use crate::lock::{get_package_namespace_and_name, regenerate_lockfile};
+use std::env;
 use structopt::StructOpt;
+use crate::cfg_toml::lock::regenerate_lockfile;
+use crate::cfg_toml::manifest::Manifest;
+use crate::util::get_package_namespace_and_name;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
@@ -35,6 +38,7 @@ enum InstallError {
 struct GetPackageQuery;
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
+    let current_directory = env::current_dir()?;
     match options.package {
         Some(name) => {
             let q = GetPackageQuery::build_query(get_package_query::Variables {
@@ -55,15 +59,24 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             } else {
                 package.name.clone()
             };
-            regenerate_lockfile(vec![(&package.name, &last_version.version)])
+
+            let added_packages = vec![(package.name.as_str(), last_version.version.as_str())];
+            regenerate_lockfile(&added_packages, &current_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
 
             // insert record into manifest file
+            if let Ok(mut manifest) = Manifest::find_in_directory(&current_directory) {
+                for (name, version) in added_packages {
+                    manifest.add_dependency(name, version);
+                }
+                manifest.save()?;
+            }
 
             println!("Package installed successfully to wapm_packages!");
         }
         None => {
-            regenerate_lockfile(vec![])
+            let added_packages = vec![];
+            regenerate_lockfile(&added_packages, current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
         }

@@ -1,10 +1,11 @@
-use crate::lock::{is_lockfile_out_of_date, regenerate_lockfile, Lockfile};
-use crate::manifest::Manifest;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
+use crate::cfg_toml::lock::lockfile::Lockfile;
+use crate::cfg_toml::manifest::Manifest;
+use crate::cfg_toml::lock::{is_lockfile_out_of_date, regenerate_lockfile};
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -22,7 +23,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(vec![])
+        _ => regenerate_lockfile(&vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
     let mut lockfile_string = String::new();

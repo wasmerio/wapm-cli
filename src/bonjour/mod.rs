@@ -1,14 +1,13 @@
 use std::cmp::Ordering;
-use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
-use std::path::{Path, PathBuf};
-use std::{env};
+use std::path::Path;
 
 use crate::bonjour::differences::PackageDataDifferences;
 use crate::bonjour::lockfile::{LockfileData, LockfileResult, LockfileSource};
 use crate::bonjour::manifest::{ManifestData, ManifestResult, ManifestSource};
 use crate::dependency_resolver::{Dependency, PackageRegistry, PackageRegistryLike};
-use crate::lock::{Lockfile, LockfileCommand, LockfileModule};
+use crate::cfg_toml::lock::lockfile_module::LockfileModule;
+use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 
 pub mod differences;
 pub mod lockfile;
@@ -77,8 +76,8 @@ pub enum PackageData<'a> {
         commands: Vec<LockfileCommand<'a>>,
     },
     ManifestDependencyPackage,
-//    ResolvedManifestDependencyPackage(Dependency),
-//    ManifestPackage,
+    //    ResolvedManifestDependencyPackage(Dependency),
+    //    ManifestPackage,
 }
 
 fn install_added_dependencies<'a>(
@@ -101,18 +100,21 @@ fn install_added_dependencies<'a>(
         .map_err(|e| BonjourError::InstallError(e.to_string()))
 }
 
-pub fn update(added_packages: Vec<(&str, &str)>) -> Result<(), BonjourError> {
-    let directory: PathBuf = env::current_dir().unwrap(); // TODO: will panic, move this up later
+pub fn update<P: AsRef<Path>>(
+    added_packages: &Vec<(&str, &str)>,
+    directory: P,
+) -> Result<(), BonjourError> {
+    let directory = directory.as_ref();
     // get manifest data
     let manifest_source = ManifestSource::new(&directory);
     let manifest_result = ManifestResult::from_source(&manifest_source);
     let mut manifest_data = ManifestData::new_from_result(&manifest_result)?;
     // add the extra packages
-    manifest_data.add_additional_packages(&added_packages);
+    manifest_data.add_additional_packages(added_packages);
     // get lockfile data
     let lockfile_string = LockfileSource::new(&directory);
     let lockfile_result: LockfileResult = LockfileResult::from_source(&lockfile_string);
-    let lockfile_data= LockfileData::new_from_result(lockfile_result)?;
+    let lockfile_data = LockfileData::new_from_result(lockfile_result)?;
     // construct a pacakge registry for accessing external dependencies
     let mut registry = PackageRegistry::new();
     // create a differences object. It has added, removed, and unchanged package ids.

@@ -1,11 +1,12 @@
 use crate::dependency_resolver::Dependency;
-use crate::manifest::PACKAGES_DIR_NAME;
 use flate2::read::GzDecoder;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 use tar::Archive;
+use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
+use crate::util::get_package_namespace_and_name;
 
 pub fn install_package<P: AsRef<Path>>(
     dependency: &Dependency,
@@ -57,21 +58,7 @@ fn fully_qualified_package_display_name(package_name: &str, package_version: &st
     format!("{}@{}", package_name, package_version)
 }
 
-#[inline]
-pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
-    let split: Vec<&str> = package_name.split('/').collect();
-    match &split[..] {
-        [namespace, name] => Ok((*namespace, *name)),
-        [global_package_name] => {
-            info!(
-                "Interpreting unqualified global package name \"{}\" as \"_/{}\"",
-                package_name, global_package_name
-            );
-            Ok(("_", *global_package_name))
-        }
-        _ => bail!("Package name is invalid"),
-    }
-}
+
 /// Loads a GZipped tar in to memory, decompresses it, and unpackages the
 /// content to `pkg_name`
 fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(

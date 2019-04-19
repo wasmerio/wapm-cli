@@ -1,11 +1,13 @@
 use crate::bonjour::lockfile::LockfileData;
 use crate::bonjour::manifest::ManifestData;
-use crate::bonjour::{PackageData, PackageId, BonjourError};
-use crate::dependency_resolver::{Dependency};
-use crate::lock::{LockfileCommand, LockfileModule, Lockfile};
+use crate::bonjour::{BonjourError, PackageData, PackageId};
+use crate::dependency_resolver::Dependency;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use std::path::Path;
+use crate::cfg_toml::lock::lockfile_module::LockfileModule;
+use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
+use crate::cfg_toml::lock::lockfile::Lockfile;
 
 #[derive(Debug)]
 pub struct PackageDataDifferences<'a> {
@@ -75,17 +77,13 @@ impl<'a> PackageDataDifferences<'a> {
         }
     }
 
-    pub fn generate_lockfile(
-        &self,
-        directory: &'a Path,
-    ) -> Result<(), BonjourError> {
+    pub fn generate_lockfile(&self, directory: &'a Path) -> Result<(), BonjourError> {
         let mut lockfile = Lockfile {
             modules: BTreeMap::new(),
             commands: BTreeMap::new(),
         };
 
-        self
-            .new_state
+        self.new_state
             .iter()
             .map(|(id, data)| match (id, data) {
                 (

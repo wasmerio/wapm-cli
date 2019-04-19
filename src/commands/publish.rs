@@ -1,14 +1,13 @@
-use crate::manifest::Manifest;
 use crate::validate;
 
 use crate::graphql::execute_query_modifier;
-use crate::manifest::MANIFEST_FILE_NAME;
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use std::env;
 use std::fs;
 use std::io::Write;
 use tar::Builder;
+use crate::cfg_toml::manifest::{MANIFEST_FILE_NAME, Manifest};
 
 #[derive(GraphQLQuery)]
 #[graphql(

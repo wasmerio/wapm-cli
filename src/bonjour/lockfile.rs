@@ -1,8 +1,10 @@
 use crate::bonjour::{BonjourError, PackageData, PackageId};
-use crate::lock::{Lockfile, LockfileCommand, LOCKFILE_NAME};
 use std::collections::btree_map::BTreeMap;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
+use crate::cfg_toml::lock::lockfile::Lockfile;
+use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
+use crate::cfg_toml::lock::LOCKFILE_NAME;
 
 pub struct LockfileSource {
     source: Option<String>,
@@ -29,7 +31,8 @@ pub enum LockfileResult<'a> {
 
 impl<'a> LockfileResult<'a> {
     pub fn from_source(source: &'a LockfileSource) -> LockfileResult {
-        source.source
+        source
+            .source
             .as_ref()
             .map(|source| match toml::from_str::<Lockfile>(source) {
                 Ok(l) => LockfileResult::Lockfile(l),
@@ -55,7 +58,7 @@ impl<'a> LockfileData<'a> {
     pub fn new_from_result(result: LockfileResult<'a>) -> Result<Self, BonjourError> {
         match result {
             LockfileResult::Lockfile(l) => Ok(Self::new_from_lockfile(l)),
-            LockfileResult::NoLockfile => Ok(Self {package_data: None}),
+            LockfileResult::NoLockfile => Ok(Self { package_data: None }),
             LockfileResult::LockfileError(e) => return Err(e),
         }
     }
@@ -96,6 +99,8 @@ impl<'a> LockfileData<'a> {
             .flatten()
             .collect::<BTreeMap<_, _>>();
 
-        Self { package_data: Some(package_data) }
+        Self {
+            package_data: Some(package_data),
+        }
     }
 }
