@@ -1,9 +1,9 @@
-use crate::bonjour::{BonjourError, PackageData, PackageId};
-use std::collections::btree_map::BTreeMap;
+use crate::bonjour::{BonjourError, PackageKey};
 use std::fs;
 use std::path::Path;
 use toml::Value;
 use crate::cfg_toml::manifest::{MANIFEST_FILE_NAME, Manifest};
+use std::collections::btree_set::BTreeSet;
 
 pub struct ManifestSource {
     source: Option<String>,
@@ -44,58 +44,50 @@ impl ManifestResult {
 }
 
 pub struct ManifestData<'a> {
-    pub package_data: Option<BTreeMap<PackageId<'a>, PackageData<'a>>>,
+    pub package_keys: Option<BTreeSet<PackageKey<'a>>>,
 }
 
 impl<'a> ManifestData<'a> {
     pub fn new_from_result(result: &'a ManifestResult) -> Result<Self, BonjourError> {
         match result {
             ManifestResult::Manifest(ref manifest) => Self::new_from_manifest(manifest),
-            ManifestResult::NoManifest => Ok(Self { package_data: None }),
+            ManifestResult::NoManifest => Ok(Self { package_keys: None }),
             ManifestResult::ManifestError(e) => Err(e.clone()),
         }
     }
 
     fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, BonjourError> {
-        let package_data = if let Manifest {
-            dependencies: Some(ref dependencies),
-            //            package,
-            ..
-        } = manifest
-        {
-            dependencies
-                .iter()
-                .map(|(name, value)| match value {
-                    Value::String(ref version) => Ok((
-                        PackageId::WapmRegistryPackage { name, version },
-                        PackageData::ManifestDependencyPackage,
-                    )),
-                    _ => Err(BonjourError::DependencyVersionMustBeString(
-                        name.to_string(),
-                    )),
-                })
-                .collect::<Result<BTreeMap<PackageId, PackageData>, BonjourError>>()?
-        } else {
-            BTreeMap::new()
-        };
-        Ok(ManifestData {
-            package_data: Some(package_data),
-        })
+        match manifest {
+            Manifest { dependencies: Some(ref dependencies), .. } => {
+                dependencies
+                    .iter()
+                    .map(|(name, value)| match value {
+                        Value::String(ref version) => Ok(
+                            PackageKey::WapmRegistryPackage { name, version },
+                        ),
+                        _ => Err(BonjourError::DependencyVersionMustBeString(
+                            name.to_string(),
+                        )),
+                    })
+                    .collect::<Result<BTreeSet<PackageKey>, BonjourError>>()
+                    .map(|package_keys| Self { package_keys: Some(package_keys) })
+            },
+            _ => {
+                Ok(Self { package_keys: None })
+            }
+        }
     }
 
     pub fn add_additional_packages(&mut self, added_packages: &Vec<(&'a str, &'a str)>) {
-        if let Some(ref mut package_data) = self.package_data {
+        if let Some(ref mut package_keys) = self.package_keys {
             for (name, version) in added_packages {
-                let id = PackageId::new_registry_package(name, version);
-                package_data.insert(id, PackageData::ManifestDependencyPackage);
+                let key = PackageKey::new_registry_package(name, version);
+                package_keys.insert(key);
             }
         } else {
-            let mut package_data = BTreeMap::new();
-            for (name, version) in added_packages {
-                let id = PackageId::new_registry_package(name, version);
-                package_data.insert(id, PackageData::ManifestDependencyPackage);
-            }
-            self.package_data = Some(package_data);
+            self.package_keys = Some(added_packages.into_iter()
+                .map(|(n, v)| PackageKey::new_registry_package(n, v))
+                .collect::<BTreeSet<_>>());
         }
     }
 }

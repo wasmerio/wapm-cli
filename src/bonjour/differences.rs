@@ -1,6 +1,6 @@
 use crate::bonjour::lockfile::LockfileData;
 use crate::bonjour::manifest::ManifestData;
-use crate::bonjour::{BonjourError, PackageData, PackageId};
+use crate::bonjour::{BonjourError, PackageData, PackageKey};
 use crate::dependency_resolver::Dependency;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
@@ -11,10 +11,10 @@ use crate::cfg_toml::lock::lockfile::Lockfile;
 
 #[derive(Debug)]
 pub struct PackageDataDifferences<'a> {
-    pub added_set: BTreeSet<PackageId<'a>>,
-    pub removed_set: BTreeSet<PackageId<'a>>,
-    pub retained_set: BTreeSet<PackageId<'a>>,
-    pub new_state: BTreeMap<PackageId<'a>, PackageData<'a>>,
+    pub added_set: BTreeSet<PackageKey<'a>>,
+    pub removed_set: BTreeSet<PackageKey<'a>>,
+    pub retained_set: BTreeSet<PackageKey<'a>>,
+    pub new_state: BTreeMap<PackageKey<'a>, PackageData<'a>>,
 }
 
 impl<'a> PackageDataDifferences<'a> {
@@ -22,22 +22,20 @@ impl<'a> PackageDataDifferences<'a> {
         manifest_data: ManifestData<'a>,
         lockfile_data: LockfileData<'a>,
     ) -> Self {
-        let manifest_package_data = manifest_data.package_data.unwrap_or_default();
+        let manifest_packages_set = manifest_data.package_keys.unwrap_or_default();
         let lockfile_package_data = lockfile_data.package_data.unwrap_or_default();
-
-        let manifest_packages_set: BTreeSet<PackageId> =
-            manifest_package_data.keys().cloned().collect();
-        let lockfile_packages_set: BTreeSet<PackageId> =
+        let lockfile_packages_set: BTreeSet<PackageKey> =
             lockfile_package_data.keys().cloned().collect();
-        let added_set: BTreeSet<PackageId> = manifest_packages_set
+
+        let added_set: BTreeSet<PackageKey> = manifest_packages_set
             .difference(&lockfile_packages_set)
             .cloned()
             .collect();
-        let removed_set: BTreeSet<PackageId> = lockfile_packages_set
+        let removed_set: BTreeSet<PackageKey> = lockfile_packages_set
             .difference(&manifest_packages_set)
             .cloned()
             .collect();
-        let retained_set: BTreeSet<PackageId> = manifest_packages_set
+        let retained_set: BTreeSet<PackageKey> = manifest_packages_set
             .union(&lockfile_packages_set)
             .cloned()
             .collect();
@@ -46,12 +44,12 @@ impl<'a> PackageDataDifferences<'a> {
                 .into_iter()
                 .partition(|(id, _data)| removed_set.contains(id));
 
-        let mut added_packages: BTreeMap<PackageId, PackageData> = manifest_package_data
-            .into_iter()
-            .filter(|(id, _data)| added_set.contains(id))
-            .collect();
-
-        new_state.append(&mut added_packages);
+//        let added_packages: BTreeSet<PackageKey> = manifest_packages_set
+//            .into_iter()
+//            .filter(|key| added_set.contains(key))
+//            .collect();
+//
+//        new_state.append(&mut added_packages);
 
         PackageDataDifferences {
             added_set,
@@ -68,7 +66,7 @@ impl<'a> PackageDataDifferences<'a> {
         for dep in dependencies {
             let modules = LockfileModule::from_dependency(dep).unwrap();
             let commands = LockfileCommand::from_dependency(dep).unwrap();
-            let id = PackageId::WapmRegistryPackage {
+            let id = PackageKey::WapmRegistryPackage {
                 name: dep.name.as_str(),
                 version: dep.version.as_str(),
             };
@@ -87,7 +85,7 @@ impl<'a> PackageDataDifferences<'a> {
             .iter()
             .map(|(id, data)| match (id, data) {
                 (
-                    PackageId::WapmRegistryPackage { name, version },
+                    PackageKey::WapmRegistryPackage { name, version },
                     PackageData::LockfilePackage { modules, commands },
                 ) => {
                     for module in modules {

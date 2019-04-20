@@ -28,24 +28,24 @@ pub enum BonjourError {
 }
 
 #[derive(Clone, Debug, Eq, PartialOrd, PartialEq)]
-pub enum PackageId<'a> {
+pub enum PackageKey<'a> {
     LocalPackage { directory: &'a Path },
     WapmRegistryPackage { name: &'a str, version: &'a str },
     //    GitUrl { url: &'a str, },
 }
 
-impl<'a> PackageId<'a> {
+impl<'a> PackageKey<'a> {
     fn new_registry_package(name: &'a str, version: &'a str) -> Self {
-        PackageId::WapmRegistryPackage { name, version }
+        PackageKey::WapmRegistryPackage { name, version }
     }
 }
 
-impl<'a> Ord for PackageId<'a> {
-    fn cmp(&self, other: &PackageId<'a>) -> Ordering {
+impl<'a> Ord for PackageKey<'a> {
+    fn cmp(&self, other: &PackageKey<'a>) -> Ordering {
         match (self, other) {
             (
-                PackageId::WapmRegistryPackage { name, version },
-                PackageId::WapmRegistryPackage {
+                PackageKey::WapmRegistryPackage { name, version },
+                PackageKey::WapmRegistryPackage {
                     name: other_name,
                     version: other_version,
                 },
@@ -58,16 +58,18 @@ impl<'a> Ord for PackageId<'a> {
                 }
             }
             (
-                PackageId::LocalPackage { directory },
-                PackageId::LocalPackage {
+                PackageKey::LocalPackage { directory },
+                PackageKey::LocalPackage {
                     directory: other_directory,
                 },
             ) => directory.cmp(other_directory),
-            (PackageId::LocalPackage { .. }, _) => Ordering::Less,
-            (PackageId::WapmRegistryPackage { .. }, _) => Ordering::Greater,
+            (PackageKey::LocalPackage { .. }, _) => Ordering::Less,
+            (PackageKey::WapmRegistryPackage { .. }, _) => Ordering::Greater,
         }
     }
 }
+
+
 
 #[derive(Debug)]
 pub enum PackageData<'a> {
@@ -81,7 +83,7 @@ pub enum PackageData<'a> {
 }
 
 fn install_added_dependencies<'a>(
-    added_set: BTreeSet<PackageId<'a>>,
+    added_set: BTreeSet<PackageKey<'a>>,
     registry: &'a mut PackageRegistry,
 ) -> Result<Vec<&'a Dependency>, BonjourError> {
     // get added wapm registry packages
@@ -89,7 +91,7 @@ fn install_added_dependencies<'a>(
         .iter()
         .cloned()
         .filter_map(|id| match id {
-            PackageId::WapmRegistryPackage { name, version } => Some((name, version)),
+            PackageKey::WapmRegistryPackage { name, version } => Some((name, version)),
             _ => None,
         })
         .collect();
@@ -111,6 +113,7 @@ pub fn update<P: AsRef<Path>>(
     let mut manifest_data = ManifestData::new_from_result(&manifest_result)?;
     // add the extra packages
     manifest_data.add_additional_packages(added_packages);
+    let manifest_data = manifest_data;
     // get lockfile data
     let lockfile_string = LockfileSource::new(&directory);
     let lockfile_result: LockfileResult = LockfileResult::from_source(&lockfile_string);
@@ -120,10 +123,28 @@ pub fn update<P: AsRef<Path>>(
     // create a differences object. It has added, removed, and unchanged package ids.
     let mut differences =
         PackageDataDifferences::calculate_differences(manifest_data, lockfile_data);
+//    let PackageDataDifferences { added_set, mut new_state } = differences;
+
+    let incomplete_lockfile_data = IncompleteLockfileData::from_diffs(differences);
+
     // install added dependencies
-    let added_set = differences.added_set.clone();
     let dependencies = install_added_dependencies(added_set, &mut registry)?;
-    differences.insert_dependencies_as_lockfile_packages(&dependencies);
+
+    let lockfile_data = incomplete_lockfile_data.add_with_dependencies(&dependencies)?;
+
+
+    for dep in dependencies {
+        let modules = LockfileModule::from_dependency(dep).unwrap();
+        let commands = LockfileCommand::from_dependency(dep).unwrap();
+        let id = PackageKey::WapmRegistryPackage {
+            name: dep.name.as_str(),
+            version: dep.version.as_str(),
+        };
+        let lockfile_package = PackageData::LockfilePackage { modules, commands };
+        new_state.insert(id, lockfile_package);
+    }
+
+    //differences.insert_dependencies_as_lockfile_packages(&dependencies);
     // generate and save a lockfile
     differences.generate_lockfile(&directory)?;
     Ok(())

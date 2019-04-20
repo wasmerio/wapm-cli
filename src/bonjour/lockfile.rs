@@ -1,4 +1,4 @@
-use crate::bonjour::{BonjourError, PackageData, PackageId};
+use crate::bonjour::{BonjourError, PackageData, PackageKey};
 use std::collections::btree_map::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -51,7 +51,7 @@ impl<'a> Default for LockfileResult<'a> {
 }
 
 pub struct LockfileData<'a> {
-    pub package_data: Option<BTreeMap<PackageId<'a>, PackageData<'a>>>,
+    pub package_data: Option<BTreeMap<PackageKey<'a>, PackageData<'a>>>,
 }
 
 impl<'a> LockfileData<'a> {
@@ -66,22 +66,22 @@ impl<'a> LockfileData<'a> {
     fn new_from_lockfile(lockfile: Lockfile<'a>) -> LockfileData {
         let (raw_lockfile_modules, raw_lockfile_commands) = (lockfile.modules, lockfile.commands);
 
-        let mut lockfile_commands_map: BTreeMap<PackageId, Vec<LockfileCommand>> = BTreeMap::new();
+        let mut lockfile_commands_map: BTreeMap<PackageKey, Vec<LockfileCommand>> = BTreeMap::new();
         for (_name, command) in raw_lockfile_commands {
             let command: LockfileCommand<'a> = command;
-            let id = PackageId::new_registry_package(command.package_name, command.package_version);
+            let id = PackageKey::new_registry_package(command.package_name, command.package_version);
             let command_vec = lockfile_commands_map.entry(id).or_default();
             command_vec.push(command);
         }
 
-        let package_data: BTreeMap<PackageId, PackageData> = raw_lockfile_modules
+        let package_data: BTreeMap<PackageKey, PackageData> = raw_lockfile_modules
             .into_iter()
             .map(|(pkg_name, pkg_versions)| {
                 pkg_versions
                     .into_iter()
                     .map(|(pkg_version, modules)| {
                         let id =
-                            PackageId::new_registry_package(pkg_name.clone(), pkg_version.clone());
+                            PackageKey::new_registry_package(pkg_name.clone(), pkg_version.clone());
                         println!("id: {:?}", id);
                         let lockfile_modules = modules
                             .into_iter()
