@@ -34,7 +34,7 @@ enum InstallError {
 struct GetPackageQuery;
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
-    if options.packages.len() > 0 {
+    if !options.packages.is_empty() {
         let mut packages = vec![];
         for name in options.packages {
             let q = GetPackageQuery::build_query(get_package_query::Variables {
