@@ -63,16 +63,6 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             let added_packages = vec![(package.name.as_str(), last_version.version.as_str())];
             dataflow::update(added_packages.clone(), &current_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
-//
-//            // insert record into manifest file
-//            if added_packages.len() > 0 {
-//                if let Ok(mut manifest) = Manifest::find_in_directory(&current_directory) {
-//                    for (name, version) in added_packages {
-//                        manifest.add_dependency(name, version);
-//                    }
-//                    manifest.save()?;
-//                }
-//            }
 
             println!("Package installed successfully to wapm_packages!");
         }
