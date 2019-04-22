@@ -42,6 +42,21 @@ impl ManifestResult {
             })
             .unwrap_or(ManifestResult::NoManifest)
     }
+
+    pub fn update_manifest(&self, added_packages: Vec<(&str, &str)>) -> Result<(), BonjourError> {
+        match self {
+            ManifestResult::Manifest(ref m) if added_packages.len() > 0 => {
+                let mut manifest = m.clone();
+                for (name, version) in added_packages {
+                    manifest.add_dependency(name, version);
+                }
+                manifest
+                    .save()
+                    .map_err(|e| BonjourError::InstallError(e.to_string()))
+            }
+            _ => Ok(()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

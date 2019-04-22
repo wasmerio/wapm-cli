@@ -1,6 +1,5 @@
-use crate::bonjour::{
-    BonjourError, InstalledManifestPackages, LockfilePackage, PackageKey, WapmPackageKey,
-};
+use crate::bonjour::installed_manifest_packages::InstalledManifestPackages;
+use crate::bonjour::{BonjourError, PackageKey, WapmPackageKey};
 use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
 use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 use crate::cfg_toml::lock::lockfile_module::LockfileModule;
@@ -53,6 +52,12 @@ impl<'a> Default for LockfileResult<'a> {
     fn default() -> Self {
         LockfileResult::NoLockfile
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct LockfilePackage<'a> {
+    pub modules: Vec<LockfileModule<'a>>,
+    pub commands: Vec<LockfileCommand<'a>>,
 }
 
 #[derive(Clone, Debug)]

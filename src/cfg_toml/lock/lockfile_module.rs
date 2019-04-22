@@ -45,24 +45,4 @@ impl<'a> LockfileModule<'a> {
         };
         lockfile_module
     }
-
-    //    pub fn from_dependency(
-    //        dependency: &'a Dependency,
-    //    ) -> Result<(Vec<LockfileModule<'a>>), failure::Error> {
-    //        if let None = dependency.manifest.module {
-    //            return Ok(vec![]);
-    //        }
-    //
-    //        let modules = dependency.manifest.module.as_ref().unwrap();
-    //
-    //        let package_name = dependency.manifest.package.name.as_str();
-    //        let package_version = dependency.manifest.package.version.as_str();
-    //        let download_url = dependency.download_url.as_str();
-    //
-    //        let lockfile_modules: Vec<LockfileModule> = modules
-    //            .iter()
-    //            .map(|m| LockfileModule::from_module(Cow::Borrowed(package_name), Cow::Borrowed(package_version), m, Cow::Borrowed(download_url)))
-    //            .collect();
-    //        Ok(lockfile_modules)
-    //    }
 }

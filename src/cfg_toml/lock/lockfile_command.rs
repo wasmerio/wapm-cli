@@ -46,25 +46,6 @@ impl<'a> LockfileCommand<'a> {
         };
         lockfile_command
     }
-
-    //    pub fn from_dependency(dependency: &'a Dependency) -> Result<Vec<Self>, failure::Error> {
-    //        if let None = dependency.manifest.command {
-    //            return Ok(vec![]);
-    //        }
-    //        let commands = dependency
-    //            .manifest
-    //            .command
-    //            .as_ref()
-    //            .unwrap()
-    //            .iter()
-    //            .map(|c| {
-    //                let package_name = dependency.manifest.package.name.as_str();
-    //                let package_version = dependency.manifest.package.version.as_str();
-    //                LockfileCommand::from_command(Cow::Borrowed(package_name), Cow::Borrowed(package_version), &c)
-    //            })
-    //            .collect::<Vec<_>>();
-    //        Ok(commands)
-    //    }
 }
 
 #[derive(Debug, Fail)]
