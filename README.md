@@ -40,7 +40,7 @@ See the [contributing guide][contributing] for instruction on contributing to `w
 If the WAPM GraphQL server has been updated, update the GraphQL schema with:
 
 ```
-graphql get-schema -e dev
+graphql get-schema -e prod
 ```
 
 _Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
