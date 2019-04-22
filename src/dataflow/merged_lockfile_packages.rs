@@ -4,9 +4,10 @@ use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::btree_map::BTreeMap;
 use std::collections::hash_map::HashMap;
-use std::collections::hash_set::HashSet;
 use std::path::Path;
 
+/// Merge two sets, and keep upgraded packages and all other unchanged packages.
+/// Remove changed packages e.g. upgraded versions.
 #[derive(Clone, Debug)]
 pub struct MergedLockfilePackages<'a> {
     pub packages: HashMap<PackageKey<'a>, LockfilePackage<'a>>,
@@ -15,22 +16,31 @@ pub struct MergedLockfilePackages<'a> {
 impl<'a> MergedLockfilePackages<'a> {
     pub fn merge(
         new_packages: LockfilePackages<'a>,
-        mut old_packages: LockfilePackages<'a>,
+        old_packages: LockfilePackages<'a>,
     ) -> Self {
-        println!("current: {:?}", new_packages);
-        println!("other: {:?}", old_packages);
-        let keys: HashSet<_> = new_packages.packages.keys().cloned().collect();
-        let other_keys: HashSet<_> = old_packages.packages.keys().cloned().collect();
-        let removed_keys: Vec<_> = other_keys.difference(&keys).collect();
-        for removed_key in removed_keys {
-            old_packages.packages.remove(removed_key);
+        let mut unique_packages = HashMap::new();
+        for (key, data) in old_packages.packages {
+            let name = match key {
+                PackageKey::WapmPackage(ref k) => {
+                    k.name.clone()
+                },
+                _ => panic!("Non wapm registry keys are unsupported."),
+            };
+            unique_packages.insert(name, (key, data));
         }
         for (key, data) in new_packages.packages {
-            old_packages.packages.insert(key, data);
+            let name = match key {
+                PackageKey::WapmPackage(ref k) => {
+                    k.name.clone()
+                },
+                _ => panic!("Non wapm registry keys are unsupported."),
+            };
+            unique_packages.insert(name, (key, data));
         }
-        println!("merged: {:?}", old_packages);
+        let packages: HashMap<_,_> = unique_packages.into_iter().map(|(_, (key, data))| (key, data)).collect();
+
         Self {
-            packages: old_packages.packages,
+            packages,
         }
     }
 
@@ -119,18 +129,22 @@ mod test {
 
         let result = MergedLockfilePackages::merge(new_lockfile_packages, old_lockfile_packages);
 
+        // should now contain all old packages, and upgraded new ones
         assert!(result
             .packages
             .contains_key(&PackageKey::new_registry_package("_/foo", "1.1.0")));
-        assert!(!result
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
         assert!(result
             .packages
             .contains_key(&PackageKey::new_registry_package("_/bar", "2.0.0")));
-        assert!(!result
+        assert!(result
             .packages
             .contains_key(&PackageKey::new_registry_package("_/qux", "3.0.0")));
-        assert_eq!(2, result.packages.len());
+
+        // should no longer contain the old foo package
+        assert!(!result
+            .packages
+            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
+
+        assert_eq!(3, result.packages.len());
     }
 }
