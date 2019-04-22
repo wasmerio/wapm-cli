@@ -6,6 +6,7 @@ use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 use crate::dataflow::resolved_manifest_packages::{RegistryResolver, ResolvedManifestPackages};
 use std::borrow::Cow;
 use std::path::Path;
+use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
 pub mod changed_manifest_packages;
 pub mod installed_manifest_packages;
@@ -13,6 +14,7 @@ pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
 pub mod resolved_manifest_packages;
+pub mod retained_lockfile_packages;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
@@ -70,16 +72,20 @@ pub fn update<P: AsRef<Path>>(
     let mut manifest_data = ManifestPackages::new_from_result(&manifest_result)?;
     // add the extra packages
     manifest_data.add_additional_packages(added_packages.clone());
+    let manifest_data = manifest_data;
 
     // get lockfile data
     let lockfile_string = LockfileSource::new(&directory);
     let lockfile_result = LockfileResult::from_source(&lockfile_string);
     let lockfile_data = LockfilePackages::new_from_result(lockfile_result)?;
 
-    let pruned_manifest_data =
+    let changed_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+
+    let retained_lockfile_packages = RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_data, lockfile_data);
+
     let resolved_manifest_packages =
-        ResolvedManifestPackages::new::<RegistryResolver>(pruned_manifest_data)?;
+        ResolvedManifestPackages::new::<RegistryResolver>(changed_manifest_data)?;
     let installed_manifest_packages = InstalledManifestPackages::install::<RegistryInstaller, _>(
         &directory,
         resolved_manifest_packages,
@@ -88,7 +94,7 @@ pub fn update<P: AsRef<Path>>(
         LockfilePackages::from_installed_packages(&installed_manifest_packages);
 
     // merge the lockfile data, and generate the new lockfile
-    let final_lockfile_data = MergedLockfilePackages::merge(manifest_lockfile_data, lockfile_data);
+    let final_lockfile_data = MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
     final_lockfile_data.generate_lockfile(&directory)?;
 
     // update the manifest, if applicable

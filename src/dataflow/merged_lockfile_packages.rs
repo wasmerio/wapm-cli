@@ -5,6 +5,7 @@ use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::btree_map::BTreeMap;
 use std::collections::hash_map::HashMap;
 use std::path::Path;
+use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
 /// Merge two sets, and keep upgraded packages and all other unchanged packages.
 /// Remove changed packages e.g. upgraded versions.
@@ -16,7 +17,7 @@ pub struct MergedLockfilePackages<'a> {
 impl<'a> MergedLockfilePackages<'a> {
     pub fn merge(
         new_packages: LockfilePackages<'a>,
-        old_packages: LockfilePackages<'a>,
+        old_packages: RetainedLockfilePackages<'a>,
     ) -> Self {
         let mut unique_packages = HashMap::new();
         for (key, data) in old_packages.packages {
@@ -81,6 +82,7 @@ mod test {
     use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
     use crate::dataflow::PackageKey;
     use std::collections::HashMap;
+    use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
     #[test]
     fn test_merge() {
@@ -123,7 +125,7 @@ mod test {
             },
         );
 
-        let old_lockfile_packages = LockfilePackages {
+        let old_lockfile_packages = RetainedLockfilePackages {
             packages: old_lockfile_packages_map,
         };
 
