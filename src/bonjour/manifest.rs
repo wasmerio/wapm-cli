@@ -1,9 +1,10 @@
-use crate::bonjour::{BonjourError, PackageKey};
+use crate::bonjour::{BonjourError, PackageKey, WapmPackageKey};
+use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
+use std::collections::btree_set::BTreeSet;
 use std::fs;
 use std::path::Path;
 use toml::Value;
-use crate::cfg_toml::manifest::{MANIFEST_FILE_NAME, Manifest};
-use std::collections::btree_set::BTreeSet;
+use std::collections::hash_set::HashSet;
 
 pub struct ManifestSource {
     source: Option<String>,
@@ -43,8 +44,9 @@ impl ManifestResult {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ManifestData<'a> {
-    pub package_keys: Option<BTreeSet<PackageKey<'a>>>,
+    pub package_keys: Option<HashSet<PackageKey<'a>>>,
 }
 
 impl<'a> ManifestData<'a> {
@@ -58,23 +60,25 @@ impl<'a> ManifestData<'a> {
 
     fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, BonjourError> {
         match manifest {
-            Manifest { dependencies: Some(ref dependencies), .. } => {
-                dependencies
-                    .iter()
-                    .map(|(name, value)| match value {
-                        Value::String(ref version) => Ok(
-                            PackageKey::WapmRegistryPackage { name, version },
-                        ),
-                        _ => Err(BonjourError::DependencyVersionMustBeString(
-                            name.to_string(),
-                        )),
-                    })
-                    .collect::<Result<BTreeSet<PackageKey>, BonjourError>>()
-                    .map(|package_keys| Self { package_keys: Some(package_keys) })
-            },
-            _ => {
-                Ok(Self { package_keys: None })
-            }
+            Manifest {
+                dependencies: Some(ref dependencies),
+                ..
+            } => dependencies
+                .iter()
+                .map(|(name, value)| match value {
+                    Value::String(ref version) => {
+
+                        Ok(PackageKey::WapmPackage(WapmPackageKey { name, version }))
+                    }
+                    _ => Err(BonjourError::DependencyVersionMustBeString(
+                        name.to_string(),
+                    )),
+                })
+                .collect::<Result<HashSet<PackageKey>, BonjourError>>()
+                .map(|package_keys| Self {
+                    package_keys: Some(package_keys),
+                }),
+            _ => Ok(Self { package_keys: None }),
         }
     }
 
@@ -85,9 +89,12 @@ impl<'a> ManifestData<'a> {
                 package_keys.insert(key);
             }
         } else {
-            self.package_keys = Some(added_packages.into_iter()
-                .map(|(n, v)| PackageKey::new_registry_package(n, v))
-                .collect::<BTreeSet<_>>());
+            self.package_keys = Some(
+                added_packages
+                    .into_iter()
+                    .map(|(n, v)| PackageKey::new_registry_package(n, v))
+                    .collect::<HashSet<_>>(),
+            );
         }
     }
 }

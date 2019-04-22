@@ -16,6 +16,7 @@ extern crate toml;
 
 mod abi;
 mod bonjour;
+pub mod cfg_toml;
 pub mod commands;
 mod config;
 mod dependency_resolver;
@@ -23,6 +24,5 @@ mod graphql;
 mod init;
 mod install;
 pub mod logging;
-pub mod cfg_toml;
 pub mod util;
 mod validate;

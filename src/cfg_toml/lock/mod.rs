@@ -9,8 +9,8 @@ static LOCKFILE_HEADER: &str = r#"# Lockfile v1
 # It is not intended for manual editing. The schema of this file may change."#;
 
 use crate::bonjour;
-use std::path::Path;
 use crate::cfg_toml::manifest::MANIFEST_FILE_NAME;
+use std::path::Path;
 
 pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> Result<bool, failure::Error> {
     use std::fs;

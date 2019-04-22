@@ -1,12 +1,12 @@
+use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
 use crate::dependency_resolver::Dependency;
+use crate::util::{fully_qualified_package_display_name, get_package_namespace_and_name};
 use flate2::read::GzDecoder;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 use tar::Archive;
-use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
-use crate::util::get_package_namespace_and_name;
 
 pub fn install_package<P: AsRef<Path>>(
     dependency: &Dependency,
@@ -52,12 +52,6 @@ fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }
-
-#[inline]
-fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
-    format!("{}@{}", package_name, package_version)
-}
-
 
 /// Loads a GZipped tar in to memory, decompresses it, and unpackages the
 /// content to `pkg_name`

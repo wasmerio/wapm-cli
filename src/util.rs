@@ -1,5 +1,8 @@
+use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 pub static MAX_PACKAGE_NAME_LENGTH: usize = 50;
 
@@ -68,7 +71,6 @@ pub fn telemetry_is_enabled() -> bool {
     telemetry_str.parse::<bool>().unwrap_or(false)
 }
 
-
 #[inline]
 pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
     let split: Vec<&str> = package_name.split('/').collect();
@@ -83,4 +85,21 @@ pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str)
         }
         _ => bail!("Package name is invalid"),
     }
+}
+
+#[inline]
+pub fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
+    format!("{}@{}", package_name, package_version)
+}
+
+pub fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
+    project_dir: P,
+    namespace_dir: P2,
+    fully_qualified_package_name: &str,
+) -> Result<PathBuf, io::Error> {
+    let mut package_dir = project_dir.as_ref().join(PACKAGES_DIR_NAME);
+    package_dir.push(namespace_dir);
+    package_dir.push(&fully_qualified_package_name);
+    fs::create_dir_all(&package_dir)?;
+    Ok(package_dir)
 }

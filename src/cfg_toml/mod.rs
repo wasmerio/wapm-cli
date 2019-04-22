@@ -1,2 +1,2 @@
-pub mod manifest;
 pub mod lock;
+pub mod manifest;

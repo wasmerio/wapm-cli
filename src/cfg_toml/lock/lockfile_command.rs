@@ -1,5 +1,5 @@
-use crate::dependency_resolver::Dependency;
 use crate::cfg_toml::manifest::Command;
+use crate::dependency_resolver::Dependency;
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

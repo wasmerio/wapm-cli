@@ -1,12 +1,12 @@
 //! logic to init a directory for use with wapm
 
+use crate::cfg_toml::manifest::MANIFEST_FILE_NAME;
 use crate::util;
 use std::{
     fs,
     io::{Read, Write},
     path::PathBuf,
 };
-use crate::cfg_toml::manifest::MANIFEST_FILE_NAME;
 
 fn construct_template_manifest_from_data(username: Option<String>, package_name: String) -> String {
     let name_string = if let Some(un) = username {

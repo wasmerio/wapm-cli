@@ -2,11 +2,11 @@ use crate::graphql::execute_query;
 
 use graphql_client::*;
 
-use std::env;
-use structopt::StructOpt;
 use crate::cfg_toml::lock::regenerate_lockfile;
 use crate::cfg_toml::manifest::Manifest;
 use crate::util::get_package_namespace_and_name;
+use std::env;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {

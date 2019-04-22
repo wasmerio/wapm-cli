@@ -1,11 +1,11 @@
+use crate::cfg_toml::lock::lockfile::Lockfile;
+use crate::cfg_toml::lock::{is_lockfile_out_of_date, regenerate_lockfile};
+use crate::cfg_toml::manifest::Manifest;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
-use crate::cfg_toml::lock::lockfile::Lockfile;
-use crate::cfg_toml::manifest::Manifest;
-use crate::cfg_toml::lock::{is_lockfile_out_of_date, regenerate_lockfile};
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
