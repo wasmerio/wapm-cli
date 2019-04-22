@@ -1,6 +1,7 @@
 use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 use crate::cfg_toml::lock::lockfile_module::LockfileModule;
 use crate::cfg_toml::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
@@ -8,8 +9,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 pub type ModuleMap<'a> =
-    BTreeMap<&'a str, BTreeMap<&'a str, BTreeMap<&'a str, LockfileModule<'a>>>>;
-pub type CommandMap<'a> = BTreeMap<&'a str, LockfileCommand<'a>>;
+    BTreeMap<Cow<'a, str>, BTreeMap<Cow<'a, str>, BTreeMap<Cow<'a, str>, LockfileModule<'a>>>>;
+pub type CommandMap<'a> = BTreeMap<Cow<'a, str>, LockfileCommand<'a>>;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Lockfile<'a> {
@@ -51,11 +52,11 @@ impl<'a> Lockfile<'a> {
 
     pub fn get_module(
         &self,
-        package_name: &str,
-        package_version: &str,
-        module_name: &str,
+        package_name: Cow<'a, str>,
+        package_version: Cow<'a, str>,
+        module_name: Cow<'a, str>,
     ) -> Result<&LockfileModule, failure::Error> {
-        let version_map = self.modules.get(package_name).ok_or::<failure::Error>(
+        let version_map = self.modules.get(&package_name).ok_or::<failure::Error>(
             LockfileError::PackageWithVersionNotFoundWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -63,7 +64,7 @@ impl<'a> Lockfile<'a> {
             )
             .into(),
         )?;
-        let module_map = version_map.get(package_version).ok_or::<failure::Error>(
+        let module_map = version_map.get(&package_version).ok_or::<failure::Error>(
             LockfileError::VersionNotFoundForPackageWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -71,7 +72,7 @@ impl<'a> Lockfile<'a> {
             )
             .into(),
         )?;
-        let module = module_map.get(module_name).ok_or::<failure::Error>(
+        let module = module_map.get(&module_name).ok_or::<failure::Error>(
             LockfileError::ModuleForPackageVersionNotFound(
                 package_name.to_string(),
                 package_version.to_string(),

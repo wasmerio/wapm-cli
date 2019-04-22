@@ -61,7 +61,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             };
 
             let added_packages = vec![(package.name.as_str(), last_version.version.as_str())];
-            regenerate_lockfile(&added_packages, &current_directory)
+            regenerate_lockfile(added_packages.clone(), &current_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
 
             // insert record into manifest file
@@ -76,7 +76,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         }
         None => {
             let added_packages = vec![];
-            regenerate_lockfile(&added_packages, current_directory)
+            regenerate_lockfile(added_packages, current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
         }

@@ -1,6 +1,7 @@
 use crate::cfg_toml::lock::lockfile::Lockfile;
 use crate::cfg_toml::lock::{is_lockfile_out_of_date, regenerate_lockfile};
 use crate::cfg_toml::manifest::Manifest;
+use std::borrow::Cow;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -23,7 +24,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(&vec![], &current_dir)
+        _ => regenerate_lockfile(vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
     let mut lockfile_string = String::new();
@@ -33,7 +34,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     let manifest_result = Manifest::find_in_directory(&current_dir);
     // hack to get around running commands for local modules
-    let (module_name, source_path): (&str, &str) = if let Ok(ref manifest) = manifest_result {
+    let (module_name, source_path): (Cow<str>, Cow<str>) = if let Ok(ref manifest) = manifest_result
+    {
         let lockfile_command = lockfile
             .get_command(command_name)
             .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
@@ -57,7 +59,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             });
             module
                 .unwrap_or(None)
-                .map(|module| (module.name.as_str(), module.source.to_str().unwrap()))
+                .map(|module| {
+                    (
+                        Cow::Borrowed(module.name.as_str()),
+                        Cow::Borrowed(module.source.to_str().unwrap()),
+                    )
+                })
                 .ok_or(RunError::FoundCommandInLockfileButMissingModule(
                     command_name.to_string(),
                     lockfile_command.module.to_string(),
@@ -65,11 +72,14 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                 ))?
         } else {
             let lockfile_module = lockfile.get_module(
-                lockfile_command.package_name,
-                lockfile_command.package_version,
-                lockfile_command.module,
+                lockfile_command.package_name.clone(),
+                lockfile_command.package_version.clone(),
+                lockfile_command.module.clone(),
             )?;
-            (lockfile_module.name, &lockfile_module.entry)
+            (
+                lockfile_module.name.clone(),
+                Cow::Borrowed(lockfile_module.entry.as_str()),
+            )
         }
     } else {
         let lockfile_command = lockfile
@@ -77,15 +87,18 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
 
         let lockfile_module = lockfile.get_module(
-            lockfile_command.package_name,
-            lockfile_command.package_version,
-            lockfile_command.module,
+            lockfile_command.package_name.clone(),
+            lockfile_command.package_version.clone(),
+            lockfile_command.module.clone(),
         )?;
-        (lockfile_module.name, &lockfile_module.entry)
+        (
+            lockfile_module.name.clone(),
+            Cow::Borrowed(lockfile_module.entry.as_str()),
+        )
     };
 
     // check that the source exists
-    let source_path_buf = PathBuf::from(source_path);
+    let source_path_buf = PathBuf::from(source_path.as_ref());
     source_path_buf.metadata().map_err(|_| {
         RunError::SourceForCommandNotFound(
             command_name.to_string(),
@@ -98,7 +111,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         args,
         wasmer_extra_flags,
         &current_dir,
-        &source_path,
+        source_path.as_ref(),
         Some(format!("wapm run {}", command_name)),
     )?;
     let mut child = Command::new("wasmer").args(&command_vec).spawn()?;

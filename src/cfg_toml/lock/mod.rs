@@ -22,7 +22,7 @@ pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> Result<bool, fai
 }
 
 pub fn regenerate_lockfile<P: AsRef<Path>>(
-    installed_dependencies: &Vec<(&str, &str)>,
+    installed_dependencies: Vec<(&str, &str)>,
     directory: P,
 ) -> Result<(), failure::Error> {
     bonjour::update(installed_dependencies, directory).unwrap();

@@ -1,8 +1,5 @@
-use crate::bonjour::remote::RemotePackageData;
-use crate::bonjour::PackageKey::WapmPackage;
 use crate::bonjour::{
-    BonjourError, InstalledManifestPackages, LockfilePackage, PackageData, PackageKey,
-    WapmPackageKey,
+    BonjourError, InstalledManifestPackages, LockfilePackage, PackageKey, WapmPackageKey,
 };
 use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
 use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
@@ -87,14 +84,23 @@ impl<'a> LockfileData<'a> {
                 let modules: Vec<LockfileModule> = match m.module {
                     Some(ref modules) => modules
                         .iter()
-                        .map(|m| LockfileModule::from_module(k.name, k.version, m, download_url))
+                        .map(|m| {
+                            LockfileModule::from_module(
+                                k.name.clone(),
+                                k.version.clone(),
+                                m,
+                                std::borrow::Cow::Borrowed(download_url),
+                            )
+                        })
                         .collect(),
                     _ => vec![],
                 };
                 let commands: Vec<LockfileCommand> = match m.command {
                     Some(ref modules) => modules
                         .iter()
-                        .map(|c| LockfileCommand::from_command(k.name, k.version, c))
+                        .map(|c| {
+                            LockfileCommand::from_command(k.name.clone(), k.version.clone(), c)
+                        })
                         .collect(),
                     _ => vec![],
                 };
@@ -123,8 +129,10 @@ impl<'a> LockfileData<'a> {
         let mut lockfile_commands_map: HashMap<PackageKey, Vec<LockfileCommand>> = HashMap::new();
         for (_name, command) in raw_lockfile_commands {
             let command: LockfileCommand<'a> = command;
-            let id =
-                PackageKey::new_registry_package(command.package_name, command.package_version);
+            let id = PackageKey::new_registry_package(
+                command.package_name.clone(),
+                command.package_version.clone(),
+            );
             let command_vec = lockfile_commands_map.entry(id).or_default();
             command_vec.push(command);
         }
@@ -137,7 +145,6 @@ impl<'a> LockfileData<'a> {
                     .map(|(pkg_version, modules)| {
                         let id =
                             PackageKey::new_registry_package(pkg_name.clone(), pkg_version.clone());
-                        println!("id: {:?}", id);
                         let lockfile_modules = modules
                             .into_iter()
                             .map(|(_module_name, module)| module)
@@ -169,8 +176,13 @@ impl<'a> LockfileData<'a> {
                         let name = module.name.clone();
                         modules.insert(name, module);
                     }
+                    for command in package.commands {
+                        let name = command.name.clone();
+                        commands.insert(name, command);
+                    }
                 }
                 PackageKey::LocalPackage { .. } => panic!("Local packages are not supported yet."),
+                PackageKey::GitUrl { .. } => panic!("Git url packages are not supported yet."),
             }
         }
 

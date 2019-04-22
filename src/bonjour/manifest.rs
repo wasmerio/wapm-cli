@@ -1,10 +1,10 @@
 use crate::bonjour::{BonjourError, PackageKey, WapmPackageKey};
 use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
-use std::collections::btree_set::BTreeSet;
+use std::borrow::Cow;
+use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
 use toml::Value;
-use std::collections::hash_set::HashSet;
 
 pub struct ManifestSource {
     source: Option<String>,
@@ -66,10 +66,10 @@ impl<'a> ManifestData<'a> {
             } => dependencies
                 .iter()
                 .map(|(name, value)| match value {
-                    Value::String(ref version) => {
-
-                        Ok(PackageKey::WapmPackage(WapmPackageKey { name, version }))
-                    }
+                    Value::String(ref version) => Ok(PackageKey::WapmPackage(WapmPackageKey {
+                        name: Cow::Borrowed(name),
+                        version: Cow::Borrowed(version),
+                    })),
                     _ => Err(BonjourError::DependencyVersionMustBeString(
                         name.to_string(),
                     )),
@@ -82,7 +82,7 @@ impl<'a> ManifestData<'a> {
         }
     }
 
-    pub fn add_additional_packages(&mut self, added_packages: &Vec<(&'a str, &'a str)>) {
+    pub fn add_additional_packages(&mut self, added_packages: Vec<(&'a str, &'a str)>) {
         if let Some(ref mut package_keys) = self.package_keys {
             for (name, version) in added_packages {
                 let key = PackageKey::new_registry_package(name, version);
