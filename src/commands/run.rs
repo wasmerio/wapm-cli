@@ -10,6 +10,9 @@ use structopt::StructOpt;
 pub struct RunOpt {
     /// Command name
     command: String,
+    /// WASI pre-opened directory
+    #[structopt(long = "dir", multiple = true, group = "wasi")]
+    pre_opened_directories: Vec<String>,
     /// Application arguments
     #[structopt(raw(multiple = "true"), parse(from_os_str))]
     args: Vec<OsString>,
@@ -93,9 +96,16 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         )
     })?;
 
+    let wasi_preopened_dir_flags = run_options
+        .pre_opened_directories
+        .iter()
+        .map(|entry| OsString::from(format!("--dir={}", entry)))
+        .collect();
+
     let command_vec = create_run_command(
         args,
         wasmer_extra_flags,
+        wasi_preopened_dir_flags,
         &current_dir,
         &source_path,
         Some(format!("wapm run {}", command_name)),
@@ -108,6 +118,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &Vec<OsString>,
     wasmer_extra_flags: Option<Vec<OsString>>,
+    wasi_preopened_dir_flags: Vec<OsString>,
     directory: P,
     wasm_file_path: P2,
     override_command_name: Option<String>,
@@ -120,9 +131,11 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let override_command_name_vec = override_command_name
         .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
         .unwrap_or_default();
+
     Ok([
         &command_vec[..],
         &override_command_name_vec[..],
+        &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
         &[OsString::from("--")],
         &args[..],
