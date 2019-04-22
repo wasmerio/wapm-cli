@@ -74,8 +74,10 @@ mod test {
         let package_key_2 = PackageKey::new_registry_package("_/bar", "2.0.0");
         manifest_package_keys.insert(package_key_1.clone());
         manifest_package_keys.insert(package_key_2.clone());
+        // manifest has package_key_1 and package_key_2
         let manifest_data = ManifestPackages { package_keys: Some(manifest_package_keys) };
         let mut lockfile_packages = HashMap::new();
+        // lockfile has package_key_1
         let lockfile_package = LockfilePackage { modules: vec![], commands: vec![] };
         lockfile_packages.insert(package_key_1, lockfile_package);
         let lockfile_data = LockfilePackages { packages: lockfile_packages };
