@@ -1,5 +1,6 @@
+use crate::dataflow;
 use crate::cfg_toml::lock::lockfile::Lockfile;
-use crate::cfg_toml::lock::{is_lockfile_out_of_date, regenerate_lockfile};
+use crate::cfg_toml::lock::{is_lockfile_out_of_date};
 use crate::cfg_toml::manifest::Manifest;
 use std::borrow::Cow;
 use std::env;
@@ -24,7 +25,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(vec![], &current_dir)
+        _ => dataflow::update(vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
     let mut lockfile_string = String::new();
@@ -147,10 +148,10 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 #[cfg(test)]
 mod test {
     use crate::commands::run::create_run_command;
-    use crate::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
+    use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
 
     #[test]
     fn create_run_command_vec() {
@@ -185,7 +186,7 @@ mod test {
 #[derive(Debug, Fail)]
 enum RunError {
     #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
-    CannotRegenLockfile(String, failure::Error),
+    CannotRegenLockfile(String, dataflow::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
     #[fail(

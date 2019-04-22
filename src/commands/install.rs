@@ -2,8 +2,7 @@ use crate::graphql::execute_query;
 
 use graphql_client::*;
 
-use crate::cfg_toml::lock::regenerate_lockfile;
-use crate::cfg_toml::manifest::Manifest;
+use crate::dataflow;
 use crate::util::get_package_namespace_and_name;
 use std::env;
 use structopt::StructOpt;
@@ -23,10 +22,10 @@ enum InstallError {
     NoVersionsAvailable { name: String },
 
     #[fail(display = "Failed to install {}. {}", _0, _1)]
-    CannotRegenLockFile(String, failure::Error),
+    CannotRegenLockFile(String, dataflow::Error),
 
     #[fail(display = "Failed to install packages in manifest. {}", _0)]
-    FailureInstallingPackages(failure::Error),
+    FailureInstallingPackages(dataflow::Error),
 }
 
 #[derive(GraphQLQuery)]
@@ -60,23 +59,26 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                 package.name.clone()
             };
 
+            println!("installing...");
             let added_packages = vec![(package.name.as_str(), last_version.version.as_str())];
-            regenerate_lockfile(added_packages.clone(), &current_directory)
+            dataflow::update(added_packages.clone(), &current_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(display_package_name, err))?;
-
-            // insert record into manifest file
-            if let Ok(mut manifest) = Manifest::find_in_directory(&current_directory) {
-                for (name, version) in added_packages {
-                    manifest.add_dependency(name, version);
-                }
-                manifest.save()?;
-            }
+//
+//            // insert record into manifest file
+//            if added_packages.len() > 0 {
+//                if let Ok(mut manifest) = Manifest::find_in_directory(&current_directory) {
+//                    for (name, version) in added_packages {
+//                        manifest.add_dependency(name, version);
+//                    }
+//                    manifest.save()?;
+//                }
+//            }
 
             println!("Package installed successfully to wapm_packages!");
         }
         None => {
             let added_packages = vec![];
-            regenerate_lockfile(added_packages, current_directory)
+            dataflow::update(added_packages, current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
         }

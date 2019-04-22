@@ -1,5 +1,5 @@
-use crate::bonjour::changed_manifest_packages::ChangedManifestPackages;
-use crate::bonjour::{BonjourError, PackageKey, WapmPackageKey};
+use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
+use crate::dataflow::{Error, PackageKey, WapmPackageKey};
 use crate::graphql::execute_query;
 use graphql_client::*;
 use std::collections::hash_set::HashSet;
@@ -12,13 +12,17 @@ use std::collections::hash_set::HashSet;
 )]
 struct GetPackagesQuery;
 
+/// Struct containing wapm registry resolved packages. This is realized as a pairing of wapm.io keys
+/// and download URLs.
 #[derive(Clone, Debug)]
 pub struct ResolvedManifestPackages<'a> {
     pub packages: Vec<(WapmPackageKey<'a>, String)>,
 }
 
 impl<'a> ResolvedManifestPackages<'a> {
-    pub fn new(manifest_data: ChangedManifestPackages<'a>) -> Result<Self, BonjourError> {
+    /// Consume changed manifest packages and produce keys with download urls. Will query the registry
+    /// for the download urls.
+    pub fn new(manifest_data: ChangedManifestPackages<'a>) -> Result<Self, Error> {
         let wapm_pkgs = manifest_data
             .packages
             .into_iter()
@@ -28,7 +32,7 @@ impl<'a> ResolvedManifestPackages<'a> {
             })
             .collect();
         let packages: Vec<_> = Self::sync_packages(wapm_pkgs)
-            .map_err(|e| BonjourError::InstallError(e.to_string()))?;
+            .map_err(|e| Error::InstallError(e.to_string()))?;
         Ok(Self { packages })
     }
 

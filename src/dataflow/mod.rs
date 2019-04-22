@@ -1,19 +1,21 @@
-use crate::bonjour::changed_manifest_packages::ChangedManifestPackages;
-use crate::bonjour::installed_manifest_packages::InstalledManifestPackages;
-use crate::bonjour::lockfile::{LockfileData, LockfileResult, LockfileSource};
-use crate::bonjour::manifest::{ManifestData, ManifestResult, ManifestSource};
-use crate::bonjour::resolved_manifest_packages::ResolvedManifestPackages;
+use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
+use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::lockfile_packages::{LockfilePackages, LockfileResult, LockfileSource};
+use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult, ManifestSource};
+use crate::dataflow::resolved_manifest_packages::ResolvedManifestPackages;
 use std::borrow::Cow;
 use std::path::Path;
+use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 
 pub mod changed_manifest_packages;
 pub mod installed_manifest_packages;
-pub mod lockfile;
-pub mod manifest;
+pub mod lockfile_packages;
+pub mod manifest_packages;
+pub mod merged_lockfile_packages;
 pub mod resolved_manifest_packages;
 
 #[derive(Clone, Debug, Fail)]
-pub enum BonjourError {
+pub enum Error {
     #[fail(display = "Could not parse manifest because {}.", _0)]
     ManifestTomlParseError(String),
     #[fail(display = "Could not parse lockfile because {}.", _0)]
@@ -55,34 +57,39 @@ impl<'a> PackageKey<'a> {
     }
 }
 
-/// The function that starts the dataflow. This function finds a manifest and a lockfile,
-/// calculates differences, installs missing dependencies, and finally updates the manifest
-/// and generates a new lockfile.
+/// The function that starts lockfile dataflow. This function finds a manifest and a lockfile,
+/// calculates differences, installs missing dependencies, and finally generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
     added_packages: Vec<(&str, &str)>,
     directory: P,
-) -> Result<(), BonjourError> {
+) -> Result<(), Error> {
     let directory = directory.as_ref();
     // get manifest data
     let manifest_source = ManifestSource::new(&directory);
     let manifest_result = ManifestResult::from_source(&manifest_source);
-    let mut manifest_data = ManifestData::new_from_result(&manifest_result)?;
+    let mut manifest_data = ManifestPackages::new_from_result(&manifest_result)?;
     // add the extra packages
     manifest_data.add_additional_packages(added_packages.clone());
-    let manifest_data = manifest_data;
+    println!("manifest: {:?}\n", manifest_data);
+
     // get lockfile data
     let lockfile_string = LockfileSource::new(&directory);
     let lockfile_result = LockfileResult::from_source(&lockfile_string);
-    let lockfile_data = LockfileData::new_from_result(lockfile_result)?;
+    let lockfile_data = LockfilePackages::new_from_result(lockfile_result)?;
+    println!("lockfile: {:?}\n", lockfile_data);
     let pruned_manifest_data =
-        ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data)?;
+        ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
     let resolved_manifest_packages = ResolvedManifestPackages::new(pruned_manifest_data)?;
     let installed_manifest_packages =
         InstalledManifestPackages::install(&directory, resolved_manifest_packages)?;
     let manifest_lockfile_data =
-        LockfileData::from_installed_packages(&installed_manifest_packages);
-    let final_lockfile_data = manifest_lockfile_data.merge(lockfile_data);
-    manifest_result.update_manifest(added_packages)?;
+        LockfilePackages::from_installed_packages(&installed_manifest_packages);
+
+    // merge the lockfile data, and generate the new lockfile
+    let final_lockfile_data = MergedLockfilePackages::merge(manifest_lockfile_data, lockfile_data);
     final_lockfile_data.generate_lockfile(&directory)?;
+
+    // update the manifest, if applicable
+    manifest_result.update_manifest(&installed_manifest_packages)?;
     Ok(())
 }
