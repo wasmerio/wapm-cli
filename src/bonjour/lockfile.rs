@@ -169,6 +169,10 @@ impl<'a> LockfileData<'a> {
         Self { packages }
     }
 
+    pub fn package_keys(&self) -> HashSet<PackageKey<'a>> {
+        self.packages.keys().cloned().collect()
+    }
+
     pub fn generate_lockfile(self, directory: &'a Path) -> Result<(), BonjourError> {
         let mut modules: ModuleMap<'a> = BTreeMap::new();
         let mut commands: CommandMap<'a> = BTreeMap::new();

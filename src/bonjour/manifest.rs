@@ -112,4 +112,11 @@ impl<'a> ManifestData<'a> {
             );
         }
     }
+
+    pub fn keys(&self) -> HashSet<PackageKey<'a>> {
+        self.package_keys
+            .as_ref()
+            .map(|m| m.iter().cloned().collect())
+            .unwrap_or_default()
+    }
 }
