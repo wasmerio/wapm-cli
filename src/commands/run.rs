@@ -159,7 +159,7 @@ mod test {
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
         let wapm_module_dir = dir.join(
-            [PACKAGES_DIR_NAME, "_/foo@1.0.2"]
+            [PACKAGES_DIR_NAME, "_", "foo@1.0.2"]
                 .iter()
                 .collect::<PathBuf>(),
         );
