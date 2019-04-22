@@ -1,11 +1,11 @@
 use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
 use crate::dataflow;
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
+use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::btree_map::BTreeMap;
 use std::collections::hash_map::HashMap;
 use std::path::Path;
-use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
 /// Merge two sets, and keep upgraded packages and all other unchanged packages.
 /// Remove changed packages e.g. upgraded versions.
@@ -22,27 +22,24 @@ impl<'a> MergedLockfilePackages<'a> {
         let mut unique_packages = HashMap::new();
         for (key, data) in old_packages.packages {
             let name = match key {
-                PackageKey::WapmPackage(ref k) => {
-                    k.name.clone()
-                },
+                PackageKey::WapmPackage(ref k) => k.name.clone(),
                 _ => panic!("Non wapm registry keys are unsupported."),
             };
             unique_packages.insert(name, (key, data));
         }
         for (key, data) in new_packages.packages {
             let name = match key {
-                PackageKey::WapmPackage(ref k) => {
-                    k.name.clone()
-                },
+                PackageKey::WapmPackage(ref k) => k.name.clone(),
                 _ => panic!("Non wapm registry keys are unsupported."),
             };
             unique_packages.insert(name, (key, data));
         }
-        let packages: HashMap<_,_> = unique_packages.into_iter().map(|(_, (key, data))| (key, data)).collect();
+        let packages: HashMap<_, _> = unique_packages
+            .into_iter()
+            .map(|(_, (key, data))| (key, data))
+            .collect();
 
-        Self {
-            packages,
-        }
+        Self { packages }
     }
 
     pub fn generate_lockfile(self, directory: &'a Path) -> Result<(), dataflow::Error> {
@@ -80,9 +77,9 @@ impl<'a> MergedLockfilePackages<'a> {
 mod test {
     use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
     use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
+    use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
     use crate::dataflow::PackageKey;
     use std::collections::HashMap;
-    use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
     #[test]
     fn test_merge() {

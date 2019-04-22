@@ -4,9 +4,9 @@ use crate::dataflow::lockfile_packages::{LockfilePackages, LockfileResult, Lockf
 use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult, ManifestSource};
 use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 use crate::dataflow::resolved_manifest_packages::{RegistryResolver, ResolvedManifestPackages};
+use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use std::borrow::Cow;
 use std::path::Path;
-use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 
 pub mod changed_manifest_packages;
 pub mod installed_manifest_packages;
@@ -82,7 +82,8 @@ pub fn update<P: AsRef<Path>>(
     let changed_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
 
-    let retained_lockfile_packages = RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_data, lockfile_data);
+    let retained_lockfile_packages =
+        RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_data, lockfile_data);
 
     let resolved_manifest_packages =
         ResolvedManifestPackages::new::<RegistryResolver>(changed_manifest_data)?;
@@ -94,7 +95,8 @@ pub fn update<P: AsRef<Path>>(
         LockfilePackages::from_installed_packages(&installed_manifest_packages);
 
     // merge the lockfile data, and generate the new lockfile
-    let final_lockfile_data = MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
+    let final_lockfile_data =
+        MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
     final_lockfile_data.generate_lockfile(&directory)?;
 
     // update the manifest, if applicable
