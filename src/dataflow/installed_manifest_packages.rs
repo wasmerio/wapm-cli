@@ -1,4 +1,4 @@
-use crate::dataflow::resolved_manifest_packages::ResolvedManifestPackages;
+use crate::dataflow::resolved_manifest_packages::{ResolvedManifestPackages};
 use crate::dataflow::{Error, WapmPackageKey};
 use crate::cfg_toml::manifest::Manifest;
 use crate::util::{
