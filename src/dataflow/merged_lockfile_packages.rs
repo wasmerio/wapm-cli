@@ -64,11 +64,73 @@ impl<'a> MergedLockfilePackages<'a> {
         Ok(())
     }
 }
-//
-//#[cfg(test)]
-//mod test {
-//    #[test]
-//    fn test_merge() {
-//
-//    }
-//}
+
+#[cfg(test)]
+mod test {
+    use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
+    use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
+    use crate::dataflow::PackageKey;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_merge() {
+        let mut new_lockfile_packages_map = HashMap::new();
+        let pkg_1 = PackageKey::new_registry_package("_/foo", "1.1.0");
+        let pkg_2 = PackageKey::new_registry_package("_/bar", "2.0.0");
+        new_lockfile_packages_map.insert(
+            pkg_1,
+            LockfilePackage {
+                modules: vec![],
+                commands: vec![],
+            },
+        );
+        new_lockfile_packages_map.insert(
+            pkg_2,
+            LockfilePackage {
+                modules: vec![],
+                commands: vec![],
+            },
+        );
+        let new_lockfile_packages = LockfilePackages {
+            packages: new_lockfile_packages_map,
+        };
+
+        let mut old_lockfile_packages_map = HashMap::new();
+        let pkg_1_old = PackageKey::new_registry_package("_/foo", "1.0.0");
+        let pkg_2_old = PackageKey::new_registry_package("_/qux", "3.0.0");
+        old_lockfile_packages_map.insert(
+            pkg_1_old,
+            LockfilePackage {
+                modules: vec![],
+                commands: vec![],
+            },
+        );
+        old_lockfile_packages_map.insert(
+            pkg_2_old,
+            LockfilePackage {
+                modules: vec![],
+                commands: vec![],
+            },
+        );
+
+        let old_lockfile_packages = LockfilePackages {
+            packages: old_lockfile_packages_map,
+        };
+
+        let result = MergedLockfilePackages::merge(new_lockfile_packages, old_lockfile_packages);
+
+        assert!(result
+            .packages
+            .contains_key(&PackageKey::new_registry_package("_/foo", "1.1.0")));
+        assert!(!result
+            .packages
+            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
+        assert!(result
+            .packages
+            .contains_key(&PackageKey::new_registry_package("_/bar", "2.0.0")));
+        assert!(!result
+            .packages
+            .contains_key(&PackageKey::new_registry_package("_/qux", "3.0.0")));
+        assert_eq!(2, result.packages.len());
+    }
+}

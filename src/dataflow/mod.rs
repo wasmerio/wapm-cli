@@ -70,13 +70,12 @@ pub fn update<P: AsRef<Path>>(
     let mut manifest_data = ManifestPackages::new_from_result(&manifest_result)?;
     // add the extra packages
     manifest_data.add_additional_packages(added_packages.clone());
-    println!("manifest: {:?}\n", manifest_data);
 
     // get lockfile data
     let lockfile_string = LockfileSource::new(&directory);
     let lockfile_result = LockfileResult::from_source(&lockfile_string);
     let lockfile_data = LockfilePackages::new_from_result(lockfile_result)?;
-    println!("lockfile: {:?}\n", lockfile_data);
+
     let pruned_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
     let resolved_manifest_packages =
