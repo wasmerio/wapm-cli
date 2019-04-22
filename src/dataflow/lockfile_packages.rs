@@ -1,9 +1,9 @@
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
-use crate::dataflow::{Error, PackageKey};
-use crate::cfg_toml::lock::lockfile::{Lockfile};
+use crate::cfg_toml::lock::lockfile::Lockfile;
 use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 use crate::cfg_toml::lock::lockfile_module::LockfileModule;
 use crate::cfg_toml::lock::LOCKFILE_NAME;
+use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::{Error, PackageKey};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
@@ -43,9 +43,9 @@ impl<'a> LockfileResult<'a> {
             .as_ref()
             .map(|source| match toml::from_str::<Lockfile>(source) {
                 Ok(l) => LockfileResult::Lockfile(l),
-                Err(e) => LockfileResult::LockfileError(Error::LockfileTomlParseError(
-                    e.to_string(),
-                )),
+                Err(e) => {
+                    LockfileResult::LockfileError(Error::LockfileTomlParseError(e.to_string()))
+                }
             })
             .unwrap_or(LockfileResult::NoLockfile)
     }

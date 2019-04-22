@@ -1,11 +1,11 @@
-use crate::dataflow::lockfile_packages::{LockfilePackages, LockfilePackage};
-use std::collections::hash_set::HashSet;
-use crate::dataflow::{PackageKey, WapmPackageKey};
-use std::collections::hash_map::HashMap;
-use std::path::Path;
-use crate::dataflow;
 use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
+use crate::dataflow;
+use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
+use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::btree_map::BTreeMap;
+use std::collections::hash_map::HashMap;
+use std::collections::hash_set::HashSet;
+use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct MergedLockfilePackages<'a> {
@@ -13,7 +13,10 @@ pub struct MergedLockfilePackages<'a> {
 }
 
 impl<'a> MergedLockfilePackages<'a> {
-    pub fn merge(new_packages: LockfilePackages<'a>, mut old_packages: LockfilePackages<'a>) -> Self {
+    pub fn merge(
+        new_packages: LockfilePackages<'a>,
+        mut old_packages: LockfilePackages<'a>,
+    ) -> Self {
         println!("current: {:?}", new_packages);
         println!("other: {:?}", old_packages);
         let keys: HashSet<_> = new_packages.packages.keys().cloned().collect();
@@ -26,9 +29,10 @@ impl<'a> MergedLockfilePackages<'a> {
             old_packages.packages.insert(key, data);
         }
         println!("merged: {:?}", old_packages);
-        Self {packages: old_packages.packages }
+        Self {
+            packages: old_packages.packages,
+        }
     }
-
 
     pub fn generate_lockfile(self, directory: &'a Path) -> Result<(), dataflow::Error> {
         let mut modules: ModuleMap<'a> = BTreeMap::new();

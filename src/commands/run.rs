@@ -1,7 +1,7 @@
-use crate::dataflow;
+use crate::cfg_toml::lock::is_lockfile_out_of_date;
 use crate::cfg_toml::lock::lockfile::Lockfile;
-use crate::cfg_toml::lock::{is_lockfile_out_of_date};
 use crate::cfg_toml::manifest::Manifest;
+use crate::dataflow;
 use std::borrow::Cow;
 use std::env;
 use std::ffi::OsString;
@@ -147,11 +147,11 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 
 #[cfg(test)]
 mod test {
+    use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
     use crate::commands::run::create_run_command;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
-    use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
 
     #[test]
     fn create_run_command_vec() {

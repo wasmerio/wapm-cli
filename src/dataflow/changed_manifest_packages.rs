@@ -1,6 +1,6 @@
 use crate::dataflow::lockfile_packages::LockfilePackages;
 use crate::dataflow::manifest_packages::ManifestPackages;
-use crate::dataflow::{PackageKey};
+use crate::dataflow::PackageKey;
 use std::collections::hash_set::HashSet;
 
 /// Contains the package IDs for dependencies that have changed between a manifest and an existing lockfile.
@@ -28,17 +28,20 @@ impl<'a> ChangedManifestPackages<'a> {
 #[cfg(test)]
 mod test {
     use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
+    use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
     use crate::dataflow::manifest_packages::ManifestPackages;
-    use crate::dataflow::lockfile_packages::{LockfilePackages, LockfilePackage};
+    use crate::dataflow::PackageKey;
     use std::collections::hash_map::HashMap;
-    use crate::dataflow::{PackageKey};
     use std::collections::hash_set::HashSet;
 
     #[test]
     fn no_shared_dependencies() {
         let manifest_data = ManifestPackages { package_keys: None };
-        let lockfile_data = LockfilePackages { packages: HashMap::new() };
-        let changed_packages = ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+        let lockfile_data = LockfilePackages {
+            packages: HashMap::new(),
+        };
+        let changed_packages =
+            ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
         assert_eq!(0, changed_packages.packages.len());
     }
 
@@ -47,9 +50,14 @@ mod test {
         let mut manifest_package_keys = HashSet::new();
         let package_key = PackageKey::new_registry_package("_/foo", "1.0.0");
         manifest_package_keys.insert(package_key);
-        let manifest_data = ManifestPackages { package_keys: Some(manifest_package_keys) };
-        let lockfile_data = LockfilePackages { packages: HashMap::new() };
-        let changed_packages = ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+        let manifest_data = ManifestPackages {
+            package_keys: Some(manifest_package_keys),
+        };
+        let lockfile_data = LockfilePackages {
+            packages: HashMap::new(),
+        };
+        let changed_packages =
+            ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
         assert_eq!(1, changed_packages.packages.len());
     }
 
@@ -58,12 +66,20 @@ mod test {
         let mut manifest_package_keys = HashSet::new();
         let package_key = PackageKey::new_registry_package("_/foo", "1.0.0");
         manifest_package_keys.insert(package_key.clone());
-        let manifest_data = ManifestPackages { package_keys: Some(manifest_package_keys) };
+        let manifest_data = ManifestPackages {
+            package_keys: Some(manifest_package_keys),
+        };
         let mut lockfile_packages = HashMap::new();
-        let lockfile_package = LockfilePackage { modules: vec![], commands: vec![] };
+        let lockfile_package = LockfilePackage {
+            modules: vec![],
+            commands: vec![],
+        };
         lockfile_packages.insert(package_key, lockfile_package);
-        let lockfile_data = LockfilePackages { packages: lockfile_packages };
-        let changed_packages = ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+        let lockfile_data = LockfilePackages {
+            packages: lockfile_packages,
+        };
+        let changed_packages =
+            ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
         assert_eq!(0, changed_packages.packages.len());
     }
 
@@ -75,13 +91,21 @@ mod test {
         manifest_package_keys.insert(package_key_1.clone());
         manifest_package_keys.insert(package_key_2.clone());
         // manifest has package_key_1 and package_key_2
-        let manifest_data = ManifestPackages { package_keys: Some(manifest_package_keys) };
+        let manifest_data = ManifestPackages {
+            package_keys: Some(manifest_package_keys),
+        };
         let mut lockfile_packages = HashMap::new();
         // lockfile has package_key_1
-        let lockfile_package = LockfilePackage { modules: vec![], commands: vec![] };
+        let lockfile_package = LockfilePackage {
+            modules: vec![],
+            commands: vec![],
+        };
         lockfile_packages.insert(package_key_1, lockfile_package);
-        let lockfile_data = LockfilePackages { packages: lockfile_packages };
-        let changed_packages = ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+        let lockfile_data = LockfilePackages {
+            packages: lockfile_packages,
+        };
+        let changed_packages =
+            ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
         assert_eq!(1, changed_packages.packages.len());
     }
 }

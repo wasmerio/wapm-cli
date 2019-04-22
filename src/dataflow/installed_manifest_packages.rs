@@ -1,6 +1,6 @@
-use crate::dataflow::resolved_manifest_packages::{ResolvedManifestPackages};
-use crate::dataflow::{Error, WapmPackageKey};
 use crate::cfg_toml::manifest::Manifest;
+use crate::dataflow::resolved_manifest_packages::ResolvedManifestPackages;
+use crate::dataflow::{Error, WapmPackageKey};
 use crate::util::{
     create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
@@ -20,7 +20,7 @@ pub struct InstalledManifestPackages<'a> {
 
 impl<'a> InstalledManifestPackages<'a> {
     /// Will install the resolved manifest packages into the specified directory.
-    pub fn install<P: AsRef<Path>>(
+    pub fn install<Installer: Install<'a>, P: AsRef<Path>>(
         directory: P,
         resolved_manifest_packages: ResolvedManifestPackages<'a>,
     ) -> Result<Self, Error> {
@@ -28,7 +28,9 @@ impl<'a> InstalledManifestPackages<'a> {
             resolved_manifest_packages
                 .packages
                 .into_iter()
-                .map(|(key, download_url)| Self::install_package(&directory, key, &download_url))
+                .map(|(key, download_url)| {
+                    Installer::install_package(&directory, key, &download_url)
+                })
                 .collect();
         let packages_result: Result<Vec<(WapmPackageKey, Manifest, String)>, Error> =
             packages_result?
@@ -44,10 +46,39 @@ impl<'a> InstalledManifestPackages<'a> {
         let packages = packages_result?;
         Ok(Self { packages })
     }
+}
 
+/// A trait for injecting an installer for installing wapm packages.
+pub trait Install<'a> {
     fn install_package<P: AsRef<Path>, S: AsRef<str>>(
         directory: P,
         key: WapmPackageKey<'a>,
+        download_url: S,
+    ) -> Result<(WapmPackageKey, PathBuf, String), Error>;
+}
+
+pub struct RegistryInstaller;
+
+impl RegistryInstaller {
+    fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(
+        mut compressed_archive: F,
+        pkg_name: P,
+    ) -> Result<(), failure::Error> {
+        compressed_archive.seek(SeekFrom::Start(0))?;
+        let gz = GzDecoder::new(compressed_archive);
+        let mut archive = Archive::new(gz);
+        archive
+            .unpack(&pkg_name)
+            .map_err(|err| Error::InstallError(format!("{}", err)))?;
+        Ok(())
+    }
+}
+
+/// This impl will install packages from a wapm registry.
+impl<'a> Install<'a> for RegistryInstaller {
+    fn install_package<P: AsRef<Path>, S: AsRef<str>>(
+        directory: P,
+        key: WapmPackageKey,
         download_url: S,
     ) -> Result<(WapmPackageKey, PathBuf, String), Error> {
         let (namespace, pkg_name) = get_package_namespace_and_name(&key.name)
@@ -58,8 +89,8 @@ impl<'a> InstalledManifestPackages<'a> {
             .map_err(|_err| {
                 Error::InstallError("Could not create package directory".to_string())
             })?;
-        let mut response = reqwest::get(download_url.as_ref())
-            .map_err(|e| Error::InstallError(e.to_string()))?;
+        let mut response =
+            reqwest::get(download_url.as_ref()).map_err(|e| Error::InstallError(e.to_string()))?;
         let temp_dir = tempdir::TempDir::new("wapm_package_install").map_err(|_err| {
             Error::InstallError(
                 "Failed to create temporary directory to open the package in".to_string(),
@@ -78,18 +109,5 @@ impl<'a> InstalledManifestPackages<'a> {
         Self::decompress_and_extract_archive(dest, &package_dir)
             .map_err(|err| Error::InstallError(format!("{}", err)))?;
         Ok((key, package_dir, download_url.as_ref().to_string()))
-    }
-
-    fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(
-        mut compressed_archive: F,
-        pkg_name: P,
-    ) -> Result<(), failure::Error> {
-        compressed_archive.seek(SeekFrom::Start(0))?;
-        let gz = GzDecoder::new(compressed_archive);
-        let mut archive = Archive::new(gz);
-        archive
-            .unpack(&pkg_name)
-            .map_err(|err| Error::InstallError(format!("{}", err)))?;
-        Ok(())
     }
 }

@@ -1,11 +1,11 @@
 use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::installed_manifest_packages::{InstalledManifestPackages, RegistryInstaller};
 use crate::dataflow::lockfile_packages::{LockfilePackages, LockfileResult, LockfileSource};
 use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult, ManifestSource};
-use crate::dataflow::resolved_manifest_packages::{ResolvedManifestPackages, RegistryResolver};
+use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
+use crate::dataflow::resolved_manifest_packages::{RegistryResolver, ResolvedManifestPackages};
 use std::borrow::Cow;
 use std::path::Path;
-use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 
 pub mod changed_manifest_packages;
 pub mod installed_manifest_packages;
@@ -79,9 +79,12 @@ pub fn update<P: AsRef<Path>>(
     println!("lockfile: {:?}\n", lockfile_data);
     let pruned_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
-    let resolved_manifest_packages = ResolvedManifestPackages::new::<RegistryResolver>(pruned_manifest_data)?;
-    let installed_manifest_packages =
-        InstalledManifestPackages::install(&directory, resolved_manifest_packages)?;
+    let resolved_manifest_packages =
+        ResolvedManifestPackages::new::<RegistryResolver>(pruned_manifest_data)?;
+    let installed_manifest_packages = InstalledManifestPackages::install::<RegistryInstaller, _>(
+        &directory,
+        resolved_manifest_packages,
+    )?;
     let manifest_lockfile_data =
         LockfilePackages::from_installed_packages(&installed_manifest_packages);
 

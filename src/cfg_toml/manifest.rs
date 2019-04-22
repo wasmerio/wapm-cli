@@ -138,9 +138,9 @@ mod command_tests {
 
 #[cfg(test)]
 mod dependency_tests {
+    use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
     use std::fs::File;
     use std::io::Write;
-    use crate::cfg_toml::manifest::{MANIFEST_FILE_NAME, Manifest};
 
     #[test]
     fn add_new_dependency() {

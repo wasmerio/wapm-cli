@@ -22,7 +22,10 @@ pub struct ResolvedManifestPackages<'a> {
 impl<'a> ResolvedManifestPackages<'a> {
     /// Consume changed manifest packages and produce keys with download urls. Will query the registry
     /// for the download urls.
-    pub fn new<Resolver>(manifest_data: ChangedManifestPackages<'a>) -> Result<Self, Error> where Resolver: Resolve<'a> {
+    pub fn new<Resolver>(manifest_data: ChangedManifestPackages<'a>) -> Result<Self, Error>
+    where
+        Resolver: Resolve<'a>,
+    {
         let wapm_pkgs = manifest_data
             .packages
             .into_iter()
@@ -31,8 +34,8 @@ impl<'a> ResolvedManifestPackages<'a> {
                 _ => panic!("Non-wapm registry keys are not supported."),
             })
             .collect();
-        let packages = Resolver::sync_packages(wapm_pkgs)
-            .map_err(|e| Error::InstallError(e.to_string()))?;
+        let packages =
+            Resolver::sync_packages(wapm_pkgs).map_err(|e| Error::InstallError(e.to_string()))?;
         Ok(Self { packages })
     }
 }
@@ -43,7 +46,6 @@ pub trait Resolve<'a> {
         added_packages: Vec<WapmPackageKey<'a>>,
     ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error>;
 }
-
 
 pub struct RegistryResolver;
 
@@ -59,7 +61,9 @@ impl<'a> RegistryResolver {
 /// The Registry Resolver will resolve dependencies on a wapm.io server
 impl<'a> Resolve<'a> for RegistryResolver {
     /// This gross function queries the GraphQL server. See the schema in `/graphql/queries/get_packages.grapql`
-    fn sync_packages(added_packages: Vec<WapmPackageKey<'a>>) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
+    fn sync_packages(
+        added_packages: Vec<WapmPackageKey<'a>>,
+    ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
         let response = Self::get_response(added_packages.clone());
         let results: Vec<(WapmPackageKey<'a>, String)> = response
             .package
@@ -97,17 +101,20 @@ impl<'a> Resolve<'a> for RegistryResolver {
 
 #[cfg(test)]
 mod test {
-    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages};
-    use crate::dataflow::{WapmPackageKey, Error, PackageKey};
     use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
+    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages};
+    use crate::dataflow::{Error, PackageKey, WapmPackageKey};
     use std::collections::HashSet;
 
     struct TestResolver;
 
     /// A test resolver that does not resolve the "baz" and "bar" packages but contains everything else.
     impl<'a> Resolve<'a> for TestResolver {
-        fn sync_packages(added_packages: Vec<WapmPackageKey<'a>>) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
-            Ok(added_packages.into_iter()
+        fn sync_packages(
+            added_packages: Vec<WapmPackageKey<'a>>,
+        ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
+            Ok(added_packages
+                .into_iter()
                 .filter(|k| {
                     k.name != "_/bar" && // simulate non-existent packages
                     k.name != "_/baz"
@@ -122,8 +129,11 @@ mod test {
         let package_key_1 = PackageKey::new_registry_package("_/foo", "1.0.0");
         let mut packages_set = HashSet::new();
         packages_set.insert(package_key_1);
-        let changed_packages = ChangedManifestPackages { packages: packages_set };
-        let resolve_packages = ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
+        let changed_packages = ChangedManifestPackages {
+            packages: packages_set,
+        };
+        let resolve_packages =
+            ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 
@@ -136,8 +146,11 @@ mod test {
         packages_set.insert(package_key_1);
         packages_set.insert(package_key_2);
         packages_set.insert(package_key_3);
-        let changed_packages = ChangedManifestPackages { packages: packages_set };
-        let resolve_packages = ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
+        let changed_packages = ChangedManifestPackages {
+            packages: packages_set,
+        };
+        let resolve_packages =
+            ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 }

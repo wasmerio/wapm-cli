@@ -1,11 +1,11 @@
-use crate::dataflow::{Error, PackageKey, WapmPackageKey};
 use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
+use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::{Error, PackageKey, WapmPackageKey};
 use std::borrow::Cow;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
 use toml::Value;
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
 
 /// A wrapper type around an optional source string.
 pub struct ManifestSource {
@@ -41,14 +41,17 @@ impl ManifestResult {
             .as_ref()
             .map(|s| match toml::from_str::<Manifest>(s) {
                 Ok(m) => ManifestResult::Manifest(m),
-                Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(
-                    e.to_string(),
-                )),
+                Err(e) => {
+                    ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string()))
+                }
             })
             .unwrap_or(ManifestResult::NoManifest)
     }
 
-    pub fn update_manifest(&self, installed_packages: &InstalledManifestPackages) -> Result<(), Error> {
+    pub fn update_manifest(
+        &self,
+        installed_packages: &InstalledManifestPackages,
+    ) -> Result<(), Error> {
         match self {
             ManifestResult::Manifest(ref m) if installed_packages.packages.len() > 0 => {
                 println!("saving new {:?}", installed_packages.packages);
@@ -92,9 +95,7 @@ impl<'a> ManifestPackages<'a> {
                         name: Cow::Borrowed(name),
                         version: Cow::Borrowed(version),
                     })),
-                    _ => Err(Error::DependencyVersionMustBeString(
-                        name.to_string(),
-                    )),
+                    _ => Err(Error::DependencyVersionMustBeString(name.to_string())),
                 })
                 .collect::<Result<HashSet<PackageKey>, Error>>()
                 .map(|package_keys| Self {
