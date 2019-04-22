@@ -24,12 +24,16 @@ pub enum BonjourError {
     InstallError(String),
 }
 
+/// A package key for a package in the wapm.io registry.
+/// This Is currently defined as name and a version.
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub struct WapmPackageKey<'a> {
     pub name: Cow<'a, str>,
     pub version: Cow<'a, str>,
 }
 
+/// A package key can be anything reference to a package, be it a wapm.io registry, a local directory, or a git url.
+/// Currently, only wapm.io keys are supported.
 #[allow(dead_code)]
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub enum PackageKey<'a> {
@@ -39,6 +43,7 @@ pub enum PackageKey<'a> {
 }
 
 impl<'a> PackageKey<'a> {
+    /// Convenience constructor for wapm.io registry keys.
     fn new_registry_package<S>(name: S, version: S) -> Self
     where
         S: Into<Cow<'a, str>>,
@@ -50,6 +55,9 @@ impl<'a> PackageKey<'a> {
     }
 }
 
+/// The function that starts the dataflow. This function finds a manifest and a lockfile,
+/// calculates differences, installs missing dependencies, and finally updates the manifest
+/// and generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
     added_packages: Vec<(&str, &str)>,
     directory: P,
@@ -67,14 +75,13 @@ pub fn update<P: AsRef<Path>>(
     let lockfile_result = LockfileResult::from_source(&lockfile_string);
     let lockfile_data = LockfileData::new_from_result(lockfile_result)?;
     let pruned_manifest_data =
-        ChangedManifestPackages::prune_unchanged_dependencies(manifest_data, &lockfile_data)?;
+        ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data)?;
     let resolved_manifest_packages = ResolvedManifestPackages::new(pruned_manifest_data)?;
     let installed_manifest_packages =
         InstalledManifestPackages::install(&directory, resolved_manifest_packages)?;
     let manifest_lockfile_data =
         LockfileData::from_installed_packages(&installed_manifest_packages);
     let final_lockfile_data = manifest_lockfile_data.merge(lockfile_data);
-
     manifest_result.update_manifest(added_packages)?;
     final_lockfile_data.generate_lockfile(&directory)?;
     Ok(())
