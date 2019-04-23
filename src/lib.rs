@@ -15,7 +15,7 @@ extern crate prettytable;
 extern crate toml;
 
 mod abi;
-pub mod cfg_toml;
+pub mod data;
 pub mod commands;
 mod config;
 mod dataflow;

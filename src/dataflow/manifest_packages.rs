@@ -1,4 +1,4 @@
-use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
+use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::borrow::Cow;

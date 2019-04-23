@@ -1,4 +1,4 @@
-use crate::cfg_toml::manifest::Command;
+use crate::data::manifest::Command;
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

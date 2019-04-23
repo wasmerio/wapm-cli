@@ -1,6 +1,6 @@
-use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
-use crate::cfg_toml::lock::lockfile_module::LockfileModule;
-use crate::cfg_toml::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
+use crate::data::lock::lockfile_command::LockfileCommand;
+use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;

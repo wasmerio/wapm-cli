@@ -1,7 +1,7 @@
-use crate::cfg_toml::lock::lockfile::Lockfile;
-use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
-use crate::cfg_toml::lock::lockfile_module::LockfileModule;
-use crate::cfg_toml::lock::LOCKFILE_NAME;
+use crate::data::lock::lockfile::Lockfile;
+use crate::data::lock::lockfile_command::LockfileCommand;
+use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
 use crate::dataflow::PackageKey;
 use std::collections::hash_map::HashMap;

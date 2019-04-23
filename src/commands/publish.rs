@@ -1,6 +1,6 @@
 use crate::validate;
 
-use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
+use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::graphql::execute_query_modifier;
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;

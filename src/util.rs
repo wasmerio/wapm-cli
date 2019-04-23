@@ -1,4 +1,4 @@
-use crate::cfg_toml::manifest::PACKAGES_DIR_NAME;
+use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
 use std::path::{Path, PathBuf};

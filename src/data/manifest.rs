@@ -106,7 +106,7 @@ pub enum ManifestError {
 
 #[cfg(test)]
 mod command_tests {
-    use crate::cfg_toml::manifest::Manifest;
+    use crate::data::manifest::Manifest;
 
     #[test]
     fn get_commands() {
@@ -138,7 +138,7 @@ mod command_tests {
 
 #[cfg(test)]
 mod dependency_tests {
-    use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
+    use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
     use std::fs::File;
     use std::io::Write;
 

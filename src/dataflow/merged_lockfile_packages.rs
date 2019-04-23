@@ -1,4 +1,4 @@
-use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
+use crate::data::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};

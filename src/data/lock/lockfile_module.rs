@@ -1,5 +1,5 @@
 use crate::abi::Abi;
-use crate::cfg_toml::manifest::{Module, PACKAGES_DIR_NAME};
+use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util::get_package_namespace_and_name;
 use std::path::PathBuf;
 
