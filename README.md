@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://wapm.dev" target="_blank" rel="noopener noreferrer">
+  <a href="https://wapm.io" target="_blank" rel="noopener noreferrer">
     <img height="110" src="assets/logo.png" alt="Wapm logo">
   </a>
 </p>
@@ -40,7 +40,7 @@ See the [contributing guide][contributing] for instruction on contributing to `w
 If the WAPM GraphQL server has been updated, update the GraphQL schema with:
 
 ```
-graphql get-schema -e dev
+graphql get-schema -e prod
 ```
 
 _Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
