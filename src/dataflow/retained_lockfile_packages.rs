@@ -5,7 +5,7 @@ use std::collections::hash_set::HashSet;
 use std::collections::HashMap;
 
 pub struct RetainedLockfilePackages<'a> {
-    pub packages: HashMap<PackageKey<'a>, LockfilePackage<'a>>,
+    pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }
 
 impl<'a> RetainedLockfilePackages<'a> {

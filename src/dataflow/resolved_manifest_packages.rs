@@ -1,5 +1,5 @@
 use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
-use crate::dataflow::{Error, PackageKey, WapmPackageKey};
+use crate::dataflow::{PackageKey, WapmPackageKey};
 use crate::graphql::execute_query;
 use graphql_client::*;
 use std::collections::hash_set::HashSet;
@@ -11,6 +11,12 @@ use std::collections::hash_set::HashSet;
     response_derives = "Debug"
 )]
 struct GetPackagesQuery;
+
+#[derive(Clone, Debug, Fail)]
+pub enum Error {
+    #[fail(display = "There was a problem resolve dependencies. {}", _0)]
+    CouldNotResolvePackages(String),
+}
 
 /// Struct containing wapm registry resolved packages. This is realized as a pairing of wapm.io keys
 /// and download URLs.
@@ -34,8 +40,8 @@ impl<'a> ResolvedManifestPackages<'a> {
                 _ => panic!("Non-wapm registry keys are not supported."),
             })
             .collect();
-        let packages =
-            Resolver::sync_packages(wapm_pkgs).map_err(|e| Error::InstallError(e.to_string()))?;
+        let packages = Resolver::sync_packages(wapm_pkgs)
+            .map_err(|e| Error::CouldNotResolvePackages(e.to_string()))?;
         Ok(Self { packages })
     }
 }
@@ -102,8 +108,8 @@ impl<'a> Resolve<'a> for RegistryResolver {
 #[cfg(test)]
 mod test {
     use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
-    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages};
-    use crate::dataflow::{Error, PackageKey, WapmPackageKey};
+    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages, Error};
+    use crate::dataflow::{PackageKey, WapmPackageKey};
     use std::collections::HashSet;
 
     struct TestResolver;

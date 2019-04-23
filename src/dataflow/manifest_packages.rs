@@ -1,29 +1,22 @@
 use crate::cfg_toml::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
-use crate::dataflow::{Error, PackageKey, WapmPackageKey};
+use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::borrow::Cow;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
 use toml::Value;
 
-/// A wrapper type around an optional source string.
-pub struct ManifestSource {
-    source: Option<String>,
-}
-
-impl ManifestSource {
-    /// Will contain a Some of the file is found and readable.
-    /// Unable to read the file will result in None.
-    pub fn new<P: AsRef<Path>>(directory: P) -> Self {
-        let directory = directory.as_ref();
-        if !directory.is_dir() {
-            return Self { source: None };
-        }
-        let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
-        let source = fs::read_to_string(&manifest_path_buf).ok();
-        Self { source }
-    }
+#[derive(Clone, Debug, Fail)]
+pub enum Error {
+    #[fail(display = "Could not parse manifest because {}.", _0)]
+    ManifestTomlParseError(String),
+    #[fail(display = "Could not parse manifest because {}.", _0)]
+    IoError(String),
+    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
+    DependencyVersionMustBeString(String),
+    #[fail(display = "Could not save manifest file because {}.", _0)]
+    SaveError(String),
 }
 
 /// A ternary for a manifest: Some, None, Error.
@@ -35,17 +28,27 @@ pub enum ManifestResult {
 }
 
 impl ManifestResult {
-    pub fn from_source(source: &ManifestSource) -> ManifestResult {
-        source
-            .source
-            .as_ref()
-            .map(|s| match toml::from_str::<Manifest>(s) {
-                Ok(m) => ManifestResult::Manifest(m),
-                Err(e) => {
-                    ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string()))
-                }
-            })
-            .unwrap_or(ManifestResult::NoManifest)
+    pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
+        let directory = directory.as_ref();
+        if !directory.is_dir() {
+            ManifestResult::ManifestError(Error::IoError(
+                "Manifest must be a file named `wapm.toml`.".to_string(),
+            ));
+        }
+        let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
+        if !manifest_path_buf.is_file() {
+            ManifestResult::ManifestError(Error::IoError(
+                "Manifest must be a file named `wapm.toml`.".to_string(),
+            ));
+        }
+        let source = match fs::read_to_string(&manifest_path_buf) {
+            Ok(s) => s,
+            Err(_) => return ManifestResult::NoManifest,
+        };
+        match toml::from_str::<Manifest>(&source) {
+            Ok(m) => ManifestResult::Manifest(m),
+            Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string())),
+        }
     }
 
     pub fn update_manifest(
@@ -58,9 +61,7 @@ impl ManifestResult {
                 for (key, _, _) in installed_packages.packages.iter() {
                     manifest.add_dependency(key.name.as_ref(), key.version.as_ref());
                 }
-                manifest
-                    .save()
-                    .map_err(|e| Error::InstallError(e.to_string()))
+                manifest.save().map_err(|e| Error::SaveError(e.to_string()))
             }
             _ => Ok(()),
         }

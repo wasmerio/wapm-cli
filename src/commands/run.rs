@@ -2,7 +2,6 @@ use crate::cfg_toml::lock::is_lockfile_out_of_date;
 use crate::cfg_toml::lock::lockfile::Lockfile;
 use crate::cfg_toml::manifest::Manifest;
 use crate::dataflow;
-use std::borrow::Cow;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -38,8 +37,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     let manifest_result = Manifest::find_in_directory(&current_dir);
     // hack to get around running commands for local modules
-    let (module_name, source_path): (Cow<str>, Cow<str>) = if let Ok(ref manifest) = manifest_result
-    {
+    let (module_name, source_path): (String, String) = if let Ok(ref manifest) = manifest_result {
         let lockfile_command = lockfile
             .get_command(command_name)
             .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
@@ -65,8 +63,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                 .unwrap_or(None)
                 .map(|module| {
                     (
-                        Cow::Borrowed(module.name.as_str()),
-                        Cow::Borrowed(module.source.to_str().unwrap()),
+                        module.name.clone(),
+                        module.source.clone().to_string_lossy().to_string(),
                     )
                 })
                 .ok_or(RunError::FoundCommandInLockfileButMissingModule(
@@ -76,14 +74,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                 ))?
         } else {
             let lockfile_module = lockfile.get_module(
-                lockfile_command.package_name.clone(),
-                lockfile_command.package_version.clone(),
-                lockfile_command.module.clone(),
+                &lockfile_command.package_name,
+                &lockfile_command.package_version,
+                &lockfile_command.module,
             )?;
-            (
-                lockfile_module.name.clone(),
-                Cow::Borrowed(lockfile_module.entry.as_str()),
-            )
+            (lockfile_module.name.clone(), lockfile_module.entry.clone())
         }
     } else {
         let lockfile_command = lockfile
@@ -91,18 +86,15 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
 
         let lockfile_module = lockfile.get_module(
-            lockfile_command.package_name.clone(),
-            lockfile_command.package_version.clone(),
-            lockfile_command.module.clone(),
+            &lockfile_command.package_name,
+            &lockfile_command.package_version,
+            &lockfile_command.module,
         )?;
-        (
-            lockfile_module.name.clone(),
-            Cow::Borrowed(lockfile_module.entry.as_str()),
-        )
+        (lockfile_module.name.clone(), lockfile_module.entry.clone())
     };
 
     // check that the source exists
-    let source_path_buf = PathBuf::from(source_path.as_ref());
+    let source_path_buf = PathBuf::from(&source_path);
     source_path_buf.metadata().map_err(|_| {
         RunError::SourceForCommandNotFound(
             command_name.to_string(),
@@ -122,7 +114,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         wasmer_extra_flags,
         wasi_preopened_dir_flags,
         &current_dir,
-        source_path.as_ref(),
+        source_path,
         Some(format!("wapm run {}", command_name)),
     )?;
     let mut child = Command::new("wasmer").args(&command_vec).spawn()?;

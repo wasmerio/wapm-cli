@@ -3,55 +3,56 @@ use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 use crate::cfg_toml::lock::lockfile_module::LockfileModule;
 use crate::cfg_toml::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
-use crate::dataflow::{Error, PackageKey};
+use crate::dataflow::PackageKey;
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
 
-/// A wrapper type around an optional source string.
-pub struct LockfileSource {
-    source: Option<String>,
-}
-
-impl LockfileSource {
-    /// Will contain a Some of the file is found and readable.
-    /// Unable to read the file will result in None.
-    pub fn new<P: AsRef<Path>>(directory: P) -> Self {
-        let directory = directory.as_ref();
-        if !directory.is_dir() {
-            return Self { source: None };
-        }
-        let lockfile_path_buf = directory.join(LOCKFILE_NAME);
-        let source = fs::read_to_string(&lockfile_path_buf).ok();
-        Self { source }
-    }
+#[derive(Clone, Debug, Fail)]
+pub enum LockfileError {
+    #[fail(display = "Could not parse lockfile because {}.", _0)]
+    LockfileTomlParseError(String),
+    #[fail(display = "Could not parse lockfile because {}.", _0)]
+    IoError(String),
 }
 
 /// A ternary for a lockfile: Some, None, Error.
 #[derive(Debug)]
-pub enum LockfileResult<'a> {
-    Lockfile(Lockfile<'a>),
+pub enum LockfileResult {
+    Lockfile(Lockfile),
     NoLockfile,
-    LockfileError(Error),
+    LockfileError(LockfileError),
 }
 
-impl<'a> LockfileResult<'a> {
-    pub fn from_source(source: &'a LockfileSource) -> LockfileResult {
-        source
-            .source
-            .as_ref()
-            .map(|source| match toml::from_str::<Lockfile>(source) {
-                Ok(l) => LockfileResult::Lockfile(l),
-                Err(e) => {
-                    LockfileResult::LockfileError(Error::LockfileTomlParseError(e.to_string()))
-                }
-            })
-            .unwrap_or(LockfileResult::NoLockfile)
+impl LockfileResult {
+    pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
+        let directory = directory.as_ref();
+        if !directory.is_dir() {
+            LockfileResult::LockfileError(LockfileError::IoError(
+                "Manifest must be a file named `wapm.toml`.".to_string(),
+            ));
+        }
+        let lockfile_path_buf = directory.join(LOCKFILE_NAME);
+        if !lockfile_path_buf.is_file() {
+            LockfileResult::LockfileError(LockfileError::IoError(
+                "Manifest must be a file named `wapm.toml`.".to_string(),
+            ));
+        }
+        let source = match fs::read_to_string(&lockfile_path_buf) {
+            Ok(s) => s,
+            Err(_) => return LockfileResult::NoLockfile,
+        };
+        match toml::from_str::<Lockfile>(&source) {
+            Ok(l) => LockfileResult::Lockfile(l),
+            Err(e) => {
+                LockfileResult::LockfileError(LockfileError::LockfileTomlParseError(e.to_string()))
+            }
+        }
     }
 }
 
-impl<'a> Default for LockfileResult<'a> {
+impl Default for LockfileResult {
     fn default() -> Self {
         LockfileResult::NoLockfile
     }
@@ -59,22 +60,22 @@ impl<'a> Default for LockfileResult<'a> {
 
 /// A convenient structure containing all modules and commands for a package stored lockfile.
 #[derive(Clone, Debug)]
-pub struct LockfilePackage<'a> {
-    pub modules: Vec<LockfileModule<'a>>,
-    pub commands: Vec<LockfileCommand<'a>>,
+pub struct LockfilePackage {
+    pub modules: Vec<LockfileModule>,
+    pub commands: Vec<LockfileCommand>,
 }
 
 /// A wrapper around a map of key -> lockfile package.
 #[derive(Clone, Debug)]
 pub struct LockfilePackages<'a> {
-    pub packages: HashMap<PackageKey<'a>, LockfilePackage<'a>>,
+    pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }
 
 impl<'a> LockfilePackages<'a> {
     pub fn from_installed_packages(
         installed_manifest_packages: &'a InstalledManifestPackages<'a>,
     ) -> Self {
-        let packages: HashMap<PackageKey<'a>, LockfilePackage<'a>> = installed_manifest_packages
+        let packages: HashMap<PackageKey<'a>, LockfilePackage> = installed_manifest_packages
             .packages
             .iter()
             .map(|(k, m, download_url)| {
@@ -83,10 +84,10 @@ impl<'a> LockfilePackages<'a> {
                         .iter()
                         .map(|m| {
                             LockfileModule::from_module(
-                                k.name.clone(),
-                                k.version.clone(),
+                                k.name.as_ref(),
+                                k.version.as_ref(),
                                 m,
-                                std::borrow::Cow::Borrowed(download_url),
+                                download_url,
                             )
                         })
                         .collect(),
@@ -95,9 +96,7 @@ impl<'a> LockfilePackages<'a> {
                 let commands: Vec<LockfileCommand> = match m.command {
                     Some(ref modules) => modules
                         .iter()
-                        .map(|c| {
-                            LockfileCommand::from_command(k.name.clone(), k.version.clone(), c)
-                        })
+                        .map(|c| LockfileCommand::from_command(&k.name, &k.version, c))
                         .collect(),
                     _ => vec![],
                 };
@@ -110,7 +109,7 @@ impl<'a> LockfilePackages<'a> {
         Self { packages }
     }
 
-    pub fn new_from_result(result: LockfileResult<'a>) -> Result<Self, Error> {
+    pub fn new_from_result(result: LockfileResult) -> Result<Self, LockfileError> {
         match result {
             LockfileResult::Lockfile(l) => Ok(Self::new_from_lockfile(l)),
             LockfileResult::NoLockfile => Ok(Self {
@@ -120,12 +119,12 @@ impl<'a> LockfilePackages<'a> {
         }
     }
 
-    fn new_from_lockfile(lockfile: Lockfile<'a>) -> LockfilePackages {
+    fn new_from_lockfile(lockfile: Lockfile) -> LockfilePackages<'a> {
         let (raw_lockfile_modules, raw_lockfile_commands) = (lockfile.modules, lockfile.commands);
 
         let mut lockfile_commands_map: HashMap<PackageKey, Vec<LockfileCommand>> = HashMap::new();
         for (_name, command) in raw_lockfile_commands {
-            let command: LockfileCommand<'a> = command;
+            let command: LockfileCommand = command;
             let id = PackageKey::new_registry_package(
                 command.package_name.clone(),
                 command.package_version.clone(),

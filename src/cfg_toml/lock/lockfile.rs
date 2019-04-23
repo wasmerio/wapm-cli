@@ -1,30 +1,26 @@
 use crate::cfg_toml::lock::lockfile_command::LockfileCommand;
 use crate::cfg_toml::lock::lockfile_module::LockfileModule;
 use crate::cfg_toml::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
 
-pub type ModuleMap<'a> =
-    BTreeMap<Cow<'a, str>, BTreeMap<Cow<'a, str>, BTreeMap<Cow<'a, str>, LockfileModule<'a>>>>;
-pub type CommandMap<'a> = BTreeMap<Cow<'a, str>, LockfileCommand<'a>>;
+pub type ModuleMap = BTreeMap<String, BTreeMap<String, BTreeMap<String, LockfileModule>>>;
+pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct Lockfile<'a> {
-    #[serde(borrow = "'a")]
-    pub modules: ModuleMap<'a>, // PackageName -> VersionNumber -> ModuleName -> Module
-    #[serde(borrow = "'a")]
-    pub commands: CommandMap<'a>, // CommandName -> Command
+pub struct Lockfile {
+    pub modules: ModuleMap, // PackageName -> VersionNumber -> ModuleName -> Module
+    pub commands: CommandMap, // CommandName -> Command
 }
 
-impl<'a> Lockfile<'a> {
+impl<'a> Lockfile {
     pub fn open<P: AsRef<Path>>(
         directory: P,
         lockfile_string: &'a mut String,
-    ) -> Result<Lockfile<'a>, LockfileError> {
+    ) -> Result<Lockfile, LockfileError> {
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
         let mut lockfile_file =
             File::open(lockfile_path).map_err(|_| LockfileError::MissingLockfile)?;
@@ -52,11 +48,11 @@ impl<'a> Lockfile<'a> {
 
     pub fn get_module(
         &self,
-        package_name: Cow<'a, str>,
-        package_version: Cow<'a, str>,
-        module_name: Cow<'a, str>,
+        package_name: &str,
+        package_version: &str,
+        module_name: &str,
     ) -> Result<&LockfileModule, failure::Error> {
-        let version_map = self.modules.get(&package_name).ok_or::<failure::Error>(
+        let version_map = self.modules.get(package_name).ok_or::<failure::Error>(
             LockfileError::PackageWithVersionNotFoundWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -64,7 +60,7 @@ impl<'a> Lockfile<'a> {
             )
             .into(),
         )?;
-        let module_map = version_map.get(&package_version).ok_or::<failure::Error>(
+        let module_map = version_map.get(package_version).ok_or::<failure::Error>(
             LockfileError::VersionNotFoundForPackageWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -72,7 +68,7 @@ impl<'a> Lockfile<'a> {
             )
             .into(),
         )?;
-        let module = module_map.get(&module_name).ok_or::<failure::Error>(
+        let module = module_map.get(module_name).ok_or::<failure::Error>(
             LockfileError::ModuleForPackageVersionNotFound(
                 package_name.to_string(),
                 package_version.to_string(),

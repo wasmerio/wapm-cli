@@ -1,5 +1,4 @@
 use crate::cfg_toml::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
-use crate::dataflow;
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
@@ -7,11 +6,17 @@ use std::collections::btree_map::BTreeMap;
 use std::collections::hash_map::HashMap;
 use std::path::Path;
 
+#[derive(Clone, Debug, Fail)]
+pub enum Error {
+    #[fail(display = "Could not save generated lockfile because {}.", _0)]
+    FailedToSaveLockfile(String),
+}
+
 /// Merge two sets, and keep upgraded packages and all other unchanged packages.
 /// Remove changed packages e.g. upgraded versions.
 #[derive(Clone, Debug)]
 pub struct MergedLockfilePackages<'a> {
-    pub packages: HashMap<PackageKey<'a>, LockfilePackage<'a>>,
+    pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }
 
 impl<'a> MergedLockfilePackages<'a> {
@@ -42,14 +47,14 @@ impl<'a> MergedLockfilePackages<'a> {
         Self { packages }
     }
 
-    pub fn generate_lockfile(self, directory: &'a Path) -> Result<(), dataflow::Error> {
-        let mut modules: ModuleMap<'a> = BTreeMap::new();
-        let mut commands: CommandMap<'a> = BTreeMap::new();
+    pub fn generate_lockfile(self, directory: &'a Path) -> Result<(), Error> {
+        let mut modules: ModuleMap = BTreeMap::new();
+        let mut commands: CommandMap = BTreeMap::new();
         for (key, package) in self.packages {
             match key {
                 PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
-                    let versions = modules.entry(name).or_default();
-                    let modules = versions.entry(version).or_default();
+                    let versions = modules.entry(name.to_owned().to_string()).or_default();
+                    let modules = versions.entry(version.to_owned().to_string()).or_default();
                     for module in package.modules {
                         let name = module.name.clone();
                         modules.insert(name, module);
@@ -68,7 +73,7 @@ impl<'a> MergedLockfilePackages<'a> {
 
         lockfile
             .save(directory)
-            .map_err(|e| dataflow::Error::InstallError(e.to_string()))?;
+            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
         Ok(())
     }
 }
