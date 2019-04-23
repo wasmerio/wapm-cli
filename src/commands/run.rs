@@ -1,5 +1,4 @@
 use crate::cfg_toml::lock::is_lockfile_out_of_date;
-use crate::cfg_toml::lock::lockfile::Lockfile;
 use crate::cfg_toml::manifest::Manifest;
 use crate::dataflow;
 use std::env;
@@ -7,6 +6,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
+use crate::dataflow::lockfile_packages::LockfileResult;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -30,9 +30,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         _ => dataflow::update(vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
-    let mut lockfile_string = String::new();
-    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
-        .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
+    let lockfile_result = LockfileResult::find_in_directory(&current_dir);
+    let lockfile = match lockfile_result {
+        LockfileResult::NoLockfile => return Err(RunError::MissingLockFile("Lockfile was not generated.".to_string()).into()),
+        LockfileResult::LockfileError(e) => return Err(RunError::MissingLockFile(format!("There was an issue opening the lockfile. {}", e.to_string())).into()),
+        LockfileResult::Lockfile(lockfile) => lockfile,
+    };
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     let manifest_result = Manifest::find_in_directory(&current_dir);

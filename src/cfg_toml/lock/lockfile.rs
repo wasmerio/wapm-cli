@@ -4,7 +4,7 @@ use crate::cfg_toml::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
-use std::io::{Read, Write};
+use std::io::{Write};
 use std::path::Path;
 
 pub type ModuleMap = BTreeMap<String, BTreeMap<String, BTreeMap<String, LockfileModule>>>;
@@ -17,19 +17,6 @@ pub struct Lockfile {
 }
 
 impl<'a> Lockfile {
-    pub fn open<P: AsRef<Path>>(
-        directory: P,
-        lockfile_string: &'a mut String,
-    ) -> Result<Lockfile, LockfileError> {
-        let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
-        let mut lockfile_file =
-            File::open(lockfile_path).map_err(|_| LockfileError::MissingLockfile)?;
-        lockfile_file
-            .read_to_string(lockfile_string)
-            .map_err(|e| LockfileError::FileIoErrorReadingLockfile(e))?;
-        toml::from_str(lockfile_string.as_str()).map_err(|e| LockfileError::TomlParseError(e))
-    }
-
     /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> Result<(), failure::Error> {
         let lockfile_string = toml::to_string(self)?;

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 use reqwest::Client;
 use crate::graphql::VERSION;
+use crate::dataflow::manifest_packages::ManifestResult;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
@@ -72,16 +73,18 @@ impl<'a> InstalledManifestPackages<'a> {
             packages_result?
                 .into_iter()
                 .map(|(key, dir, download_url)| {
-                    let m = Manifest::find_in_directory(&dir)
-                        .map(|m| (key.clone(), m))
-                        .map_err(|e| {
-                            Error::InstalledDependencyIsMissingManifest(
-                                key.clone().to_string(),
-                                e.to_string(),
-                            )
-                        });
-                    let m = m.map(|(k, m)| (k, m, download_url));
-                    m
+                    let manifest = match ManifestResult::find_in_directory(&dir) {
+                        ManifestResult::ManifestError(e) => return Err(Error::InstalledDependencyIsMissingManifest(
+                            key.clone().to_string(),
+                            e.to_string(),
+                        )),
+                        ManifestResult::Manifest(m) => m,
+                        ManifestResult::NoManifest => return Err(Error::InstalledDependencyIsMissingManifest(
+                            key.clone().to_string(),
+                            "Manifest was not found.".to_string(),
+                        )),
+                    };
+                    Ok((key.clone(), manifest, download_url))
                 })
                 .collect();
         let packages = packages_result?;
