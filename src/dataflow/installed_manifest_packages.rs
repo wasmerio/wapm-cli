@@ -10,7 +10,7 @@ use std::io;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use tar::Archive;
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use crate::graphql::VERSION;
 use crate::dataflow::manifest_packages::ManifestResult;
 
@@ -133,7 +133,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             fully_qualified_package_display_name(pkg_name, &key.version);
         let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
-        let client = Client::new();
+        let client = ClientBuilder::new().gzip(false).build().unwrap();
         let user_agent = format!(
             "wapm/{} {} {}",
             VERSION,
