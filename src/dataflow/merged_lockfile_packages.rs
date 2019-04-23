@@ -69,11 +69,13 @@ impl<'a> MergedLockfilePackages<'a> {
             }
         }
 
-        let lockfile = Lockfile { modules, commands };
+        if !modules.is_empty() && !commands.is_empty() {
+            let lockfile = Lockfile { modules, commands };
 
-        lockfile
-            .save(directory)
-            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
+            lockfile
+                .save(directory)
+                .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
+        }
         Ok(())
     }
 }
