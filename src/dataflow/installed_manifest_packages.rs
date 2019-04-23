@@ -66,6 +66,7 @@ impl<'a> InstalledManifestPackages<'a> {
                 .packages
                 .into_iter()
                 .map(|(key, download_url)| {
+                    info!("Installing {}@{}", key.name, key.version);
                     Installer::install_package(&directory, key, &download_url)
                 })
                 .collect();
