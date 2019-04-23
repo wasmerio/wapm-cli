@@ -1,6 +1,8 @@
 use crate::dependency_resolver::Dependency;
+use crate::graphql::VERSION;
 use crate::manifest::PACKAGES_DIR_NAME;
 use flate2::read::GzDecoder;
+use reqwest::Client;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
@@ -19,7 +21,19 @@ pub fn install_package<P: AsRef<Path>>(
             custom_text: "Could not create package directory".to_string(),
             error: format!("{}", err),
         })?;
-    let mut response = reqwest::get(&dependency.download_url)?;
+
+    let client = Client::new();
+    let user_agent = format!(
+        "wapm/{} {} {}",
+        VERSION,
+        whoami::platform(),
+        whoami::os().to_lowercase(),
+    );
+    let mut response = client
+        .get(&dependency.download_url)
+        .header(reqwest::header::USER_AGENT, user_agent)
+        .send()?;
+
     let temp_dir =
         tempdir::TempDir::new("wapm_package_install").map_err(|err| InstallError::MiscError {
             custom_text: "Failed to create temporary directory to open the package in".to_string(),
