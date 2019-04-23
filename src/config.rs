@@ -38,7 +38,7 @@ impl Config {
     pub fn default() -> Self {
         Self {
             registry: Registry {
-                url: "https://registry.wapm.dev".to_string(),
+                url: "https://registry.wapm.io".to_string(),
                 token: None,
             },
             #[cfg(feature = "telemetry")]

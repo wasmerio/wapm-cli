@@ -13,7 +13,7 @@ enum GraphQLError {
     Error { message: String },
 }
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 pub fn execute_query_modifier<R, V, F>(
     query: &QueryBody<V>,

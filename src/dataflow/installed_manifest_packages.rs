@@ -10,6 +10,8 @@ use std::io;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use tar::Archive;
+use reqwest::Client;
+use crate::graphql::VERSION;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
@@ -127,8 +129,17 @@ impl<'a> Install<'a> for RegistryInstaller {
             fully_qualified_package_display_name(pkg_name, &key.version);
         let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
-        let mut response = reqwest::get(download_url.as_ref())
-            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+        let client = Client::new();
+        let user_agent = format!(
+            "wapm/{} {} {}",
+            VERSION,
+            whoami::platform(),
+            whoami::os().to_lowercase(),
+        );
+        let mut response = client
+            .get(download_url.as_ref())
+            .header(reqwest::header::USER_AGENT, user_agent)
+            .send().map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_dir = tempdir::TempDir::new("wapm_package_install")
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
