@@ -54,7 +54,6 @@ impl ManifestResult {
     ) -> Result<(), Error> {
         match self {
             ManifestResult::Manifest(ref m) if installed_packages.packages.len() > 0 => {
-                println!("saving new {:?}", installed_packages.packages);
                 let mut manifest = m.clone();
                 for (key, _, _) in installed_packages.packages.iter() {
                     manifest.add_dependency(key.name.as_ref(), key.version.as_ref());

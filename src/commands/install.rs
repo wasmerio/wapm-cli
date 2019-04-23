@@ -59,7 +59,6 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
             .collect();
 
-        println!("installing...");
         dataflow::update(installed_packages, &current_directory)
             .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
