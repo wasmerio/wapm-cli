@@ -15,14 +15,12 @@ extern crate prettytable;
 extern crate toml;
 
 mod abi;
+pub mod data;
 pub mod commands;
 mod config;
-mod dependency_resolver;
+mod dataflow;
 mod graphql;
 mod init;
-mod install;
-pub mod lock;
 pub mod logging;
-mod manifest;
 pub mod util;
 mod validate;

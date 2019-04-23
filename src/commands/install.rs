@@ -2,7 +2,8 @@ use crate::graphql::execute_query;
 
 use graphql_client::*;
 
-use crate::lock::{get_package_namespace_and_name, regenerate_lockfile};
+use crate::dataflow;
+use std::env;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -19,10 +20,10 @@ enum InstallError {
     NoVersionsAvailable { name: String },
 
     #[fail(display = "Failed to install packages. {}", _0)]
-    CannotRegenLockFile(failure::Error),
+    CannotRegenLockFile(dataflow::Error),
 
     #[fail(display = "Failed to install packages in manifest. {}", _0)]
-    FailureInstallingPackages(failure::Error),
+    FailureInstallingPackages(dataflow::Error),
 }
 
 #[derive(GraphQLQuery)]
@@ -34,6 +35,7 @@ enum InstallError {
 struct GetPackageQuery;
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
+    let current_directory = env::current_dir()?;
     if !options.packages.is_empty() {
         let mut packages = vec![];
         for name in options.packages {
@@ -49,8 +51,6 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                 .ok_or(InstallError::NoVersionsAvailable { name: name.clone() })?;
             let package_name = package.name.clone();
             let package_version = last_version.version.clone();
-            get_package_namespace_and_name(&name)
-                .map_err(|e| InstallError::FailureInstallingPackages(e))?;
             packages.push((package_name, package_version));
         }
 
@@ -59,11 +59,14 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
             .collect();
 
-        regenerate_lockfile(installed_packages)
+        dataflow::update(installed_packages, &current_directory)
             .map_err(|err| InstallError::CannotRegenLockFile(err))?;
+
         println!("Package installed successfully to wapm_packages!");
     } else {
-        regenerate_lockfile(vec![]).map_err(|err| InstallError::FailureInstallingPackages(err))?;
+        let added_packages = vec![];
+        dataflow::update(added_packages, &current_directory)
+            .map_err(|err| InstallError::FailureInstallingPackages(err))?;
         println!("Packages installed to wapm_packages!");
     }
     Ok(())

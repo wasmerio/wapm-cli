@@ -2,14 +2,9 @@ query GetPackagesQuery ($names: [String!]!) {
     package: getPackages(names:$names) {
         name
         versions {
-            package {
-                versions {
-                    version
-                    manifest
-                    distribution {
-                        downloadUrl
-                    }
-                }
+            version
+            distribution {
+                downloadUrl
             }
         }
     }

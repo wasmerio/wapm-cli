@@ -1,6 +1,6 @@
 //! logic to init a directory for use with wapm
 
-use crate::manifest::MANIFEST_FILE_NAME;
+use crate::data::manifest::MANIFEST_FILE_NAME;
 use crate::util;
 use std::{
     fs,

@@ -1,10 +1,14 @@
 use crate::abi::Abi;
-use crate::manifest::Manifest;
 use std::{fs, io::Read, path::PathBuf};
+use crate::dataflow::manifest_packages::ManifestResult;
 
 pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     // validate as dir
-    let manifest = Manifest::find_in_directory(pkg_path.clone())?;
+    let manifest = match ManifestResult::find_in_directory(&pkg_path) {
+        ManifestResult::NoManifest => return Ok(()),
+        ManifestResult::ManifestError(e) => return Err(e.into()),
+        ManifestResult::Manifest(manifest) => manifest,
+    };
     if let Some(modules) = manifest.module {
         for module in modules.iter() {
             let source_path = if module.source.is_relative() {

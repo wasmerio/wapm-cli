@@ -88,29 +88,9 @@ impl Manifest {
     pub fn save(&self) -> Result<(), failure::Error> {
         let manifest_string = toml::to_string(self)?;
         let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
-        fs::write(manifest_path, &manifest_string)?;
+        fs::write(manifest_path, &manifest_string)
+            .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
-    }
-
-    pub fn extract_dependencies(&self) -> Result<Vec<(&str, &str)>, failure::Error> {
-        if self.dependencies.is_none() {
-            return Ok(vec![]);
-        }
-        let dependencies = self.dependencies.as_ref().unwrap();
-        let mut extracted_dependencies = vec![];
-        for (name, version_value) in dependencies.iter() {
-            match version_value {
-                Value::String(version) => {
-                    extracted_dependencies.push((name.as_str(), version.as_str()))
-                }
-                _ => {
-                    return Err(
-                        ManifestError::DependencyVersionMustBeString(name.to_string()).into(),
-                    );
-                }
-            }
-        }
-        Ok(extracted_dependencies)
     }
 }
 
@@ -118,8 +98,6 @@ impl Manifest {
 pub enum ManifestError {
     #[fail(display = "Manifest file not found.")]
     MissingManifest,
-    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
-    DependencyVersionMustBeString(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
     #[fail(display = "Could not parse manifest because {}.", _0)]
@@ -128,7 +106,7 @@ pub enum ManifestError {
 
 #[cfg(test)]
 mod command_tests {
-    use crate::manifest::Manifest;
+    use crate::data::manifest::Manifest;
 
     #[test]
     fn get_commands() {
@@ -160,7 +138,7 @@ mod command_tests {
 
 #[cfg(test)]
 mod dependency_tests {
-    use crate::manifest::{Manifest, MANIFEST_FILE_NAME};
+    use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
     use std::fs::File;
     use std::io::Write;
 

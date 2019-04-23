@@ -1,10 +1,12 @@
-use crate::lock::{is_lockfile_out_of_date, regenerate_lockfile, Lockfile};
-use crate::manifest::Manifest;
+use crate::data::lock::is_lockfile_out_of_date;
+use crate::data::manifest::Manifest;
+use crate::dataflow;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
+use crate::dataflow::lockfile_packages::LockfileResult;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -25,17 +27,20 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // regenerate the lockfile if it is out of date
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => regenerate_lockfile(vec![])
+        _ => dataflow::update(vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
-    let mut lockfile_string = String::new();
-    let lockfile = Lockfile::open(&current_dir, &mut lockfile_string)
-        .map_err(|err| RunError::MissingLockFile(format!("{}", err)))?;
+    let lockfile_result = LockfileResult::find_in_directory(&current_dir);
+    let lockfile = match lockfile_result {
+        LockfileResult::NoLockfile => return Err(RunError::MissingLockFile("Lockfile was not generated.".to_string()).into()),
+        LockfileResult::LockfileError(e) => return Err(RunError::MissingLockFile(format!("There was an issue opening the lockfile. {}", e.to_string())).into()),
+        LockfileResult::Lockfile(lockfile) => lockfile,
+    };
 
     let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
     let manifest_result = Manifest::find_in_directory(&current_dir);
     // hack to get around running commands for local modules
-    let (module_name, source_path): (&str, &str) = if let Ok(ref manifest) = manifest_result {
+    let (module_name, source_path): (String, String) = if let Ok(ref manifest) = manifest_result {
         let lockfile_command = lockfile
             .get_command(command_name)
             .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
@@ -59,7 +64,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             });
             module
                 .unwrap_or(None)
-                .map(|module| (module.name.as_str(), module.source.to_str().unwrap()))
+                .map(|module| {
+                    (
+                        module.name.clone(),
+                        module.source.clone().to_string_lossy().to_string(),
+                    )
+                })
                 .ok_or(RunError::FoundCommandInLockfileButMissingModule(
                     command_name.to_string(),
                     lockfile_command.module.to_string(),
@@ -67,11 +77,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                 ))?
         } else {
             let lockfile_module = lockfile.get_module(
-                lockfile_command.package_name,
-                lockfile_command.package_version,
-                lockfile_command.module,
+                &lockfile_command.package_name,
+                &lockfile_command.package_version,
+                &lockfile_command.module,
             )?;
-            (lockfile_module.name, &lockfile_module.entry)
+            (lockfile_module.name.clone(), lockfile_module.entry.clone())
         }
     } else {
         let lockfile_command = lockfile
@@ -79,15 +89,15 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
 
         let lockfile_module = lockfile.get_module(
-            lockfile_command.package_name,
-            lockfile_command.package_version,
-            lockfile_command.module,
+            &lockfile_command.package_name,
+            &lockfile_command.package_version,
+            &lockfile_command.module,
         )?;
-        (lockfile_module.name, &lockfile_module.entry)
+        (lockfile_module.name.clone(), lockfile_module.entry.clone())
     };
 
     // check that the source exists
-    let source_path_buf = PathBuf::from(source_path);
+    let source_path_buf = PathBuf::from(&source_path);
     source_path_buf.metadata().map_err(|_| {
         RunError::SourceForCommandNotFound(
             command_name.to_string(),
@@ -107,7 +117,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         wasmer_extra_flags,
         wasi_preopened_dir_flags,
         &current_dir,
-        &source_path,
+        source_path,
         Some(format!("wapm run {}", command_name)),
     )?;
     let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
@@ -145,8 +155,8 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 
 #[cfg(test)]
 mod test {
+    use crate::data::manifest::PACKAGES_DIR_NAME;
     use crate::commands::run::create_run_command;
-    use crate::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
@@ -157,7 +167,7 @@ mod test {
         let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
         let dir = tmp_dir.path();
         let wapm_module_dir = dir.join(
-            [PACKAGES_DIR_NAME, "_/foo@1.0.2"]
+            [PACKAGES_DIR_NAME, "_", "foo@1.0.2"]
                 .iter()
                 .collect::<PathBuf>(),
         );
@@ -184,7 +194,7 @@ mod test {
 #[derive(Debug, Fail)]
 enum RunError {
     #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
-    CannotRegenLockfile(String, failure::Error),
+    CannotRegenLockfile(String, dataflow::Error),
     #[fail(display = "Could not find lock file: {}", _0)]
     MissingLockFile(String),
     #[fail(

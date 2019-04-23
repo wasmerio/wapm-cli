@@ -1,8 +1,7 @@
-use crate::manifest::Manifest;
 use crate::validate;
 
+use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::graphql::execute_query_modifier;
-use crate::manifest::MANIFEST_FILE_NAME;
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use std::env;
