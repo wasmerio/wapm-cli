@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+### Added
+- Install packages with name and version e.g. `wapm install lua@0.1.2`.
 ### Changed
 - Refactored process for generating updates to manifest, regenerating the lockfile, and installing packages.
 ### Fixed
