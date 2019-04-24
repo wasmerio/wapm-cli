@@ -9,6 +9,7 @@ license = "MIT"
 
 [dependencies]
 chrono = "0.4"
+dirs = "1"
 dotenv = "0.13.0"
 dunce = "0.1.1"
 failure = "*"
