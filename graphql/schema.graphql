@@ -1,5 +1,5 @@
-# source: http://localhost:8000/graphql
-# timestamp: Wed Apr 10 2019 07:36:19 GMT-0700 (Pacific Daylight Time)
+# source: https://registry.wapm.dev/graphql
+# timestamp: Wed Apr 24 2019 15:34:55 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -81,6 +81,7 @@ type PackageVersion {
   description: String!
   manifest: String!
   license: String
+  licenseFile: String
   readme: String
   repository: String
   homepage: String
@@ -126,6 +127,7 @@ input PublishPackageInput {
   description: String!
   manifest: String!
   license: String
+  licenseFile: String
   readme: String
   repository: String
   homepage: String
