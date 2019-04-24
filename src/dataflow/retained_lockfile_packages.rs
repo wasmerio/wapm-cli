@@ -19,12 +19,20 @@ impl<'a> RetainedLockfilePackages<'a> {
             .intersection(&lockfile_keys)
             .cloned()
             .collect();
+
         let packages: HashMap<_, _> = lockfile_packages
             .packages
             .into_iter()
             .filter(|(k, _)| keys.contains(k))
             .collect();
+
         RetainedLockfilePackages { packages }
+    }
+
+    pub fn from_lockfile_packages(lockfile_packages: LockfilePackages<'a>) -> Self {
+        Self {
+            packages: lockfile_packages.packages,
+        }
     }
 }
 
@@ -47,7 +55,7 @@ mod retained_lockfile_packages_tests {
         manifest_package_keys.insert(PackageKey::new_registry_package("_/baz", "11.11.11"));
 
         let manifest_packages = ManifestPackages {
-            package_keys: Some(manifest_package_keys),
+            packages: manifest_package_keys,
         };
 
         let mut lockfile_package_map = HashMap::new();

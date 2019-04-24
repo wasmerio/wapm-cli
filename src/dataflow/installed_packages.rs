@@ -1,6 +1,6 @@
 use crate::data::manifest::Manifest;
 use crate::dataflow::manifest_packages::ManifestResult;
-use crate::dataflow::resolved_manifest_packages::ResolvedManifestPackages;
+use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
 use crate::util::{
@@ -51,18 +51,18 @@ pub enum Error {
 /// A structure containing installed packages. Currently contains the key, the deserialized
 /// manifest, and the download url.
 #[derive(Clone, Debug)]
-pub struct InstalledManifestPackages<'a> {
+pub struct InstalledPackages<'a> {
     pub packages: Vec<(WapmPackageKey<'a>, Manifest, String)>,
 }
 
-impl<'a> InstalledManifestPackages<'a> {
+impl<'a> InstalledPackages<'a> {
     /// Will install the resolved manifest packages into the specified directory.
     pub fn install<Installer: Install<'a>, P: AsRef<Path>>(
         directory: P,
-        resolved_manifest_packages: ResolvedManifestPackages<'a>,
+        resolve_packages: ResolvedPackages<'a>,
     ) -> Result<Self, Error> {
         let packages_result: Result<Vec<(WapmPackageKey, PathBuf, String)>, Error> =
-            resolved_manifest_packages
+            resolve_packages
                 .packages
                 .into_iter()
                 .map(|(key, download_url)| {

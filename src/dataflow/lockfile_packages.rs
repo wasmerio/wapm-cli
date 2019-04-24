@@ -2,7 +2,7 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::LOCKFILE_NAME;
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::installed_packages::InstalledPackages;
 use crate::dataflow::PackageKey;
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
@@ -59,22 +59,20 @@ impl Default for LockfileResult {
 }
 
 /// A convenient structure containing all modules and commands for a package stored lockfile.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LockfilePackage {
     pub modules: Vec<LockfileModule>,
     pub commands: Vec<LockfileCommand>,
 }
 
 /// A wrapper around a map of key -> lockfile package.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LockfilePackages<'a> {
     pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }
 
 impl<'a> LockfilePackages<'a> {
-    pub fn from_installed_packages(
-        installed_manifest_packages: &'a InstalledManifestPackages<'a>,
-    ) -> Self {
+    pub fn from_installed_packages(installed_manifest_packages: &'a InstalledPackages<'a>) -> Self {
         let packages: HashMap<PackageKey<'a>, LockfilePackage> = installed_manifest_packages
             .packages
             .iter()
@@ -162,5 +160,24 @@ impl<'a> LockfilePackages<'a> {
 
     pub fn package_keys(&self) -> HashSet<PackageKey<'a>> {
         self.packages.keys().cloned().collect()
+    }
+
+    pub fn find_missing_packages(&self) -> HashSet<PackageKey<'a>> {
+        use std::path::PathBuf;
+        let missing_packages: HashSet<PackageKey<'a>> = self
+            .packages
+            .iter()
+            .filter_map(|(key, data)| {
+                if data.modules.iter().any(|module| {
+                    let path = PathBuf::from(&module.entry);
+                    !path.exists()
+                }) {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        missing_packages
     }
 }
