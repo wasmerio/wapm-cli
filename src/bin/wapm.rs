@@ -97,17 +97,7 @@ fn main() {
         }
     };
     if let Err(e) = result {
-        #[cfg(feature = "telemetry")]
-        {
-            // check if telemetry is enabled
-            if _guard.is_some() {
-                sentry::capture_message(&format!("Error: {}", e), sentry::Level::Error);
-                // manually flush guard because we exit the process below
-                drop(_guard);
-            }
-        }
-
-        eprintln!("Fatal Error: {}", e);
+        eprintln!("Error: {}", e);
         std::process::exit(-1);
     }
 }
