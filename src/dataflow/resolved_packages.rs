@@ -156,7 +156,9 @@ mod test {
         let changed_packages = ChangedManifestPackages {
             packages: packages_set,
         };
-        let resolve_packages = ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages).unwrap();
+        let resolve_packages =
+            ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages)
+                .unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 
@@ -172,7 +174,9 @@ mod test {
         let changed_packages = ChangedManifestPackages {
             packages: packages_set,
         };
-        let resolve_packages = ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages).unwrap();
+        let resolve_packages =
+            ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages)
+                .unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 }

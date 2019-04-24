@@ -87,7 +87,6 @@ impl<'a> ManifestPackages<'a> {
         Ok(Self { packages })
     }
 
-
     pub fn keys(&self) -> HashSet<PackageKey<'a>> {
         self.packages.iter().cloned().collect()
     }

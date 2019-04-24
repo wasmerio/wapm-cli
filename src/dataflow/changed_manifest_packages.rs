@@ -36,7 +36,9 @@ mod test {
 
     #[test]
     fn no_shared_dependencies() {
-        let manifest_data = ManifestPackages { packages: HashSet::new() };
+        let manifest_data = ManifestPackages {
+            packages: HashSet::new(),
+        };
         let lockfile_data = LockfilePackages {
             packages: HashMap::new(),
         };
