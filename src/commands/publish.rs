@@ -9,6 +9,7 @@ use graphql_client::*;
 use std::env;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 use tar::Builder;
 
 #[derive(GraphQLQuery)]
@@ -47,6 +48,13 @@ pub fn publish() -> Result<(), failure::Error> {
         }
         fs::read_to_string(manifest.base_directory_path.join(license_file_path)).ok()
     });
+    // include a LICENSE file if it exists and an explicit license_file was not given
+    if package.license_file.is_none() {
+        let license_path = PathBuf::from("LICENSE");
+        if license_path.exists() {
+            builder.append_path(license_path).ok();
+        }
+    }
     for module in modules {
         if module.source.is_relative() {
             let source_path = manifest.base_directory_path.join(&module.source);
@@ -71,6 +79,7 @@ pub fn publish() -> Result<(), failure::Error> {
         }
     }
 
+    builder.finish().ok();
     let tar_archive_data = builder.into_inner().map_err(|_|
                                                         // TODO:
                                                         PublishError::NoModule)?;
