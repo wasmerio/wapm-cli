@@ -24,6 +24,12 @@ enum InstallError {
 
     #[fail(display = "Failed to install packages in manifest. {}", _0)]
     FailureInstallingPackages(dataflow::Error),
+
+    #[fail(
+        display = "Failed to install package because package identifier {} is invalid, expected <name>@<version> or <name>",
+        name
+    )]
+    InvalidPackageIdentifier { name: String },
 }
 
 #[derive(GraphQLQuery)]
@@ -41,24 +47,33 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         for name in options.packages {
             let name_with_version: Vec<&str> = name.split("@").collect();
 
-            if name_with_version.len() > 1 {
-                let package_name = name_with_version[0].to_string();
-                let package_version = name_with_version[1].to_string();
-                packages.push((package_name, package_version));
-            } else {
-                let q = GetPackageQuery::build_query(get_package_query::Variables {
-                    name: name.to_string(),
-                });
-                let response: get_package_query::ResponseData = execute_query(&q)?;
-                let package = response
-                    .package
-                    .ok_or(InstallError::PackageNotFound { name: name.clone() })?;
-                let last_version = package
-                    .last_version
-                    .ok_or(InstallError::NoVersionsAvailable { name: name.clone() })?;
-                let package_name = package.name.clone();
-                let package_version = last_version.version.clone();
-                packages.push((package_name, package_version));
+            match &name_with_version[..] {
+                [package_name, package_version] => {
+                    packages.push((package_name.to_string(), package_version.to_string()));
+                }
+                [name] => {
+                    let q = GetPackageQuery::build_query(get_package_query::Variables {
+                        name: name.to_string(),
+                    });
+                    let response: get_package_query::ResponseData = execute_query(&q)?;
+                    let package = response.package.ok_or(InstallError::PackageNotFound {
+                        name: name.to_string(),
+                    })?;
+                    let last_version =
+                        package
+                            .last_version
+                            .ok_or(InstallError::NoVersionsAvailable {
+                                name: name.to_string(),
+                            })?;
+                    let package_name = package.name.clone();
+                    let package_version = last_version.version.clone();
+                    packages.push((package_name, package_version));
+                }
+                _ => {
+                    return Err(
+                        InstallError::InvalidPackageIdentifier { name: name.clone() }.into(),
+                    );
+                }
             }
         }
 
