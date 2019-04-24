@@ -7,7 +7,7 @@ use crate::util::{
     create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
 use flate2::read::GzDecoder;
-use reqwest::{Client, ClientBuilder};
+use reqwest::ClientBuilder;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::SeekFrom;
