@@ -2,13 +2,18 @@ use crate::graphql::execute_query;
 
 use graphql_client::*;
 
+use crate::config::Config;
 use crate::dataflow;
+use std::borrow::Cow;
 use std::env;
+use std::path::Path;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
     packages: Vec<String>,
+    #[structopt(short = "g", long = "global")]
+    global: bool,
 }
 
 #[derive(Debug, Fail)]
@@ -82,10 +87,24 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
             .collect();
 
-        dataflow::update(installed_packages, &current_directory)
+        // the install directory will determine which wapm.lock we are updating. For now, we
+        // look in the local directory, or the global install directory
+        let install_directory: Cow<Path> = match options.global {
+            true => {
+                let folder = Config::get_folder()?;
+                Cow::Owned(folder)
+            }
+            false => Cow::Borrowed(&current_directory),
+        };
+
+        dataflow::update(installed_packages, install_directory)
             .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
-        println!("Package installed successfully to wapm_packages!");
+        if options.global {
+            println!("Global package installed successfully!");
+        } else {
+            println!("Package installed successfully to wapm_packages!");
+        }
     } else {
         let added_packages = vec![];
         dataflow::update(added_packages, &current_directory)
