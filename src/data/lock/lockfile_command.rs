@@ -1,7 +1,7 @@
 use crate::data::manifest::Command;
 
 /// Describes a command for a wapm module
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileCommand {
     pub name: String,
     pub package_name: String,

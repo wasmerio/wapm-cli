@@ -91,8 +91,16 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
-    let lockfile_data =
+    let lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
+
+    // check that the added packages are not already installed
+    let lockfile_package_keys = lockfile_packages.package_keys();
+    let added_packages = added_packages.prune_already_installed_packages(lockfile_package_keys);
+    // check for missing packages e.g. deleting stuff from wapm_packages
+    // install any missing or newly added packages
+    let missing_packages = lockfile_packages.find_missing_packages();
+    let added_packages = added_packages.add_missing_packages(missing_packages);
 
     let resolved_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
@@ -103,7 +111,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages);
 
     let retained_lockfile_packages =
-        RetainedLockfilePackages::from_lockfile_packages(lockfile_data);
+        RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
 
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
@@ -134,13 +142,19 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let changed_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
 
+    let added_packages = AddedPackages {
+        packages: changed_manifest_data.packages,
+    };
+
+    let missing_lockfile_packages = lockfile_data.find_missing_packages();
+    let added_packages = added_packages.add_missing_packages(missing_lockfile_packages);
+
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_data, lockfile_data);
 
-    let resolved_manifest_packages = ResolvedPackages::new_from_changed_manifest_packages::<
-        RegistryResolver,
-    >(changed_manifest_data)
-    .map_err(|e| Error::ResolveError(e))?;
+    let resolved_manifest_packages =
+        ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
+            .map_err(|e| Error::ResolveError(e))?;
     let installed_manifest_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
             .map_err(|e| Error::InstallError(e))?;

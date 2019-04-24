@@ -59,7 +59,7 @@ impl Default for LockfileResult {
 }
 
 /// A convenient structure containing all modules and commands for a package stored lockfile.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LockfilePackage {
     pub modules: Vec<LockfileModule>,
     pub commands: Vec<LockfileCommand>,
@@ -160,5 +160,24 @@ impl<'a> LockfilePackages<'a> {
 
     pub fn package_keys(&self) -> HashSet<PackageKey<'a>> {
         self.packages.keys().cloned().collect()
+    }
+
+    pub fn find_missing_packages(&self) -> HashSet<PackageKey<'a>> {
+        use std::path::PathBuf;
+        let missing_packages: HashSet<PackageKey<'a>> = self
+            .packages
+            .iter()
+            .filter_map(|(key, data)| {
+                if data.modules.iter().any(|module| {
+                    let path = PathBuf::from(&module.entry);
+                    !path.exists()
+                }) {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        missing_packages
     }
 }

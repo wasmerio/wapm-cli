@@ -19,11 +19,13 @@ impl<'a> RetainedLockfilePackages<'a> {
             .intersection(&lockfile_keys)
             .cloned()
             .collect();
+
         let packages: HashMap<_, _> = lockfile_packages
             .packages
             .into_iter()
             .filter(|(k, _)| keys.contains(k))
             .collect();
+
         RetainedLockfilePackages { packages }
     }
 

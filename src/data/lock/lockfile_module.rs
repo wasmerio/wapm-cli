@@ -3,7 +3,7 @@ use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util::get_package_namespace_and_name;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
     pub name: String,
     pub package_version: String,

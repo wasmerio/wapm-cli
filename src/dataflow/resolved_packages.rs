@@ -1,5 +1,4 @@
 use crate::dataflow::added_packages::AddedPackages;
-use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use crate::graphql::execute_query;
 use graphql_client::*;
@@ -52,15 +51,6 @@ impl<'a> ResolvedPackages<'a> {
         Resolver: Resolve<'a>,
     {
         Self::new::<Resolver>(added_packages.packages)
-    }
-
-    pub fn new_from_changed_manifest_packages<Resolver>(
-        changed_manifest_packages: ChangedManifestPackages<'a>,
-    ) -> Result<Self, Error>
-    where
-        Resolver: Resolve<'a>,
-    {
-        Self::new::<Resolver>(changed_manifest_packages.packages)
     }
 }
 
