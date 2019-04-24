@@ -108,7 +108,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
 #[cfg(test)]
 mod test {
     use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
-    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages, Error};
+    use crate::dataflow::resolved_manifest_packages::{Error, Resolve, ResolvedManifestPackages};
     use crate::dataflow::{PackageKey, WapmPackageKey};
     use std::collections::HashSet;
 

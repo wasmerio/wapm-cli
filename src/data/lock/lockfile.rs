@@ -4,7 +4,7 @@ use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
-use std::io::{Write};
+use std::io::Write;
 use std::path::Path;
 
 pub type ModuleMap = BTreeMap<String, BTreeMap<String, BTreeMap<String, LockfileModule>>>;

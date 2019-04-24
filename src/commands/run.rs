@@ -1,12 +1,12 @@
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::data::manifest::Manifest;
 use crate::dataflow;
+use crate::dataflow::lockfile_packages::LockfileResult;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
-use crate::dataflow::lockfile_packages::LockfileResult;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -32,8 +32,16 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     }
     let lockfile_result = LockfileResult::find_in_directory(&current_dir);
     let lockfile = match lockfile_result {
-        LockfileResult::NoLockfile => return Err(RunError::MissingLockFile("Lockfile was not generated.".to_string()).into()),
-        LockfileResult::LockfileError(e) => return Err(RunError::MissingLockFile(format!("There was an issue opening the lockfile. {}", e.to_string())).into()),
+        LockfileResult::NoLockfile => {
+            return Err(RunError::MissingLockFile("Lockfile was not generated.".to_string()).into())
+        }
+        LockfileResult::LockfileError(e) => {
+            return Err(RunError::MissingLockFile(format!(
+                "There was an issue opening the lockfile. {}",
+                e.to_string()
+            ))
+            .into())
+        }
         LockfileResult::Lockfile(lockfile) => lockfile,
     };
 
@@ -155,8 +163,8 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 
 #[cfg(test)]
 mod test {
-    use crate::data::manifest::PACKAGES_DIR_NAME;
     use crate::commands::run::create_run_command;
+    use crate::data::manifest::PACKAGES_DIR_NAME;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
