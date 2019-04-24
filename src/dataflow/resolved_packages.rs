@@ -115,7 +115,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
 
 #[cfg(test)]
 mod test {
-    use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
+    use crate::dataflow::added_packages::AddedPackages;
     use crate::dataflow::resolved_packages::{Error, Resolve, ResolvedPackages};
     use crate::dataflow::{PackageKey, WapmPackageKey};
     use std::collections::HashSet;
@@ -143,12 +143,11 @@ mod test {
         let package_key_1 = PackageKey::new_registry_package("_/foo", "1.0.0");
         let mut packages_set = HashSet::new();
         packages_set.insert(package_key_1);
-        let changed_packages = ChangedManifestPackages {
+        let added_packages = AddedPackages {
             packages: packages_set,
         };
         let resolve_packages =
-            ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages)
-                .unwrap();
+            ResolvedPackages::new_from_added_packages::<TestResolver>(added_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 
@@ -161,12 +160,11 @@ mod test {
         packages_set.insert(package_key_1);
         packages_set.insert(package_key_2);
         packages_set.insert(package_key_3);
-        let changed_packages = ChangedManifestPackages {
+        let added_packages = AddedPackages {
             packages: packages_set,
         };
         let resolve_packages =
-            ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages)
-                .unwrap();
+            ResolvedPackages::new_from_added_packages::<TestResolver>(added_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 }
