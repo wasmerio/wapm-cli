@@ -39,19 +39,27 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     if !options.packages.is_empty() {
         let mut packages = vec![];
         for name in options.packages {
-            let q = GetPackageQuery::build_query(get_package_query::Variables {
-                name: name.to_string(),
-            });
-            let response: get_package_query::ResponseData = execute_query(&q)?;
-            let package = response
-                .package
-                .ok_or(InstallError::PackageNotFound { name: name.clone() })?;
-            let last_version = package
-                .last_version
-                .ok_or(InstallError::NoVersionsAvailable { name: name.clone() })?;
-            let package_name = package.name.clone();
-            let package_version = last_version.version.clone();
-            packages.push((package_name, package_version));
+            let name_with_version: Vec<&str> = name.split("@").collect();
+
+            if name_with_version.len() > 1 {
+                let package_name = name_with_version[0].to_string();
+                let package_version = name_with_version[1].to_string();
+                packages.push((package_name, package_version));
+            } else {
+                let q = GetPackageQuery::build_query(get_package_query::Variables {
+                    name: name.to_string(),
+                });
+                let response: get_package_query::ResponseData = execute_query(&q)?;
+                let package = response
+                    .package
+                    .ok_or(InstallError::PackageNotFound { name: name.clone() })?;
+                let last_version = package
+                    .last_version
+                    .ok_or(InstallError::NoVersionsAvailable { name: name.clone() })?;
+                let package_name = package.name.clone();
+                let package_version = last_version.version.clone();
+                packages.push((package_name, package_version));
+            }
         }
 
         let installed_packages: Vec<(&str, &str)> = packages
