@@ -81,6 +81,7 @@ type PackageVersion {
   description: String!
   manifest: String!
   license: String
+  license_file: String
   readme: String
   repository: String
   homepage: String
@@ -126,6 +127,7 @@ input PublishPackageInput {
   description: String!
   manifest: String!
   license: String
+  license_file: String
   readme: String
   repository: String
   homepage: String

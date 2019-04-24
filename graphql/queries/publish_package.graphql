@@ -1,10 +1,11 @@
-mutation PublishPackageMutation($name: String!, $version: String!, $description: String!, $manifest: String!, $license: String, $readme: String, $fileName:String, $repository:String, $homepage:String) {
+mutation PublishPackageMutation($name: String!, $version: String!, $description: String!, $manifest: String!, $license: String, $license_file: String, $readme: String, $fileName:String, $repository:String, $homepage:String) {
   publishPackage(input: {
     name: $name,
     version: $version,
     description: $description,
     manifest: $manifest,
     license: $license,
+    license_file: $license_file,
     readme: $readme,
     file: $fileName,
     repository: $repository,

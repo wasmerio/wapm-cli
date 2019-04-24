@@ -1,3 +1,5 @@
+//! The publish command uploads the package specified in the Manifest (`wapm.toml`)
+//! to the wapm registry.
 use crate::validate;
 
 use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
@@ -38,6 +40,12 @@ pub fn publish() -> Result<(), failure::Error> {
             // Maybe do something here
         }
         fs::read_to_string(manifest.base_directory_path.join(readme_path)).ok()
+    });
+    let license_file = package.license_file.as_ref().and_then(|license_file_path| {
+        if let Err(_) = builder.append_path(license_file_path) {
+            // Maybe do something here
+        }
+        fs::read_to_string(manifest.base_directory_path.join(license_file_path)).ok()
     });
     for module in modules {
         if module.source.is_relative() {
@@ -81,6 +89,7 @@ pub fn publish() -> Result<(), failure::Error> {
         description: package.description.clone(),
         manifest: manifest_string,
         license: package.license.clone(),
+        license_file,
         readme,
         repository: package.repository.clone(),
         homepage: package.homepage.clone(),

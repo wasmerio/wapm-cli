@@ -1,3 +1,4 @@
+//! The Manifest file is where the core metadata of a wapm package lives
 use crate::abi::Abi;
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,6 +17,9 @@ pub struct Package {
     pub version: String,
     pub description: String,
     pub license: Option<String>,
+    /// The location of the license file, useful for non-standard licenses
+    #[serde(rename = "license-file")]
+    pub license_file: Option<PathBuf>,
     pub readme: Option<PathBuf>,
     pub repository: Option<String>,
     pub homepage: Option<String>,
