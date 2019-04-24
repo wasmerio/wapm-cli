@@ -51,7 +51,7 @@ impl ManifestResult {
 }
 
 /// A convenient structure containing all modules and commands for a package stored in manifest.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ManifestPackages<'a> {
     pub packages: HashSet<PackageKey<'a>>,
 }

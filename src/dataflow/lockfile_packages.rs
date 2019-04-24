@@ -66,7 +66,7 @@ pub struct LockfilePackage {
 }
 
 /// A wrapper around a map of key -> lockfile package.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LockfilePackages<'a> {
     pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }
