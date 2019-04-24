@@ -1,3 +1,4 @@
+use crate::dataflow::added_packages::AddedPackages;
 use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use crate::graphql::execute_query;
@@ -21,19 +22,18 @@ pub enum Error {
 /// Struct containing wapm registry resolved packages. This is realized as a pairing of wapm.io keys
 /// and download URLs.
 #[derive(Clone, Debug)]
-pub struct ResolvedManifestPackages<'a> {
+pub struct ResolvedPackages<'a> {
     pub packages: Vec<(WapmPackageKey<'a>, String)>,
 }
 
-impl<'a> ResolvedManifestPackages<'a> {
+impl<'a> ResolvedPackages<'a> {
     /// Consume changed manifest packages and produce keys with download urls. Will query the registry
     /// for the download urls.
-    pub fn new<Resolver>(manifest_data: ChangedManifestPackages<'a>) -> Result<Self, Error>
+    fn new<Resolver>(packages: HashSet<PackageKey<'a>>) -> Result<Self, Error>
     where
         Resolver: Resolve<'a>,
     {
-        let wapm_pkgs = manifest_data
-            .packages
+        let wapm_pkgs = packages
             .into_iter()
             .filter_map(|k| match k {
                 PackageKey::WapmPackage(k) => Some(k),
@@ -43,6 +43,24 @@ impl<'a> ResolvedManifestPackages<'a> {
         let packages = Resolver::sync_packages(wapm_pkgs)
             .map_err(|e| Error::CouldNotResolvePackages(e.to_string()))?;
         Ok(Self { packages })
+    }
+
+    pub fn new_from_added_packages<Resolver>(
+        added_packages: AddedPackages<'a>,
+    ) -> Result<Self, Error>
+    where
+        Resolver: Resolve<'a>,
+    {
+        Self::new::<Resolver>(added_packages.packages)
+    }
+
+    pub fn new_from_changed_manifest_packages<Resolver>(
+        changed_manifest_packages: ChangedManifestPackages<'a>,
+    ) -> Result<Self, Error>
+    where
+        Resolver: Resolve<'a>,
+    {
+        Self::new::<Resolver>(changed_manifest_packages.packages)
     }
 }
 
@@ -108,7 +126,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
 #[cfg(test)]
 mod test {
     use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
-    use crate::dataflow::resolved_manifest_packages::{Resolve, ResolvedManifestPackages, Error};
+    use crate::dataflow::resolved_packages::{Error, Resolve, ResolvedPackages};
     use crate::dataflow::{PackageKey, WapmPackageKey};
     use std::collections::HashSet;
 
@@ -138,8 +156,7 @@ mod test {
         let changed_packages = ChangedManifestPackages {
             packages: packages_set,
         };
-        let resolve_packages =
-            ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
+        let resolve_packages = ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 
@@ -155,8 +172,7 @@ mod test {
         let changed_packages = ChangedManifestPackages {
             packages: packages_set,
         };
-        let resolve_packages =
-            ResolvedManifestPackages::new::<TestResolver>(changed_packages).unwrap();
+        let resolve_packages = ResolvedPackages::new_from_changed_manifest_packages::<TestResolver>(changed_packages).unwrap();
         assert_eq!(1, resolve_packages.packages.len());
     }
 }

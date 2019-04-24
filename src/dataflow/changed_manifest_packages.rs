@@ -36,7 +36,7 @@ mod test {
 
     #[test]
     fn no_shared_dependencies() {
-        let manifest_data = ManifestPackages { package_keys: None };
+        let manifest_data = ManifestPackages { packages: HashSet::new() };
         let lockfile_data = LockfilePackages {
             packages: HashMap::new(),
         };
@@ -51,7 +51,7 @@ mod test {
         let package_key = PackageKey::new_registry_package("_/foo", "1.0.0");
         manifest_package_keys.insert(package_key);
         let manifest_data = ManifestPackages {
-            package_keys: Some(manifest_package_keys),
+            packages: manifest_package_keys,
         };
         let lockfile_data = LockfilePackages {
             packages: HashMap::new(),
@@ -67,7 +67,7 @@ mod test {
         let package_key = PackageKey::new_registry_package("_/foo", "1.0.0");
         manifest_package_keys.insert(package_key.clone());
         let manifest_data = ManifestPackages {
-            package_keys: Some(manifest_package_keys),
+            packages: manifest_package_keys,
         };
         let mut lockfile_packages = HashMap::new();
         let lockfile_package = LockfilePackage {
@@ -92,7 +92,7 @@ mod test {
         manifest_package_keys.insert(package_key_2.clone());
         // manifest has package_key_1 and package_key_2
         let manifest_data = ManifestPackages {
-            package_keys: Some(manifest_package_keys),
+            packages: manifest_package_keys,
         };
         let mut lockfile_packages = HashMap::new();
         // lockfile has package_key_1

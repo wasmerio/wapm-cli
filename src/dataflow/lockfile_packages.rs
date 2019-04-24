@@ -2,7 +2,7 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::LOCKFILE_NAME;
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::installed_packages::InstalledPackages;
 use crate::dataflow::PackageKey;
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
@@ -72,9 +72,7 @@ pub struct LockfilePackages<'a> {
 }
 
 impl<'a> LockfilePackages<'a> {
-    pub fn from_installed_packages(
-        installed_manifest_packages: &'a InstalledManifestPackages<'a>,
-    ) -> Self {
+    pub fn from_installed_packages(installed_manifest_packages: &'a InstalledPackages<'a>) -> Self {
         let packages: HashMap<PackageKey<'a>, LockfilePackage> = installed_manifest_packages
             .packages
             .iter()

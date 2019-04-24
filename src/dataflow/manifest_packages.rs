@@ -1,5 +1,5 @@
 use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
-use crate::dataflow::installed_manifest_packages::InstalledManifestPackages;
+use crate::dataflow::added_packages::AddedPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::borrow::Cow;
 use std::collections::hash_set::HashSet;
@@ -15,8 +15,6 @@ pub enum Error {
     IoError(String),
     #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
     DependencyVersionMustBeString(String),
-    #[fail(display = "Could not save manifest file because {}.", _0)]
-    SaveError(String),
 }
 
 /// A ternary for a manifest: Some, None, Error.
@@ -50,45 +48,25 @@ impl ManifestResult {
             Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string())),
         }
     }
-
-    pub fn update_manifest(
-        &self,
-        installed_packages: &InstalledManifestPackages,
-    ) -> Result<(), Error> {
-        match self {
-            ManifestResult::Manifest(ref m) if installed_packages.packages.len() > 0 => {
-                let mut manifest = m.clone();
-                for (key, _, _) in installed_packages.packages.iter() {
-                    manifest.add_dependency(key.name.as_ref(), key.version.as_ref());
-                }
-                manifest.save().map_err(|e| Error::SaveError(e.to_string()))
-            }
-            _ => Ok(()),
-        }
-    }
 }
 
 /// A convenient structure containing all modules and commands for a package stored in manifest.
 #[derive(Clone, Debug)]
 pub struct ManifestPackages<'a> {
-    pub package_keys: Option<HashSet<PackageKey<'a>>>,
+    pub packages: HashSet<PackageKey<'a>>,
 }
 
 impl<'a> ManifestPackages<'a> {
-    pub fn new_from_result(result: &'a ManifestResult) -> Result<Self, Error> {
-        match result {
-            ManifestResult::Manifest(ref manifest) => Self::new_from_manifest(manifest),
-            ManifestResult::NoManifest => Ok(Self { package_keys: None }),
-            ManifestResult::ManifestError(e) => Err(e.clone()),
-        }
-    }
-
-    fn new_from_manifest(manifest: &'a Manifest) -> Result<Self, Error> {
-        match manifest {
-            Manifest {
-                dependencies: Some(ref dependencies),
-                ..
-            } => dependencies
+    pub fn new_from_manifest_and_added_packages(
+        manifest: &'a Manifest,
+        added_packages: AddedPackages<'a>,
+    ) -> Result<Self, Error> {
+        let mut packages = if let Manifest {
+            dependencies: Some(ref dependencies),
+            ..
+        } = manifest
+        {
+            dependencies
                 .iter()
                 .map(|(name, value)| match value {
                     Value::String(ref version) => Ok(PackageKey::WapmPackage(WapmPackageKey {
@@ -98,33 +76,19 @@ impl<'a> ManifestPackages<'a> {
                     _ => Err(Error::DependencyVersionMustBeString(name.to_string())),
                 })
                 .collect::<Result<HashSet<PackageKey>, Error>>()
-                .map(|package_keys| Self {
-                    package_keys: Some(package_keys),
-                }),
-            _ => Ok(Self { package_keys: None }),
+        } else {
+            Ok(HashSet::new())
+        }?;
+
+        for added_package_key in added_packages.packages {
+            packages.insert(added_package_key);
         }
+
+        Ok(Self { packages })
     }
 
-    pub fn add_additional_packages(&mut self, added_packages: Vec<(&'a str, &'a str)>) {
-        if let Some(ref mut package_keys) = self.package_keys {
-            for (name, version) in added_packages {
-                let key = PackageKey::new_registry_package(name, version);
-                package_keys.insert(key);
-            }
-        } else {
-            self.package_keys = Some(
-                added_packages
-                    .into_iter()
-                    .map(|(n, v)| PackageKey::new_registry_package(n, v))
-                    .collect::<HashSet<_>>(),
-            );
-        }
-    }
 
     pub fn keys(&self) -> HashSet<PackageKey<'a>> {
-        self.package_keys
-            .as_ref()
-            .map(|m| m.iter().cloned().collect())
-            .unwrap_or_default()
+        self.packages.iter().cloned().collect()
     }
 }
