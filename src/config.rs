@@ -4,6 +4,8 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
+pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
+pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
@@ -34,9 +36,9 @@ impl Default for Telemetry {
     }
 }
 
-impl Config {
-    pub fn default() -> Self {
-        Self {
+impl Default for Config {
+    fn default() -> Config {
+        Config {
             registry: Registry {
                 url: "https://registry.wapm.io".to_string(),
                 token: None,
@@ -45,13 +47,23 @@ impl Config {
             telemetry: Telemetry::default(),
         }
     }
+}
+
+impl Config {
+    pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
+        Ok(env::var(GLOBAL_CONFIG_FOLDER_ENV_VAR)
+            .map(|folder_str| PathBuf::from(folder_str))
+            .unwrap_or({
+                let home_dir =
+                    dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
+                let mut folder = PathBuf::from(home_dir);
+                folder.push(GLOBAL_CONFIG_FOLDER_NAME);
+                folder
+            }))
+    }
 
     fn get_file_location() -> Result<PathBuf, GlobalConfigError> {
-        let path = match env::var("WASMER_DIR") {
-            Ok(dir) => Ok(PathBuf::from(dir).join(GLOBAL_CONFIG_FILE_NAME)),
-            Err(_) => Err(GlobalConfigError::MissingWasmerDir),
-        };
-        path
+        Ok(Self::get_folder()?.join(GLOBAL_CONFIG_FILE_NAME))
     }
 
     pub fn from_file() -> Result<Self, GlobalConfigError> {
@@ -89,14 +101,14 @@ impl Registry {
 
 #[derive(Debug, Fail)]
 pub enum GlobalConfigError {
-    #[fail(
-        display = "\nThe Wasmer directory is missing. Is Wasmer not installed?\nInstall Wasmer at https://wasmer.io."
-    )]
-    MissingWasmerDir,
     #[fail(display = "Error while reading config: [{}]", _0)]
     Io(std::io::Error),
     #[fail(display = "Error while reading config: [{}]", _0)]
     Toml(toml::de::Error),
+    #[fail(
+        display = "While falling back to the default location for WASMER_DIR, could not resolve the user's home directory"
+    )]
+    CannotFindHomeDirectory,
 }
 
 #[derive(Debug, Fail)]
@@ -147,18 +159,18 @@ pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME};
+    use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME, GLOBAL_CONFIG_FOLDER_ENV_VAR};
     use std::fs::*;
     use std::io::Write;
 
     #[test]
     fn get_config_and_wasmer_dir_does_not_exist() {
-        // explicitly remove it
-        let _ = std::env::remove_var("WASMER_DIR");
+        // remove WASMER_DIR
+        let _ = std::env::remove_var(GLOBAL_CONFIG_FOLDER_ENV_VAR);
         let config_result = Config::from_file();
         assert!(
-            config_result.is_err(),
-            "Found config file when it does not exist."
+            !config_result.is_err(),
+            "Config file created by falling back to default"
         );
     }
 
@@ -166,7 +178,10 @@ mod test {
     fn get_non_existent_config() {
         let tmp_dir = tempdir::TempDir::new("get_non_existent_config").unwrap();
         // set the env var to our temp dir
-        std::env::set_var("WASMER_DIR", tmp_dir.path().display().to_string());
+        std::env::set_var(
+            GLOBAL_CONFIG_FOLDER_ENV_VAR,
+            tmp_dir.path().display().to_string(),
+        );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
         let actual_config = config_result.unwrap();
@@ -186,7 +201,10 @@ mod test {
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
         // set the env var to our temp dir
-        std::env::set_var("WASMER_DIR", tmp_dir.path().display().to_string());
+        std::env::set_var(
+            GLOBAL_CONFIG_FOLDER_ENV_VAR,
+            tmp_dir.path().display().to_string(),
+        );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");
     }
