@@ -1,6 +1,6 @@
 use crate::abi::Abi;
-use std::{fs, io::Read, path::PathBuf};
 use crate::dataflow::manifest_packages::ManifestResult;
+use std::{fs, io::Read, path::PathBuf};
 
 pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     // validate as dir

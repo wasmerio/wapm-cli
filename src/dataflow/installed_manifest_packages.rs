@@ -1,18 +1,18 @@
 use crate::data::manifest::Manifest;
+use crate::dataflow::manifest_packages::ManifestResult;
 use crate::dataflow::resolved_manifest_packages::ResolvedManifestPackages;
 use crate::dataflow::WapmPackageKey;
+use crate::graphql::VERSION;
 use crate::util::{
     create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
 use flate2::read::GzDecoder;
+use reqwest::{Client, ClientBuilder};
 use std::fs::OpenOptions;
 use std::io;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use tar::Archive;
-use reqwest::{Client, ClientBuilder};
-use crate::graphql::VERSION;
-use crate::dataflow::manifest_packages::ManifestResult;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
@@ -75,15 +75,19 @@ impl<'a> InstalledManifestPackages<'a> {
                 .into_iter()
                 .map(|(key, dir, download_url)| {
                     let manifest = match ManifestResult::find_in_directory(&dir) {
-                        ManifestResult::ManifestError(e) => return Err(Error::InstalledDependencyIsMissingManifest(
-                            key.clone().to_string(),
-                            e.to_string(),
-                        )),
+                        ManifestResult::ManifestError(e) => {
+                            return Err(Error::InstalledDependencyIsMissingManifest(
+                                key.clone().to_string(),
+                                e.to_string(),
+                            ))
+                        }
                         ManifestResult::Manifest(m) => m,
-                        ManifestResult::NoManifest => return Err(Error::InstalledDependencyIsMissingManifest(
-                            key.clone().to_string(),
-                            "Manifest was not found.".to_string(),
-                        )),
+                        ManifestResult::NoManifest => {
+                            return Err(Error::InstalledDependencyIsMissingManifest(
+                                key.clone().to_string(),
+                                "Manifest was not found.".to_string(),
+                            ))
+                        }
                     };
                     Ok((key.clone(), manifest, download_url))
                 })
@@ -143,7 +147,8 @@ impl<'a> Install<'a> for RegistryInstaller {
         let mut response = client
             .get(download_url.as_ref())
             .header(reqwest::header::USER_AGENT, user_agent)
-            .send().map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+            .send()
+            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_dir = tempdir::TempDir::new("wapm_package_install")
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
