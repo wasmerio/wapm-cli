@@ -28,10 +28,10 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     // do not run with wasmer options if running a global command
     // this will change in the future.
-    let wasmer_extra_flags: Option<Vec<OsString>> = if !is_global {
-        match ManifestResult::find_in_directory(&current_dir) {
-            ManifestResult::Manifest(manifest) => {
-                manifest
+    let wasmer_extra_flags: Option<Vec<OsString>> =
+        if !is_global {
+            match ManifestResult::find_in_directory(&current_dir) {
+                ManifestResult::Manifest(manifest) => manifest
                     .package
                     .wasmer_extra_flags
                     .clone()
@@ -40,15 +40,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                             .split_whitespace()
                             .map(|str| OsString::from(str))
                             .collect()
-                    })
+                    }),
+                _ => None,
             }
-            _ => None,
-        }
-    }
-    else {
-        None
-    };
-
+        } else {
+            None
+        };
 
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()

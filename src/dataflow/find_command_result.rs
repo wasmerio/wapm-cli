@@ -52,10 +52,12 @@ impl FindCommandResult {
             Ok(lockfile_command) => {
                 if lockfile_command.package_name == manifest.package.name {
                     // this is a local module command
-                    let module = manifest.module.as_ref().map(|modules| {
-                        modules.iter().find(|m| m.name == lockfile_command.module)
-                    });
-                    match module.unwrap_or(None) {
+                    let found_module = manifest
+                        .module
+                        .as_ref()
+                        .and_then(|modules| modules.iter().find(|m| m.name == lockfile_command.module));
+                    match found_module
+                    {
                         Some(module) => FindCommandResult::CommandFound(
                             module.source.clone(),
                             lockfile_command.main_args.clone(),
