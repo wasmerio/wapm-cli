@@ -1,4 +1,7 @@
 use crate::config::Config;
+use crate::data::lock::is_lockfile_out_of_date;
+use crate::dataflow;
+use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
 use std::env;
@@ -6,7 +9,6 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
-use crate::dataflow::find_command_result;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -24,8 +26,20 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    let find_command_result::Command { source: source_path_buf, args: _, module_name, is_global } =
-        get_command_from_anywhere(command_name)?;
+
+    // always update the local lockfile if the manifest has changed
+    match is_lockfile_out_of_date(&current_dir) {
+        Ok(false) => {}
+        _ => dataflow::update(vec![], &current_dir)
+            .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
+    }
+
+    let find_command_result::Command {
+        source: source_path_buf,
+        args: _,
+        module_name,
+        is_global,
+    } = get_command_from_anywhere(command_name)?;
 
     // do not run with wasmer options if running a global command
     // this will change in the future.
@@ -149,6 +163,8 @@ mod test {
 
 #[derive(Debug, Fail)]
 enum RunError {
+    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
+    CannotRegenLockfile(String, dataflow::Error),
     #[fail(
         display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
         _0, _1, _2
