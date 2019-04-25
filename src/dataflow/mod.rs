@@ -122,9 +122,8 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
         MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
 
     let final_package_keys: HashSet<_> = final_lockfile_data.packages.keys().cloned().collect();
-    let is_subset_a = final_package_keys.is_subset(&initial_package_keys);
-    let is_subset_b = initial_package_keys.is_subset(&final_package_keys);
-    let unchanged = is_subset_a && is_subset_b;
+    let unchanged = final_package_keys.is_subset(&initial_package_keys)
+        && initial_package_keys.is_subset(&final_package_keys);
     if !unchanged {
         final_lockfile_data
             .generate_lockfile(&directory)
@@ -151,6 +150,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let lockfile_data =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
+    // get the local package modules and commands from the manifest
     let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest);
 
     let changed_manifest_data =
@@ -180,7 +180,6 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
-
     final_lockfile_data
         .generate_lockfile(&directory)
         .map_err(|e| Error::GenerateLockfileError(e))?;

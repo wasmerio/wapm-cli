@@ -144,28 +144,9 @@ mod test {
 
 #[derive(Debug, Fail)]
 enum RunError {
-    //    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
-    //    CannotRegenLockfile(String, dataflow::Error),
-    //    #[fail(display = "Could not find lock file: {}", _0)]
-    //    MissingLockFile(String),
-    //    #[fail(
-    //        display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.",
-    //        _0
-    //    )]
-    //    CommandNotFound(String),
-    //    #[fail(
-    //        display = "Command \"{}\" not found in the installed dependencies.",
-    //        _0
-    //    )]
-    //    CommandNotFoundInDependencies(String),
     #[fail(
         display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
         _0, _1, _2
     )]
     SourceForCommandNotFound(String, String, String),
-    //    #[fail(
-    //        display = "Command \"{}\" was found in the lockfile but the module \"{}\" from package \"{}\" was not found in the lockfile. Did you modify the lockfile?",
-    //        _0, _1, _2
-    //    )]
-    //    FoundCommandInLockfileButMissingModule(String, String, String),
 }
