@@ -125,16 +125,6 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let is_subset_a = final_package_keys.is_subset(&initial_package_keys);
     let is_subset_b = initial_package_keys.is_subset(&final_package_keys);
     let unchanged = is_subset_a && is_subset_b;
-    println!(
-        "final_package_keys is subset of initial_package_keys: {}",
-        is_subset_a
-    );
-    println!(
-        "initial_package_keys is subset of final_package_keys: {}",
-        is_subset_b
-    );
-    println!("unchanged: {}", unchanged);
-
     if !unchanged {
         final_lockfile_data
             .generate_lockfile(&directory)
