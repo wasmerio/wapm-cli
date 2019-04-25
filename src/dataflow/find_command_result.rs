@@ -166,7 +166,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(
     // look in the global directory
     let global_directory = Config::get_globals_directory().map_err(|e| {
         Error::CouldNotOpenGlobalsDirectory(command_name.as_ref().to_string(), e.to_string())
-    });
+    })?;
     let global_command_result =
         FindCommandResult::find_command_in_directory(&global_directory, &command_name);
 
