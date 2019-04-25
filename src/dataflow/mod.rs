@@ -120,11 +120,8 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
-
     let final_package_keys: HashSet<_> = final_lockfile_data.packages.keys().cloned().collect();
-    let unchanged = final_package_keys.is_subset(&initial_package_keys)
-        && initial_package_keys.is_subset(&final_package_keys);
-    if !unchanged {
+    if final_package_keys != initial_package_keys {
         final_lockfile_data
             .generate_lockfile(&directory)
             .map_err(|e| Error::GenerateLockfileError(e))?;
