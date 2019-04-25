@@ -53,8 +53,7 @@ impl FindCommandResult {
                 if lockfile_command.package_name == manifest.package.name {
                     // this is a local module command
                     let module = manifest.module.as_ref().map(|modules| {
-                        let module = modules.iter().find(|m| m.name == lockfile_command.module);
-                        module
+                        modules.iter().find(|m| m.name == lockfile_command.module)
                     });
                     match module.unwrap_or(None) {
                         Some(module) => FindCommandResult::CommandFound(
