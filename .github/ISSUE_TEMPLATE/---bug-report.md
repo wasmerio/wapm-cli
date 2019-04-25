@@ -20,6 +20,8 @@ wapm -V
 rustc -V
 ```
 
+Please include the `wapm.log` file located in your `WASMER_DIR` if applicable.
+
 ### Steps to reproduce
 
 1. Go to '…'
