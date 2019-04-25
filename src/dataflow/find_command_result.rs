@@ -48,6 +48,7 @@ impl FindCommandResult {
         lockfile: Lockfile,
     ) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
+            Err(e) => FindCommandResult::Error(e),
             Ok(lockfile_command) => {
                 if lockfile_command.package_name == manifest.package.name {
                     // this is a local module command
@@ -87,7 +88,7 @@ impl FindCommandResult {
                     }
                 }
             }
-            Err(e) => FindCommandResult::Error(e),
+
         }
     }
 
