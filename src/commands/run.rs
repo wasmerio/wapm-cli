@@ -6,6 +6,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
+use crate::dataflow::find_command_result;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -23,7 +24,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    let (source_path_buf, _command_args, module_name, is_global) =
+    let find_command_result::Command { source: source_path_buf, args: _, module_name, is_global } =
         get_command_from_anywhere(command_name)?;
 
     // do not run with wasmer options if running a global command

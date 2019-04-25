@@ -145,11 +145,19 @@ impl FindCommandResult {
     }
 }
 
+pub struct Command {
+// PathBuf, Option<String>, String, bool
+    pub source: PathBuf,
+    pub args: Option<String>,
+    pub module_name: String,
+    pub is_global: bool,
+}
+
 /// Get a command from anywhere, where anywhere is the set of packages in the local lockfile and the global lockfile.
 /// A flag indicating global run is also returned. Commands are found in local lockfile first.
 pub fn get_command_from_anywhere<S: AsRef<str>>(
     command_name: S,
-) -> Result<(PathBuf, Option<String>, String, bool), Error> {
+) -> Result<Command, Error> {
     // look in the local directory, update if necessary
     let current_directory = env::current_dir().unwrap();
     let local_command_result =
@@ -158,7 +166,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(
     match local_command_result {
         FindCommandResult::CommandNotFound(_cmd) => {} // continue
         FindCommandResult::CommandFound(path, args, module_name) => {
-            return Ok((path, args, module_name, false));
+            return Ok(Command {source: path, args, module_name, is_global: false });
         }
         FindCommandResult::Error(e) => {
             return Err(Error::ErrorReadingLocalDirectory(
@@ -178,7 +186,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(
     match global_command_result {
         FindCommandResult::CommandNotFound(_) => {} // continue
         FindCommandResult::CommandFound(path, args, module_name) => {
-            return Ok((path, args, module_name, true));
+            return Ok(Command {source: path, args, module_name, is_global: true });
         }
         FindCommandResult::Error(e) => {
             return Err(
