@@ -60,15 +60,17 @@ mod package_args {
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let current_directory = env::current_dir()?;
     match (options.global, options.packages.is_empty()) {
-        (global_flag::GLOBAL_INSTALL, package_args::NO_PACKAGES) => { // install all global packages - unacceptable use case
+        (global_flag::GLOBAL_INSTALL, package_args::NO_PACKAGES) => {
+            // install all global packages - unacceptable use case
             return Err(InstallError::MustSupplyPackagesWithGlobalFlag.into());
-        },
-        (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => { // install all packages locally
+        }
+        (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => {
+            // install all packages locally
             let added_packages = vec![];
             dataflow::update(added_packages, &current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
-        },
+        }
         (_, package_args::SOME_PACKAGES) => {
             let mut packages = vec![];
             for name in options.packages {
@@ -78,23 +80,23 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                     [package_name, package_version] => {
                         packages.push((package_name.to_string(), package_version.to_string()));
                     }
-                        [name] => {
-                    let q = GetPackageQuery::build_query(get_package_query::Variables {
-                    name: name.to_string(),
-                    });
-                    let response: get_package_query::ResponseData = execute_query(&q)?;
-                    let package = response.package.ok_or(InstallError::PackageNotFound {
-                    name: name.to_string(),
-                    })?;
-                    let last_version =
-                    package
-                    .last_version
-                    .ok_or(InstallError::NoVersionsAvailable {
-                    name: name.to_string(),
-                    })?;
-                    let package_name = package.name.clone();
-                    let package_version = last_version.version.clone();
-                    packages.push((package_name, package_version));
+                    [name] => {
+                        let q = GetPackageQuery::build_query(get_package_query::Variables {
+                            name: name.to_string(),
+                        });
+                        let response: get_package_query::ResponseData = execute_query(&q)?;
+                        let package = response.package.ok_or(InstallError::PackageNotFound {
+                            name: name.to_string(),
+                        })?;
+                        let last_version =
+                            package
+                                .last_version
+                                .ok_or(InstallError::NoVersionsAvailable {
+                                    name: name.to_string(),
+                                })?;
+                        let package_name = package.name.clone();
+                        let package_version = last_version.version.clone();
+                        packages.push((package_name, package_version));
                     }
                     _ => {
                         return Err(
@@ -127,7 +129,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
             } else {
                 println!("Package installed successfully to wapm_packages!");
             }
-        },
+        }
     }
     Ok(())
 }
