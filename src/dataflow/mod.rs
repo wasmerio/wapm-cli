@@ -10,9 +10,11 @@ use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
+use std::collections::hash_set::HashSet;
 
 pub mod added_packages;
 pub mod changed_manifest_packages;
+pub mod find_command_result;
 pub mod installed_packages;
 pub mod lockfile_packages;
 pub mod manifest_packages;
@@ -95,11 +97,12 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
     // check that the added packages are not already installed
+    let initial_package_keys: HashSet<_> = lockfile_packages.package_keys();
     let lockfile_package_keys = lockfile_packages.package_keys();
     let added_packages = added_packages.prune_already_installed_packages(lockfile_package_keys);
     // check for missing packages e.g. deleting stuff from wapm_packages
     // install any missing or newly added packages
-    let missing_packages = lockfile_packages.find_missing_packages();
+    let missing_packages = lockfile_packages.find_missing_packages(&directory);
     let added_packages = added_packages.add_missing_packages(missing_packages);
 
     let resolved_packages =
@@ -116,9 +119,21 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
-    final_lockfile_data
-        .generate_lockfile(&directory)
-        .map_err(|e| Error::GenerateLockfileError(e))?;
+
+    let final_package_keys: HashSet<_> = final_lockfile_data.packages.keys().cloned().collect();
+    let is_subset_a = final_package_keys.is_subset(&initial_package_keys);
+    let is_subset_b = initial_package_keys.is_subset(&final_package_keys);
+    let unchanged = is_subset_a && is_subset_b;
+    println!("final_package_keys is subset of initial_package_keys: {}", is_subset_a);
+    println!("initial_package_keys is subset of final_package_keys: {}", is_subset_b);
+    println!("unchanged: {}", unchanged);
+
+    if !unchanged {
+        final_lockfile_data
+            .generate_lockfile(&directory)
+            .map_err(|e| Error::GenerateLockfileError(e))?;
+    }
+
     Ok(())
 }
 
@@ -146,7 +161,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
         packages: changed_manifest_data.packages,
     };
 
-    let missing_lockfile_packages = lockfile_data.find_missing_packages();
+    let missing_lockfile_packages = lockfile_data.find_missing_packages(&directory);
     let added_packages = added_packages.add_missing_packages(missing_lockfile_packages);
 
     let retained_lockfile_packages =

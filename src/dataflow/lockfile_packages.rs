@@ -162,14 +162,13 @@ impl<'a> LockfilePackages<'a> {
         self.packages.keys().cloned().collect()
     }
 
-    pub fn find_missing_packages(&self) -> HashSet<PackageKey<'a>> {
-        use std::path::PathBuf;
+    pub fn find_missing_packages<P: AsRef<Path>>(&self, directory: P) -> HashSet<PackageKey<'a>> {
         let missing_packages: HashSet<PackageKey<'a>> = self
             .packages
             .iter()
             .filter_map(|(key, data)| {
                 if data.modules.iter().any(|module| {
-                    let path = PathBuf::from(&module.entry);
+                    let path = directory.as_ref().join(&module.entry);
                     !path.exists()
                 }) {
                     Some(key.clone())
