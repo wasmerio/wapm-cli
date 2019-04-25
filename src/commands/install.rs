@@ -91,7 +91,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         // look in the local directory, or the global install directory
         let install_directory: Cow<Path> = match options.global {
             true => {
-                let folder = Config::get_folder()?;
+                let folder = Config::get_globals_directory()?;
                 Cow::Owned(folder)
             }
             false => Cow::Borrowed(&current_directory),

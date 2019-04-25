@@ -42,7 +42,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     };
 
     let run_dir = if is_global {
-        Config::get_folder().unwrap()
+        Config::get_globals_directory().unwrap()
     }
     else {
         current_dir

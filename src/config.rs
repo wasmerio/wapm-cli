@@ -79,6 +79,10 @@ impl Config {
         }
     }
 
+    pub fn get_globals_directory() -> Result<PathBuf, GlobalConfigError> {
+        Self::get_folder().map(|p| p.join("globals"))
+    }
+
     pub fn save(self: &Self) -> Result<(), failure::Error> {
         let path = Self::get_file_location()?;
         let config_serialized = toml::to_string(&self)?;

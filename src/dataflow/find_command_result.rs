@@ -153,7 +153,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(
     };
 
     // look in the global directory
-    let global_directory = Config::get_folder().unwrap();
+    let global_directory = Config::get_globals_directory().unwrap();
     let global_command_result =
         FindCommandResult::find_command_in_directory(&global_directory, &command_name);
 
