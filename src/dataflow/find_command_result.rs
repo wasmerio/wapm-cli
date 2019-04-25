@@ -89,7 +89,6 @@ impl FindCommandResult {
                     }
                 }
             }
-
         }
     }
 
@@ -131,6 +130,10 @@ impl FindCommandResult {
             (ManifestResult::NoManifest, LockfileResult::Lockfile(l)) => {
                 return Self::find_command_in_lockfile(command_name, l)
             }
+            // the edge case of a manifest, but no lockfile would an invalid state. This function
+            // should always be run after updating the lockfile with the latest manifest changes.
+            // If that function were to fail so horribly that it did not error, and no lockfile was
+            // generated, then we will get this panic.
             (ManifestResult::Manifest(_m), LockfileResult::NoLockfile) => {
                 panic!("Manifest exists, but lockfile not found!")
             }
