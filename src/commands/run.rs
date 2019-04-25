@@ -1,7 +1,9 @@
+use crate::config::Config;
 use crate::data::lock::is_lockfile_out_of_date;
-use crate::data::manifest::Manifest;
 use crate::dataflow;
-use crate::dataflow::lockfile_packages::LockfileResult;
+use crate::dataflow::find_command_result;
+use crate::dataflow::find_command_result::get_command_from_anywhere;
+use crate::dataflow::manifest_packages::ManifestResult;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -24,93 +26,53 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    // regenerate the lockfile if it is out of date
+
+    // always update the local lockfile if the manifest has changed
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
         _ => dataflow::update(vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
-    let lockfile_result = LockfileResult::find_in_directory(&current_dir);
-    let lockfile = match lockfile_result {
-        LockfileResult::NoLockfile => {
-            return Err(RunError::MissingLockFile("Lockfile was not generated.".to_string()).into())
-        }
-        LockfileResult::LockfileError(e) => {
-            return Err(RunError::MissingLockFile(format!(
-                "There was an issue opening the lockfile. {}",
-                e.to_string()
-            ))
-            .into())
-        }
-        LockfileResult::Lockfile(lockfile) => lockfile,
-    };
 
-    let mut wasmer_extra_flags: Option<Vec<OsString>> = None;
-    let manifest_result = Manifest::find_in_directory(&current_dir);
-    // hack to get around running commands for local modules
-    let (module_name, source_path): (String, String) = if let Ok(ref manifest) = manifest_result {
-        let lockfile_command = lockfile
-            .get_command(command_name)
-            .map_err(|_| RunError::CommandNotFound(command_name.to_string()))?;
+    let find_command_result::Command {
+        source: source_path_buf,
+        args: _,
+        module_name,
+        is_global,
+    } = get_command_from_anywhere(command_name)?;
 
-        wasmer_extra_flags = manifest
-            .package
-            .wasmer_extra_flags
-            .clone()
-            .map(|extra_flags| {
-                extra_flags
-                    .split_whitespace()
-                    .map(|str| OsString::from(str))
-                    .collect()
-            });
-
-        if lockfile_command.package_name == manifest.package.name {
-            // this is a local module command
-            let module = manifest.module.as_ref().map(|modules| {
-                let module = modules.iter().find(|m| m.name == lockfile_command.module);
-                module
-            });
-            module
-                .unwrap_or(None)
-                .map(|module| {
-                    (
-                        module.name.clone(),
-                        module.source.clone().to_string_lossy().to_string(),
-                    )
-                })
-                .ok_or(RunError::FoundCommandInLockfileButMissingModule(
-                    command_name.to_string(),
-                    lockfile_command.module.to_string(),
-                    lockfile_command.package_name.to_string(),
-                ))?
+    // do not run with wasmer options if running a global command
+    // this will change in the future.
+    let wasmer_extra_flags: Option<Vec<OsString>> =
+        if !is_global {
+            match ManifestResult::find_in_directory(&current_dir) {
+                ManifestResult::Manifest(manifest) => manifest
+                    .package
+                    .wasmer_extra_flags
+                    .clone()
+                    .map(|extra_flags| {
+                        extra_flags
+                            .split_whitespace()
+                            .map(|str| OsString::from(str))
+                            .collect()
+                    }),
+                _ => None,
+            }
         } else {
-            let lockfile_module = lockfile.get_module(
-                &lockfile_command.package_name,
-                &lockfile_command.package_version,
-                &lockfile_command.module,
-            )?;
-            (lockfile_module.name.clone(), lockfile_module.entry.clone())
-        }
-    } else {
-        let lockfile_command = lockfile
-            .get_command(command_name)
-            .map_err(|_| RunError::CommandNotFoundInDependencies(command_name.to_string()))?;
+            None
+        };
 
-        let lockfile_module = lockfile.get_module(
-            &lockfile_command.package_name,
-            &lockfile_command.package_version,
-            &lockfile_command.module,
-        )?;
-        (lockfile_module.name.clone(), lockfile_module.entry.clone())
+    let run_dir = if is_global {
+        Config::get_globals_directory().unwrap()
+    } else {
+        current_dir
     };
 
-    // check that the source exists
-    let source_path_buf = PathBuf::from(&source_path);
-    source_path_buf.metadata().map_err(|_| {
+    run_dir.join(&source_path_buf).metadata().map_err(|_| {
         RunError::SourceForCommandNotFound(
             command_name.to_string(),
             module_name.to_string(),
-            source_path.to_string(),
+            source_path_buf.to_string_lossy().to_string(),
         )
     })?;
 
@@ -124,8 +86,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         args,
         wasmer_extra_flags,
         wasi_preopened_dir_flags,
-        &current_dir,
-        source_path,
+        &run_dir,
+        source_path_buf,
         Some(format!("wapm run {}", command_name)),
     )?;
     let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
@@ -203,26 +165,9 @@ mod test {
 enum RunError {
     #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
     CannotRegenLockfile(String, dataflow::Error),
-    #[fail(display = "Could not find lock file: {}", _0)]
-    MissingLockFile(String),
-    #[fail(
-        display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.",
-        _0
-    )]
-    CommandNotFound(String),
-    #[fail(
-        display = "Command \"{}\" not found in the installed dependencies.",
-        _0
-    )]
-    CommandNotFoundInDependencies(String),
     #[fail(
         display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
         _0, _1, _2
     )]
     SourceForCommandNotFound(String, String, String),
-    #[fail(
-        display = "Command \"{}\" was found in the lockfile but the module \"{}\" from package \"{}\" was not found in the lockfile. Did you modify the lockfile?",
-        _0, _1, _2
-    )]
-    FoundCommandInLockfileButMissingModule(String, String, String),
 }
