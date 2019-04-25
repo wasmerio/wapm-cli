@@ -1,11 +1,11 @@
+use crate::config::Config;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
+use crate::dataflow::manifest_packages::ManifestResult;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
-use crate::dataflow::manifest_packages::ManifestResult;
-use crate::config::Config;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -23,28 +23,29 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
-    let (source_path_buf, _command_args, module_name, is_global) = get_command_from_anywhere(command_name)?;
+    let (source_path_buf, _command_args, module_name, is_global) =
+        get_command_from_anywhere(command_name)?;
 
-    let wasmer_extra_flags: Option<Vec<OsString>> = match ManifestResult::find_in_directory(&current_dir) {
-        ManifestResult::Manifest(manifest) => {
-            manifest
-                .package
-                .wasmer_extra_flags
-                .clone()
-                .map(|extra_flags| {
-                    extra_flags
-                        .split_whitespace()
-                        .map(|str| OsString::from(str))
-                        .collect()
-                })
-        }
-        _ => None,
-    };
+    let wasmer_extra_flags: Option<Vec<OsString>> =
+        match ManifestResult::find_in_directory(&current_dir) {
+            ManifestResult::Manifest(manifest) => {
+                manifest
+                    .package
+                    .wasmer_extra_flags
+                    .clone()
+                    .map(|extra_flags| {
+                        extra_flags
+                            .split_whitespace()
+                            .map(|str| OsString::from(str))
+                            .collect()
+                    })
+            }
+            _ => None,
+        };
 
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()
-    }
-    else {
+    } else {
         current_dir
     };
 
@@ -143,28 +144,28 @@ mod test {
 
 #[derive(Debug, Fail)]
 enum RunError {
-//    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
-//    CannotRegenLockfile(String, dataflow::Error),
-//    #[fail(display = "Could not find lock file: {}", _0)]
-//    MissingLockFile(String),
-//    #[fail(
-//        display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.",
-//        _0
-//    )]
-//    CommandNotFound(String),
-//    #[fail(
-//        display = "Command \"{}\" not found in the installed dependencies.",
-//        _0
-//    )]
-//    CommandNotFoundInDependencies(String),
+    //    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
+    //    CannotRegenLockfile(String, dataflow::Error),
+    //    #[fail(display = "Could not find lock file: {}", _0)]
+    //    MissingLockFile(String),
+    //    #[fail(
+    //        display = "Command \"{}\" not found in the current package manifest or any of the installed dependencies.",
+    //        _0
+    //    )]
+    //    CommandNotFound(String),
+    //    #[fail(
+    //        display = "Command \"{}\" not found in the installed dependencies.",
+    //        _0
+    //    )]
+    //    CommandNotFoundInDependencies(String),
     #[fail(
         display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
         _0, _1, _2
     )]
     SourceForCommandNotFound(String, String, String),
-//    #[fail(
-//        display = "Command \"{}\" was found in the lockfile but the module \"{}\" from package \"{}\" was not found in the lockfile. Did you modify the lockfile?",
-//        _0, _1, _2
-//    )]
-//    FoundCommandInLockfileButMissingModule(String, String, String),
+    //    #[fail(
+    //        display = "Command \"{}\" was found in the lockfile but the module \"{}\" from package \"{}\" was not found in the lockfile. Did you modify the lockfile?",
+    //        _0, _1, _2
+    //    )]
+    //    FoundCommandInLockfileButMissingModule(String, String, String),
 }

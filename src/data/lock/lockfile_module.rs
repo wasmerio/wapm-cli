@@ -39,4 +39,16 @@ impl LockfileModule {
         };
         lockfile_module
     }
+
+    pub fn from_local_module(name: &str, version: &str, module: &Module) -> Self {
+        LockfileModule {
+            name: module.name.clone(),
+            package_version: version.to_string(),
+            package_name: name.to_string(),
+            source: "local".to_string(),
+            resolved: "local".to_string(),
+            abi: module.abi.clone(),
+            entry: module.source.to_string_lossy().to_string(),
+        }
+    }
 }

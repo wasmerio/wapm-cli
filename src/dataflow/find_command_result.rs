@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
     #[fail(
-        display = "Command \"{}\" was not found in the local directory or the global install directory",
+        display = "Command \"{}\" was not found in the local directory or the global install directory.",
         _0
     )]
     CommandNotFound(String),
@@ -75,7 +75,7 @@ impl FindCommandResult {
                             FindCommandResult::CommandFound(
                                 path,
                                 lockfile_command.main_args.clone(),
-                                lockfile_module.name.clone()
+                                lockfile_module.name.clone(),
                             )
                         }
                         Err(e) => FindCommandResult::Error(e),
@@ -96,9 +96,15 @@ impl FindCommandResult {
                 ) {
                     Ok(lockfile_module) => {
                         let path = PathBuf::from(&lockfile_module.entry);
-                        FindCommandResult::CommandFound(path, lockfile_command.main_args.clone(), lockfile_module.name.clone())
+                        FindCommandResult::CommandFound(
+                            path,
+                            lockfile_command.main_args.clone(),
+                            lockfile_module.name.clone(),
+                        )
                     }
-                    Err(_e) => FindCommandResult::CommandNotFound(command_name.as_ref().to_string()),
+                    Err(_e) => {
+                        FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
+                    }
                 }
             }
             Err(_e) => FindCommandResult::CommandNotFound(command_name.as_ref().to_string()),

@@ -179,4 +179,8 @@ impl<'a> LockfilePackages<'a> {
             .collect();
         missing_packages
     }
+
+    pub fn extend(&mut self, other_packages: LockfilePackages<'a>) {
+        self.packages.extend(other_packages.packages);
+    }
 }

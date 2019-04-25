@@ -2,20 +2,22 @@ use crate::data::manifest::Manifest;
 use crate::dataflow::added_packages::AddedPackages;
 use crate::dataflow::changed_manifest_packages::ChangedManifestPackages;
 use crate::dataflow::installed_packages::{InstalledPackages, RegistryInstaller};
+use crate::dataflow::local_package::LocalPackage;
 use crate::dataflow::lockfile_packages::{LockfileError, LockfilePackages, LockfileResult};
 use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult};
 use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use std::borrow::Cow;
+use std::collections::hash_set::HashSet;
 use std::fmt;
 use std::path::Path;
-use std::collections::hash_set::HashSet;
 
 pub mod added_packages;
 pub mod changed_manifest_packages;
 pub mod find_command_result;
 pub mod installed_packages;
+pub mod local_package;
 pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
@@ -58,7 +60,6 @@ impl<'a> fmt::Display for WapmPackageKey<'a> {
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub enum PackageKey<'a> {
     GitUrl { url: &'a str },
-    LocalPackage { directory: &'a Path },
     WapmPackage(WapmPackageKey<'a>),
 }
 
@@ -124,8 +125,14 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let is_subset_a = final_package_keys.is_subset(&initial_package_keys);
     let is_subset_b = initial_package_keys.is_subset(&final_package_keys);
     let unchanged = is_subset_a && is_subset_b;
-    println!("final_package_keys is subset of initial_package_keys: {}", is_subset_a);
-    println!("initial_package_keys is subset of final_package_keys: {}", is_subset_b);
+    println!(
+        "final_package_keys is subset of initial_package_keys: {}",
+        is_subset_a
+    );
+    println!(
+        "initial_package_keys is subset of final_package_keys: {}",
+        is_subset_b
+    );
     println!("unchanged: {}", unchanged);
 
     if !unchanged {
@@ -154,6 +161,8 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let lockfile_data =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
+    let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest);
+
     let changed_manifest_data =
         ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
 
@@ -173,12 +182,15 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let installed_manifest_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
             .map_err(|e| Error::InstallError(e))?;
-    let manifest_lockfile_data =
+    let mut manifest_lockfile_data =
         LockfilePackages::from_installed_packages(&installed_manifest_packages);
+
+    manifest_lockfile_data.extend(local_package.into());
 
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
+
     final_lockfile_data
         .generate_lockfile(&directory)
         .map_err(|e| Error::GenerateLockfileError(e))?;

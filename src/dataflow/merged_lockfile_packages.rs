@@ -64,7 +64,6 @@ impl<'a> MergedLockfilePackages<'a> {
                         commands.insert(name, command);
                     }
                 }
-                PackageKey::LocalPackage { .. } => panic!("Local packages are not supported yet."),
                 PackageKey::GitUrl { .. } => panic!("Git url packages are not supported yet."),
             }
         }
