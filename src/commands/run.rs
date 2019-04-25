@@ -26,7 +26,9 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let (source_path_buf, _command_args, module_name, is_global) =
         get_command_from_anywhere(command_name)?;
 
-    let wasmer_extra_flags: Option<Vec<OsString>> =
+    // do not run with wasmer options if running a global command
+    // this will change in the future.
+    let wasmer_extra_flags: Option<Vec<OsString>> = if !is_global {
         match ManifestResult::find_in_directory(&current_dir) {
             ManifestResult::Manifest(manifest) => {
                 manifest
@@ -41,7 +43,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
                     })
             }
             _ => None,
-        };
+        }
+    }
+    else {
+        None
+    };
+
 
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()
