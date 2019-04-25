@@ -28,6 +28,11 @@ pub enum Error {
         _0, _1
     )]
     CommandFoundButCorrespondingModuleIsMissing(String, String),
+    #[fail(
+        display = "Failed to get command \"{}\" because there was an error opening the global installation directory. {}",
+        _0, _1
+    )]
+    CouldNotOpenGlobalsDirectory(String, String),
 }
 
 pub enum FindCommandResult {
@@ -159,7 +164,9 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(
     };
 
     // look in the global directory
-    let global_directory = Config::get_globals_directory().unwrap();
+    let global_directory = Config::get_globals_directory().map_err(|e| {
+        Error::CouldNotOpenGlobalsDirectory(command_name.as_ref().to_string(), e.to_string())
+    });
     let global_command_result =
         FindCommandResult::find_command_in_directory(&global_directory, &command_name);
 
