@@ -19,7 +19,7 @@ pub enum Error {
     )]
     CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory(String, String),
     #[fail(
-        display = "Could not find command \"{}\" because there was a problem with the global directory. {}",
+        display = "Could not get command \"{}\" because there was a problem with the local package. {}",
         _0, _1
     )]
     ErrorReadingLocalDirectory(String, String),

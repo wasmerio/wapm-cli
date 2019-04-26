@@ -75,8 +75,8 @@ pub enum LockfileError {
     #[fail(display = "module {} in package \"{} {}\" was not found", _2, _0, _1)]
     ModuleForPackageVersionNotFound(String, String, String),
     #[fail(
-        display = "Package \"{}\" with version \"{}\" was nto found searching for module \"{}\"",
-        _0, _1, _2
+        display = "Module \"{}\" with package name \"{}\" and version \"{}\" was not found.",
+        _2, _0, _1
     )]
     PackageWithVersionNotFoundWhenFindingModule(String, String, String),
     #[fail(
