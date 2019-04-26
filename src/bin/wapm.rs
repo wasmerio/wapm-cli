@@ -54,6 +54,10 @@ enum Command {
     #[structopt(name = "init")]
     /// Set up current directory for use with wapm
     Init(commands::InitOpt),
+
+    #[structopt(name = "list")]
+    /// List the currently installed packages and their commands
+    List(commands::ListOpt),
 }
 
 fn main() {
@@ -87,6 +91,7 @@ fn main() {
         Command::Package(package_options) => commands::package(package_options),
         Command::Validate(validate_options) => commands::validate(validate_options),
         Command::Init(init_options) => commands::init(init_options),
+        Command::List(list_options) => commands::list(list_options),
         Command::Completions(completion_options) => {
             Command::clap().gen_completions_to(
                 "wapm",

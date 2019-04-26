@@ -20,7 +20,7 @@ impl fmt::Display for Abi {
             match self {
                 Abi::Emscripten => "emscripten",
                 Abi::Wasi => "wasi",
-                Abi::None => "generic ABI",
+                Abi::None => "generic",
             }
         )
     }
