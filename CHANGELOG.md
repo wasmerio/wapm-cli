@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fall back to default for `WASMER_DIR` env var if it doesn't exist
 - Global install packages from the registry with `-g`/`--global` flag.
   - Packages are installed into `WASMER_DIR/globals`.
-	- Packages are runnable from any directory that does not already have that package installed.
+- Packages are runnable from any directory that does not already have that package installed.
 - List subcommand (`wapm list`) to show packages and commands installed
 ### Changed
 - Refactored process for generating updates to manifest, regenerating the lockfile, and installing packages.
