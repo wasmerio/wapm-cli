@@ -13,7 +13,7 @@ pub struct LocalPackage<'a> {
 impl<'a> LocalPackage<'a> {
     pub fn new_from_local_package_in_manifest(manifest: &'a Manifest) -> Self {
         let package_name = manifest.package.name.as_str();
-        let package_version = manifest.package.name.as_str();
+        let package_version = &manifest.package.version;
         let modules = manifest
             .module
             .as_ref()
@@ -28,9 +28,9 @@ impl<'a> LocalPackage<'a> {
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .map(|c| LockfileCommand::from_command(package_name, package_version, &c))
+            .map(|c| LockfileCommand::from_command(package_name, package_version.clone(), &c))
             .collect();
-        let key = PackageKey::new_registry_package(package_name, package_version);
+        let key = PackageKey::new_registry_package(package_name, package_version.clone());
         let data = LockfilePackage { modules, commands };
         LocalPackage { key, data }
     }

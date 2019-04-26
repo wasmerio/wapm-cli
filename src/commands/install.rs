@@ -48,13 +48,13 @@ enum InstallError {
 struct GetPackageQuery;
 
 mod global_flag {
-    pub const GLOBAL_INSTALL: bool = false;
-    pub const LOCAL_INSTALL: bool = true;
+    pub const GLOBAL_INSTALL: bool = true;
+    pub const LOCAL_INSTALL: bool = false;
 }
 
 mod package_args {
-    pub const NO_PACKAGES: bool = false;
-    pub const SOME_PACKAGES: bool = true;
+    pub const NO_PACKAGES: bool = true;
+    pub const SOME_PACKAGES: bool = false;
 }
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {

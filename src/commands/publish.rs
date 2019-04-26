@@ -94,7 +94,7 @@ pub fn publish() -> Result<(), failure::Error> {
 
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
-        version: package.version.clone(),
+        version: package.version.to_string(),
         description: package.description.clone(),
         manifest: manifest_string,
         license: package.license.clone(),

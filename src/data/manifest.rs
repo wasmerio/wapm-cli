@@ -1,10 +1,9 @@
 //! The Manifest file is where the core metadata of a wapm package lives
 use crate::abi::Abi;
-use std::collections::BTreeMap;
+use semver::Version;
+use std::collections::hash_map::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml::value::Table;
-use toml::Value;
 
 /// The name of the manifest file. This is hard-coded for now.
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
@@ -14,7 +13,7 @@ pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Package {
     pub name: String,
-    pub version: String,
+    pub version: Version,
     pub description: String,
     pub license: Option<String>,
     /// The location of the license file, useful for non-standard licenses
@@ -58,7 +57,7 @@ pub struct Module {
 pub struct Manifest {
     pub package: Package,
     pub module: Option<Vec<Module>>,
-    pub dependencies: Option<Table>,
+    pub dependencies: Option<HashMap<String, String>>, // Option<Table>,
     pub command: Option<Vec<Command>>,
     /// private data
     /// store the directory path of the manifest file for use later accessing relative path fields
@@ -81,12 +80,9 @@ impl Manifest {
     }
 
     /// add a dependency
-    pub fn add_dependency(&mut self, dependency_name: &str, dependency_version: &str) {
-        let dependencies = self.dependencies.get_or_insert(BTreeMap::new());
-        dependencies.insert(
-            dependency_name.to_string(),
-            Value::String(dependency_version.to_string()),
-        );
+    pub fn add_dependency(&mut self, dependency_name: String, dependency_version: String) {
+        let dependencies = self.dependencies.get_or_insert(HashMap::new());
+        dependencies.insert(dependency_name, dependency_version);
     }
 
     pub fn save(&self) -> Result<(), failure::Error> {
@@ -106,6 +102,13 @@ pub enum ManifestError {
     CannotSaveManifest(String),
     #[fail(display = "Could not parse manifest because {}.", _0)]
     TomlParseError(String),
+    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
+    DependencyVersionMustBeString(String),
+    #[fail(
+        display = "Package must have version that follows semantic versioning. {}",
+        _0
+    )]
+    SemVerError(String),
 }
 
 #[cfg(test)]
@@ -166,19 +169,22 @@ mod dependency_tests {
         let mut manifest = Manifest::find_in_directory(tmp_dir.as_ref()).unwrap();
 
         let dependency_name = "dep_pkg";
-        let dependency_version = "0.1.0";
+        let dependency_version = semver::Version::new(0, 1, 0);
 
-        manifest.add_dependency(dependency_name, dependency_version);
+        manifest.add_dependency(dependency_name.to_string(), dependency_version.to_string());
         assert_eq!(1, manifest.dependencies.as_ref().unwrap().len());
 
         // adding the same dependency twice changes nothing
-        manifest.add_dependency(dependency_name, dependency_version);
+        manifest.add_dependency(dependency_name.to_string(), dependency_version.to_string());
         assert_eq!(1, manifest.dependencies.as_ref().unwrap().len());
 
         // adding a second different dependency will increase the count
         let dependency_name_2 = "dep_pkg_2";
-        let dependency_version_2 = "0.2.0";
-        manifest.add_dependency(dependency_name_2, dependency_version_2);
+        let dependency_version_2 = semver::Version::new(0, 2, 0);
+        manifest.add_dependency(
+            dependency_name_2.to_string(),
+            dependency_version_2.to_string(),
+        );
         assert_eq!(2, manifest.dependencies.as_ref().unwrap().len());
     }
 }

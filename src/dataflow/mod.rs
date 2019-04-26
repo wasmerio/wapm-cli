@@ -8,6 +8,7 @@ use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult};
 use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
+use semver::{Version, VersionReq};
 use std::borrow::Cow;
 use std::collections::hash_set::HashSet;
 use std::fmt;
@@ -38,6 +39,8 @@ pub enum Error {
     ResolveError(resolved_packages::Error),
     #[fail(display = "Could not save manifest file because {}.", _0)]
     SaveError(String),
+    #[fail(display = "Could not install new packages. {}", _0)]
+    AddError(added_packages::Error),
 }
 
 /// A package key for a package in the wapm.io registry.
@@ -45,7 +48,14 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub struct WapmPackageKey<'a> {
     pub name: Cow<'a, str>,
-    pub version: Cow<'a, str>,
+    pub version: Version,
+}
+
+/// A range of versions for a package in the wapm.io registry.
+#[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
+pub struct WapmPackageRange<'a> {
+    pub name: Cow<'a, str>,
+    pub version_req: VersionReq,
 }
 
 impl<'a> fmt::Display for WapmPackageKey<'a> {
@@ -54,25 +64,43 @@ impl<'a> fmt::Display for WapmPackageKey<'a> {
     }
 }
 
-/// A package key can be anything reference to a package, be it a wapm.io registry, a local directory, or a git url.
+/// A package key can be anything reference to a package, be it a wapm.io registry, a local directory.
 /// Currently, only wapm.io keys are supported.
 #[allow(dead_code)]
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub enum PackageKey<'a> {
-    GitUrl { url: &'a str },
     WapmPackage(WapmPackageKey<'a>),
+    WapmPackageRange(WapmPackageRange<'a>),
 }
 
 impl<'a> PackageKey<'a> {
     /// Convenience constructor for wapm.io registry keys.
-    fn new_registry_package<S>(name: S, version: S) -> Self
+    pub fn new_registry_package<S>(name: S, version: Version) -> Self
     where
         S: Into<Cow<'a, str>>,
     {
         PackageKey::WapmPackage(WapmPackageKey {
             name: name.into(),
-            version: version.into(),
+            version,
         })
+    }
+    pub fn new_registry_package_range<S>(name: S, version_req: VersionReq) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+    {
+        PackageKey::WapmPackageRange(WapmPackageRange {
+            name: name.into(),
+            version_req,
+        })
+    }
+
+    pub fn matches(&self, range: &WapmPackageRange) -> bool {
+        match self {
+            PackageKey::WapmPackage(key) => {
+                key.name == range.name && range.version_req.matches(&key.version)
+            }
+            _ => false,
+        }
     }
 }
 
@@ -83,6 +111,28 @@ impl<'a> fmt::Display for PackageKey<'a> {
             _ => panic!("Non wapm registry keys are unsupported."),
         }
     }
+}
+
+/// Normalize global namespace package names that are using the shorthand e.g. convert pkg to "_/pkg"
+pub fn normalize_global_namespace(key: PackageKey) -> PackageKey {
+    let new_key = match key {
+        PackageKey::WapmPackage(WapmPackageKey {
+            ref name,
+            ref version,
+        }) if !name.contains('/') => {
+            let name = format!("_/{}", name);
+            PackageKey::new_registry_package(name, version.clone())
+        }
+        PackageKey::WapmPackageRange(WapmPackageRange {
+            ref name,
+            ref version_req,
+        }) if !name.contains('/') => {
+            let name = format!("_/{}", name);
+            PackageKey::new_registry_package_range(name, version_req.clone())
+        }
+        key => key,
+    };
+    new_key
 }
 
 /// If there is no mainfest, then this is a non-manifest project. All installations are retained
@@ -138,8 +188,9 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     added_packages: AddedPackages,
 ) -> Result<(), Error> {
     let directory = directory.as_ref();
-    let manifest_data =
-        ManifestPackages::new_from_manifest_and_added_packages(&manifest, added_packages)
+
+    let manifest_packages =
+        ManifestPackages::new_from_manifest_and_added_packages(&manifest, &added_packages)
             .map_err(|e| Error::ManifestError(e))?;
 
     // get lockfile data
@@ -151,20 +202,23 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest);
 
     let changed_manifest_data =
-        ChangedManifestPackages::prune_unchanged_dependencies(&manifest_data, &lockfile_data);
+        ChangedManifestPackages::get_changed_packages_from_manifest_and_lockfile(
+            &manifest_packages,
+            &lockfile_data,
+        );
 
-    let added_packages = AddedPackages {
+    let packages_to_install = AddedPackages {
         packages: changed_manifest_data.packages,
     };
 
     let missing_lockfile_packages = lockfile_data.find_missing_packages(&directory);
-    let added_packages = added_packages.add_missing_packages(missing_lockfile_packages);
+    let new_added_packages = packages_to_install.add_missing_packages(missing_lockfile_packages);
 
     let retained_lockfile_packages =
-        RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_data, lockfile_data);
+        RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_data);
 
     let resolved_manifest_packages =
-        ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
+        ResolvedPackages::new_from_added_packages::<RegistryResolver>(new_added_packages)
             .map_err(|e| Error::ResolveError(e))?;
     let installed_manifest_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
@@ -177,12 +231,13 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
+
     final_lockfile_data
         .generate_lockfile(&directory)
         .map_err(|e| Error::GenerateLockfileError(e))?;
 
     // update the manifest, if applicable
-    update_manifest(manifest.clone(), &installed_manifest_packages)?;
+    update_manifest(manifest.clone(), &added_packages)?;
     Ok(())
 }
 
@@ -193,7 +248,8 @@ pub fn update<P: AsRef<Path>>(
     directory: P,
 ) -> Result<(), Error> {
     let directory = directory.as_ref();
-    let added_packages = AddedPackages::new_from_str_pairs(added_packages);
+    let added_packages =
+        AddedPackages::new_from_str_pairs(added_packages).map_err(|e| Error::AddError(e))?;
     let manifest_result = ManifestResult::find_in_directory(&directory);
     match manifest_result {
         ManifestResult::NoManifest => update_with_no_manifest(directory, added_packages),
@@ -204,13 +260,20 @@ pub fn update<P: AsRef<Path>>(
     }
 }
 
-pub fn update_manifest(
-    manifest: Manifest,
-    installed_packages: &InstalledPackages,
-) -> Result<(), Error> {
+pub fn update_manifest(manifest: Manifest, added_packages: &AddedPackages) -> Result<(), Error> {
+    if added_packages.packages.is_empty() {
+        return Ok(());
+    }
     let mut manifest = manifest;
-    for (key, _, _) in installed_packages.packages.iter() {
-        manifest.add_dependency(key.name.as_ref(), key.version.as_ref());
+    for key in added_packages.packages.iter().cloned() {
+        match key {
+            PackageKey::WapmPackageRange(WapmPackageRange { name, version_req }) => {
+                manifest.add_dependency(name.to_string(), version_req.to_string());
+            }
+            PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
+                manifest.add_dependency(name.to_string(), version.to_string());
+            }
+        }
     }
     manifest.save().map_err(|e| Error::SaveError(e.to_string()))
 }

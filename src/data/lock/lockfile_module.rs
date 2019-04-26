@@ -1,6 +1,7 @@
 use crate::abi::Abi;
 use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util::get_package_namespace_and_name;
+use semver::Version;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -15,7 +16,7 @@ pub struct LockfileModule {
 }
 
 impl LockfileModule {
-    pub fn from_module(name: &str, version: &str, module: &Module, download_url: &str) -> Self {
+    pub fn from_module(name: &str, version: &Version, module: &Module, download_url: &str) -> Self {
         // build the entry path
         // this is path like /wapm_packages/_/lua@0.1.3/lua.wasm
         let (namespace, unqualified_pkg_name) =
@@ -40,7 +41,7 @@ impl LockfileModule {
         lockfile_module
     }
 
-    pub fn from_local_module(name: &str, version: &str, module: &Module) -> Self {
+    pub fn from_local_module(name: &str, version: &Version, module: &Module) -> Self {
         LockfileModule {
             name: module.name.clone(),
             package_version: version.to_string(),

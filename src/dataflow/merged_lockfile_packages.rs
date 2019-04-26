@@ -54,7 +54,7 @@ impl<'a> MergedLockfilePackages<'a> {
             match key {
                 PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
                     let versions = modules.entry(name.to_owned().to_string()).or_default();
-                    let modules = versions.entry(version.to_owned().to_string()).or_default();
+                    let modules = versions.entry(version).or_default();
                     for module in package.modules {
                         let name = module.name.clone();
                         modules.insert(name, module);
@@ -64,7 +64,7 @@ impl<'a> MergedLockfilePackages<'a> {
                         commands.insert(name, command);
                     }
                 }
-                PackageKey::GitUrl { .. } => panic!("Git url packages are not supported yet."),
+                PackageKey::WapmPackageRange(_) => panic!("Should not get here!"),
             }
         }
 
@@ -88,8 +88,8 @@ mod test {
     #[test]
     fn test_merge() {
         let mut new_lockfile_packages_map = HashMap::new();
-        let pkg_1 = PackageKey::new_registry_package("_/foo", "1.1.0");
-        let pkg_2 = PackageKey::new_registry_package("_/bar", "2.0.0");
+        let pkg_1 = PackageKey::new_registry_package("_/foo", semver::Version::new(1, 1, 0));
+        let pkg_2 = PackageKey::new_registry_package("_/bar", semver::Version::new(2, 0, 0));
         new_lockfile_packages_map.insert(
             pkg_1,
             LockfilePackage {
@@ -109,8 +109,8 @@ mod test {
         };
 
         let mut old_lockfile_packages_map = HashMap::new();
-        let pkg_1_old = PackageKey::new_registry_package("_/foo", "1.0.0");
-        let pkg_2_old = PackageKey::new_registry_package("_/qux", "3.0.0");
+        let pkg_1_old = PackageKey::new_registry_package("_/foo", semver::Version::new(1, 0, 0));
+        let pkg_2_old = PackageKey::new_registry_package("_/qux", semver::Version::new(3, 0, 0));
         old_lockfile_packages_map.insert(
             pkg_1_old,
             LockfilePackage {
@@ -135,18 +135,30 @@ mod test {
         // should now contain all old packages, and upgraded new ones
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.1.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/foo",
+                semver::Version::new(1, 1, 0)
+            )));
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/bar", "2.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/bar",
+                semver::Version::new(2, 0, 0)
+            )));
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/qux", "3.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/qux",
+                semver::Version::new(3, 0, 0)
+            )));
 
         // should no longer contain the old foo package
         assert!(!result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/foo",
+                semver::Version::new(1, 0, 0)
+            )));
 
         assert_eq!(3, result.packages.len());
     }

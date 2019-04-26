@@ -83,7 +83,7 @@ impl<'a> LockfilePackages<'a> {
                         .map(|m| {
                             LockfileModule::from_module(
                                 k.name.as_ref(),
-                                k.version.as_ref(),
+                                &k.version,
                                 m,
                                 download_url,
                             )
@@ -94,7 +94,7 @@ impl<'a> LockfilePackages<'a> {
                 let commands: Vec<LockfileCommand> = match m.command {
                     Some(ref modules) => modules
                         .iter()
-                        .map(|c| LockfileCommand::from_command(&k.name, &k.version, c))
+                        .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
                         .collect(),
                     _ => vec![],
                 };

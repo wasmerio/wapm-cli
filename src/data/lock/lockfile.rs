@@ -1,13 +1,14 @@
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
+use semver::Version;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
 
-pub type ModuleMap = BTreeMap<String, BTreeMap<String, BTreeMap<String, LockfileModule>>>;
+pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModule>>>;
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -36,7 +37,7 @@ impl<'a> Lockfile {
     pub fn get_module(
         &self,
         package_name: &str,
-        package_version: &str,
+        package_version: &Version,
         module_name: &str,
     ) -> Result<&LockfileModule, failure::Error> {
         let version_map = self.modules.get(package_name).ok_or::<failure::Error>(
