@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global install packages from the registry with `-g`/`--global` flag.
   - Packages are installed into `WASMER_DIR/globals`.
   - Packages are runnable from any directory that does not already have that package installed.
+- Enforce semantic version numbers on the package and dependencies.
+- Allow ranges of semantic versions when declaring dependencies e.g. `"_/sqlite": "^0.1"`
 ### Changed
 - Refactored process for generating updates to manifest, regenerating the lockfile, and installing packages.
 - Changed OpenSSL to statically link for Linux builds (because version 1.1 is not widely deployed yet)
