@@ -12,6 +12,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
     packages: Vec<String>,
+    /// Install the package(s) globally
     #[structopt(short = "g", long = "global")]
     global: bool,
 }
