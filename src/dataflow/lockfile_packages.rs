@@ -188,7 +188,7 @@ impl<'a> LockfilePackages<'a> {
         let removed_package_keys = removed_packages
             .packages
             .into_iter()
-            .map(|pkg_name| {
+            .flat_map(|pkg_name| {
                 self.packages
                     .iter()
                     .map(|(package_key, _)| package_key)
@@ -199,7 +199,6 @@ impl<'a> LockfilePackages<'a> {
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         for removed_package_key in removed_package_keys {

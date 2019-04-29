@@ -18,5 +18,8 @@ pub fn uninstall(options: UninstallOpt) -> Result<(), failure::Error> {
     };
     let uninstalled_package_names = vec![options.package.as_str()];
     dataflow::update(vec![], uninstalled_package_names, dir)?;
+
+    info!("Package \"{}\" is uninstalled.", options.package);
+
     Ok(())
 }
