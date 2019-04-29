@@ -27,5 +27,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed installing packages with http responses that are missing the gzip content encoding header.
 
-[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.1.0
