@@ -3,7 +3,8 @@ use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
-use crate::dataflow::PackageKey;
+use crate::dataflow::removed_packages::RemovedPackages;
+use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
@@ -181,6 +182,28 @@ impl<'a> LockfilePackages<'a> {
             })
             .collect();
         missing_packages
+    }
+
+    pub fn remove_packages(&mut self, removed_packages: RemovedPackages<'a>) {
+        let removed_package_keys = removed_packages
+            .packages
+            .into_iter()
+            .flat_map(|pkg_name| {
+                self.packages
+                    .iter()
+                    .map(|(package_key, _)| package_key)
+                    .cloned()
+                    .filter(|package_key| match package_key {
+                        PackageKey::WapmPackage(WapmPackageKey { name, .. }) => name == &pkg_name,
+                        _ => false,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        for removed_package_key in removed_package_keys {
+            self.packages.remove(&removed_package_key);
+        }
     }
 
     pub fn extend(&mut self, other_packages: LockfilePackages<'a>) {

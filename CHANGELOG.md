@@ -20,11 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - List subcommand (`wapm list`) to show packages and commands installed
 - Enforce semantic version numbers on the package and dependencies.
 - Allow ranges of semantic versions when declaring dependencies e.g. `"_/sqlite": "^0.1"`
+- Uninstall a package with `wapm uninstall` and use the `-g` flag for global uninstall.
 ### Changed
 - Refactored process for generating updates to manifest, regenerating the lockfile, and installing packages.
 - Changed OpenSSL to statically link for Linux builds (because version 1.1 is not widely deployed yet)
 ### Fixed
 - Fixed installing packages with http responses that are missing the gzip content encoding header.
 
-[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.1.0

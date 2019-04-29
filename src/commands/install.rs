@@ -68,7 +68,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => {
             // install all packages locally
             let added_packages = vec![];
-            dataflow::update(added_packages, &current_directory)
+            dataflow::update(added_packages, vec![], &current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
         }
@@ -122,7 +122,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                 false => Cow::Borrowed(&current_directory),
             };
 
-            dataflow::update(installed_packages, install_directory)
+            dataflow::update(installed_packages, vec![], install_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
             if options.global {

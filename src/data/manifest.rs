@@ -85,6 +85,12 @@ impl Manifest {
         dependencies.insert(dependency_name, dependency_version);
     }
 
+    /// remove dependency by package name
+    pub fn remove_dependency(&mut self, dependency_name: String) {
+        let dependencies = self.dependencies.get_or_insert(Default::default());
+        dependencies.remove(&dependency_name);
+    }
+
     pub fn save(&self) -> Result<(), failure::Error> {
         let manifest_string = toml::to_string(self)?;
         let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
