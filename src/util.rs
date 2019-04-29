@@ -1,6 +1,7 @@
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
+use semver::Version;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -88,7 +89,10 @@ pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str)
 }
 
 #[inline]
-pub fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
+pub fn fully_qualified_package_display_name(
+    package_name: &str,
+    package_version: &Version,
+) -> String {
     format!("{}@{}", package_name, package_version)
 }
 

@@ -50,9 +50,18 @@ mod retained_lockfile_packages_tests {
         let mut manifest_package_keys = HashSet::new();
 
         // one upgrade package, one new package
-        manifest_package_keys.insert(PackageKey::new_registry_package("_/foo", "1.1.0"));
-        manifest_package_keys.insert(PackageKey::new_registry_package("_/bar", "2.2.0"));
-        manifest_package_keys.insert(PackageKey::new_registry_package("_/baz", "11.11.11"));
+        manifest_package_keys.insert(PackageKey::new_registry_package(
+            "_/foo",
+            semver::Version::new(1, 1, 0),
+        ));
+        manifest_package_keys.insert(PackageKey::new_registry_package(
+            "_/bar",
+            semver::Version::new(2, 2, 0),
+        ));
+        manifest_package_keys.insert(PackageKey::new_registry_package(
+            "_/baz",
+            semver::Version::new(11, 11, 11),
+        ));
 
         let manifest_packages = ManifestPackages {
             packages: manifest_package_keys,
@@ -61,21 +70,21 @@ mod retained_lockfile_packages_tests {
         let mut lockfile_package_map = HashMap::new();
         // one existing package that is upgraded, and one old package, and one unchanged
         lockfile_package_map.insert(
-            PackageKey::new_registry_package("_/foo", "1.0.0"),
+            PackageKey::new_registry_package("_/foo", semver::Version::new(1, 0, 0)),
             LockfilePackage {
                 modules: vec![],
                 commands: vec![],
             },
         );
         lockfile_package_map.insert(
-            PackageKey::new_registry_package("_/baz", "11.11.11"),
+            PackageKey::new_registry_package("_/baz", semver::Version::new(11, 11, 11)),
             LockfilePackage {
                 modules: vec![],
                 commands: vec![],
             },
         );
         lockfile_package_map.insert(
-            PackageKey::new_registry_package("_/qux", "3.0.0"),
+            PackageKey::new_registry_package("_/qux", semver::Version::new(3, 0, 0)),
             LockfilePackage {
                 modules: vec![],
                 commands: vec![],
@@ -93,21 +102,21 @@ mod retained_lockfile_packages_tests {
 
         assert_eq!(1, retained_lockfile_packages.packages.len());
         // should only contain this one:
-        assert!(retained_lockfile_packages
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/baz", "11.11.11")));
+        assert!(retained_lockfile_packages.packages.contains_key(
+            &PackageKey::new_registry_package("_/baz", semver::Version::new(11, 11, 11))
+        ));
         // should not contain these:
-        assert!(!retained_lockfile_packages
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/qux", "3.0.0")));
-        assert!(!retained_lockfile_packages
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.1.0")));
-        assert!(!retained_lockfile_packages
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
-        assert!(!retained_lockfile_packages
-            .packages
-            .contains_key(&PackageKey::new_registry_package("_/bar", "2.2.0")));
+        assert!(!retained_lockfile_packages.packages.contains_key(
+            &PackageKey::new_registry_package("_/qux", semver::Version::new(3, 0, 0))
+        ));
+        assert!(!retained_lockfile_packages.packages.contains_key(
+            &PackageKey::new_registry_package("_/foo", semver::Version::new(1, 1, 0))
+        ));
+        assert!(!retained_lockfile_packages.packages.contains_key(
+            &PackageKey::new_registry_package("_/foo", semver::Version::new(1, 0, 0))
+        ));
+        assert!(!retained_lockfile_packages.packages.contains_key(
+            &PackageKey::new_registry_package("_/bar", semver::Version::new(2, 2, 0))
+        ));
     }
 }

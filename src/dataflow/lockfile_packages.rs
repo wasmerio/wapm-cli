@@ -1,5 +1,5 @@
 use crate::data::lock::lockfile::Lockfile;
-use crate::data::lock::lockfile_command::LockfileCommand;
+use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
@@ -15,6 +15,11 @@ pub enum LockfileError {
     LockfileTomlParseError(String),
     #[fail(display = "Could not parse lockfile because {}.", _0)]
     IoError(String),
+    #[fail(
+        display = "Could not parse lockfile because of issue parsing command. {}",
+        _0
+    )]
+    CommandPackageVersionParseError(Error),
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -72,39 +77,37 @@ pub struct LockfilePackages<'a> {
 }
 
 impl<'a> LockfilePackages<'a> {
-    pub fn from_installed_packages(installed_manifest_packages: &'a InstalledPackages<'a>) -> Self {
-        let packages: HashMap<PackageKey<'a>, LockfilePackage> = installed_manifest_packages
-            .packages
-            .iter()
-            .map(|(k, m, download_url)| {
-                let modules: Vec<LockfileModule> = match m.module {
-                    Some(ref modules) => modules
+    pub fn from_installed_packages(
+        installed_manifest_packages: &'a InstalledPackages<'a>,
+    ) -> Result<Self, LockfileError> {
+        let mut packages = HashMap::default();
+        for (k, m, download_url) in installed_manifest_packages.packages.iter() {
+            let modules: Vec<LockfileModule> = match m.module {
+                Some(ref modules) => modules
+                    .iter()
+                    .map(|m| {
+                        LockfileModule::from_module(k.name.as_ref(), &k.version, m, download_url)
+                    })
+                    .collect(),
+                _ => vec![],
+            };
+            let commands: Vec<LockfileCommand> = match m.command {
+                Some(ref modules) => {
+                    let commands = modules
                         .iter()
-                        .map(|m| {
-                            LockfileModule::from_module(
-                                k.name.as_ref(),
-                                k.version.as_ref(),
-                                m,
-                                download_url,
-                            )
-                        })
-                        .collect(),
-                    _ => vec![],
-                };
-                let commands: Vec<LockfileCommand> = match m.command {
-                    Some(ref modules) => modules
-                        .iter()
-                        .map(|c| LockfileCommand::from_command(&k.name, &k.version, c))
-                        .collect(),
-                    _ => vec![],
-                };
-                (
-                    PackageKey::WapmPackage(k.clone()),
-                    LockfilePackage { modules, commands },
-                )
-            })
-            .collect();
-        Self { packages }
+                        .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
+                        .collect::<Result<Vec<LockfileCommand>, Error>>()
+                        .map_err(|e| LockfileError::CommandPackageVersionParseError(e))?;
+                    commands
+                }
+                _ => vec![],
+            };
+            packages.insert(
+                PackageKey::WapmPackage(k.clone()),
+                LockfilePackage { modules, commands },
+            );
+        }
+        Ok(Self { packages })
     }
 
     pub fn new_from_result(result: LockfileResult) -> Result<Self, LockfileError> {
