@@ -8,6 +8,7 @@ mod logout;
 mod publish;
 mod run;
 mod search;
+mod uninstall;
 mod validate;
 mod whoami;
 
@@ -21,5 +22,6 @@ pub use self::logout::logout;
 pub use self::publish::publish;
 pub use self::run::{run, RunOpt};
 pub use self::search::{search, SearchOpt};
+pub use self::uninstall::{uninstall, UninstallOpt};
 pub use self::validate::{validate, ValidateOpt};
 pub use self::whoami::whoami;

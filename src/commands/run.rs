@@ -30,7 +30,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     // always update the local lockfile if the manifest has changed
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
-        _ => dataflow::update(vec![], &current_dir)
+        _ => dataflow::update(vec![], vec![], &current_dir)
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
 

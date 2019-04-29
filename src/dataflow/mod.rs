@@ -6,6 +6,7 @@ use crate::dataflow::local_package::LocalPackage;
 use crate::dataflow::lockfile_packages::{LockfileError, LockfilePackages, LockfileResult};
 use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult};
 use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
+use crate::dataflow::removed_packages::RemovedPackages;
 use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use semver::{Version, VersionReq};
@@ -22,6 +23,7 @@ pub mod local_package;
 pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
+pub mod removed_packages;
 pub mod resolved_packages;
 pub mod retained_lockfile_packages;
 
@@ -115,6 +117,14 @@ impl<'a> fmt::Display for PackageKey<'a> {
     }
 }
 
+pub fn normalize_global_namespace_package_name(package_name: Cow<str>) -> Cow<str> {
+    if !package_name.contains('/') {
+        Cow::Owned(format!("_/{}", package_name))
+    } else {
+        package_name
+    }
+}
+
 /// Normalize global namespace package names that are using the shorthand e.g. convert pkg to "_/pkg"
 pub fn normalize_global_namespace(key: PackageKey) -> PackageKey {
     let new_key = match key {
@@ -142,15 +152,21 @@ pub fn normalize_global_namespace(key: PackageKey) -> PackageKey {
 pub fn update_with_no_manifest<P: AsRef<Path>>(
     directory: P,
     added_packages: AddedPackages,
+    removed_packages: RemovedPackages,
 ) -> Result<(), Error> {
     let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
-    let lockfile_packages =
+    let mut lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
-    // check that the added packages are not already installed
+    // capture the initial lockfile keys before any modifications
     let initial_package_keys: HashSet<_> = lockfile_packages.package_keys();
+
+    // remove/uninstall packages
+    lockfile_packages.remove_packages(removed_packages);
+
+    // check that the added packages are not already installed
     let lockfile_package_keys = lockfile_packages.package_keys();
     let added_packages = added_packages.prune_already_installed_packages(lockfile_package_keys);
     // check for missing packages e.g. deleting stuff from wapm_packages
@@ -189,16 +205,20 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     directory: P,
     manifest: Manifest,
     added_packages: AddedPackages,
+    removed_packages: RemovedPackages,
 ) -> Result<(), Error> {
     let directory = directory.as_ref();
 
-    let manifest_packages =
+    let mut manifest_packages =
         ManifestPackages::new_from_manifest_and_added_packages(&manifest, &added_packages)
             .map_err(|e| Error::ManifestError(e))?;
 
+    // remove/uninstall packages
+    manifest_packages.remove_packages(&removed_packages);
+
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
-    let lockfile_data =
+    let lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
     // get the local package modules and commands from the manifest
@@ -208,18 +228,18 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let changed_manifest_data =
         ChangedManifestPackages::get_changed_packages_from_manifest_and_lockfile(
             &manifest_packages,
-            &lockfile_data,
+            &lockfile_packages,
         );
 
     let packages_to_install = AddedPackages {
         packages: changed_manifest_data.packages,
     };
 
-    let missing_lockfile_packages = lockfile_data.find_missing_packages(&directory);
+    let missing_lockfile_packages = lockfile_packages.find_missing_packages(&directory);
     let new_added_packages = packages_to_install.add_missing_packages(missing_lockfile_packages);
 
     let retained_lockfile_packages =
-        RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_data);
+        RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_packages);
 
     let resolved_manifest_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(new_added_packages)
@@ -242,7 +262,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
         .map_err(|e| Error::GenerateLockfileError(e))?;
 
     // update the manifest, if applicable
-    update_manifest(manifest.clone(), &added_packages)?;
+    update_manifest(manifest.clone(), &added_packages, &removed_packages)?;
     Ok(())
 }
 
@@ -250,25 +270,34 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 /// calculates differences, installs missing dependencies, and finally generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
     added_packages: Vec<(&str, &str)>,
+    removed_packages: Vec<&str>,
     directory: P,
 ) -> Result<(), Error> {
     let directory = directory.as_ref();
     let added_packages =
         AddedPackages::new_from_str_pairs(added_packages).map_err(|e| Error::AddError(e))?;
+    let removed_packages = RemovedPackages::new_from_package_names(removed_packages);
     let manifest_result = ManifestResult::find_in_directory(&directory);
     match manifest_result {
-        ManifestResult::NoManifest => update_with_no_manifest(directory, added_packages),
+        ManifestResult::NoManifest => {
+            update_with_no_manifest(directory, added_packages, removed_packages)
+        }
         ManifestResult::Manifest(manifest) => {
-            update_with_manifest(directory, manifest, added_packages)
+            update_with_manifest(directory, manifest, added_packages, removed_packages)
         }
         ManifestResult::ManifestError(e) => return Err(Error::ManifestError(e)),
     }
 }
 
-pub fn update_manifest(manifest: Manifest, added_packages: &AddedPackages) -> Result<(), Error> {
-    if added_packages.packages.is_empty() {
+pub fn update_manifest(
+    manifest: Manifest,
+    added_packages: &AddedPackages,
+    removed_packages: &RemovedPackages,
+) -> Result<(), Error> {
+    if added_packages.packages.is_empty() && removed_packages.packages.is_empty() {
         return Ok(());
     }
+
     let mut manifest = manifest;
     for key in added_packages.packages.iter().cloned() {
         match key {
@@ -280,5 +309,10 @@ pub fn update_manifest(manifest: Manifest, added_packages: &AddedPackages) -> Re
             }
         }
     }
+
+    for package_name in removed_packages.packages.iter().cloned() {
+        manifest.remove_dependency(package_name.into());
+    }
+
     manifest.save().map_err(|e| Error::SaveError(e.to_string()))
 }

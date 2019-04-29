@@ -58,6 +58,10 @@ enum Command {
     #[structopt(name = "list")]
     /// List the currently installed packages and their commands
     List(commands::ListOpt),
+
+    #[structopt(name = "uninstall")]
+    /// Uninstall a package
+    Uninstall(commands::UninstallOpt),
 }
 
 fn main() {
@@ -100,6 +104,7 @@ fn main() {
             );
             Ok(())
         }
+        Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
     };
     if let Err(e) = result {
         eprintln!("Error: {}", e);

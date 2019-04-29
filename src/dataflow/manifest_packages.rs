@@ -1,6 +1,7 @@
 use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::dataflow::added_packages::AddedPackages;
-use crate::dataflow::{normalize_global_namespace, PackageKey};
+use crate::dataflow::removed_packages::RemovedPackages;
+use crate::dataflow::{normalize_global_namespace, PackageKey, WapmPackageKey};
 use semver::{Version, VersionReq};
 use std::collections::hash_set::HashSet;
 use std::fs;
@@ -77,6 +78,29 @@ impl<'a> ManifestPackages<'a> {
 
     pub fn keys(&self) -> HashSet<PackageKey<'a>> {
         self.packages.iter().cloned().collect()
+    }
+
+    pub fn remove_packages(&mut self, removed_packages: &'a RemovedPackages<'a>) {
+        let removed_package_keys = removed_packages
+            .packages
+            .iter()
+            .cloned()
+            .map(|pkg_name| {
+                self.packages
+                    .iter()
+                    .cloned()
+                    .filter(|package_key| match package_key {
+                        PackageKey::WapmPackage(WapmPackageKey { name, .. }) => name == &pkg_name,
+                        _ => false,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
+        for removed_package_key in removed_package_keys {
+            self.packages.remove(&removed_package_key);
+        }
     }
 
     /// Extract package keys from the manifest
