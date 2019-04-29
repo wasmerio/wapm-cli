@@ -1,4 +1,5 @@
 use crate::data::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
+use crate::dataflow::bin_script::save_bin_script;
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
@@ -61,7 +62,11 @@ impl<'a> MergedLockfilePackages<'a> {
                     }
                     for command in package.commands {
                         let name = command.name.clone();
+                        let script_name = command.name.clone();
                         commands.insert(name, command);
+                        // save the bin script to execute this command from the terminal
+                        save_bin_script(directory, script_name)
+                            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
                     }
                 }
                 PackageKey::WapmPackageRange(_) => {
