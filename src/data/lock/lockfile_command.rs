@@ -17,7 +17,7 @@ impl<'a> LockfileCommand {
         local_package_name: &str,
         local_package_version: Version,
         command: &'a Command,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         // split the "package" field of the command if it exists
         // otherwise assume that this is a command for a local module
         // extract the package name and version for this command and insert into the lockfile command
@@ -32,7 +32,10 @@ impl<'a> LockfileCommand {
                         (package_name, package_version)
                     }
                     _ => {
-                        panic!("invalid package name: {}", package_string);
+                        return Err(Error::CouldNotParsePackageVersionForCommand(
+                            package_string.clone(),
+                            command.name.clone(),
+                        ));
                     }
                 }
             }
@@ -47,12 +50,17 @@ impl<'a> LockfileCommand {
             main_args: command.main_args.clone(),
             is_top_level_dependency: true,
         };
-        lockfile_command
+        Ok(lockfile_command)
     }
 }
 
-#[derive(Debug, Fail)]
-pub enum LockfileCommandError {
+#[derive(Clone, Debug, Fail)]
+pub enum Error {
     #[fail(display = "The module for this command does not exist. Did you modify the wapm.lock?")]
     ModuleForCommandDoesNotExist,
+    #[fail(
+        display = "Could not parse the package name and version \"{}\" for the command \"{}\".",
+        _0, _1
+    )]
+    CouldNotParsePackageVersionForCommand(String, String),
 }

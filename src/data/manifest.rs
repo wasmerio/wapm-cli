@@ -57,7 +57,7 @@ pub struct Module {
 pub struct Manifest {
     pub package: Package,
     pub module: Option<Vec<Module>>,
-    pub dependencies: Option<HashMap<String, String>>, // Option<Table>,
+    pub dependencies: Option<HashMap<String, String>>,
     pub command: Option<Vec<Command>>,
     /// private data
     /// store the directory path of the manifest file for use later accessing relative path fields
@@ -81,7 +81,7 @@ impl Manifest {
 
     /// add a dependency
     pub fn add_dependency(&mut self, dependency_name: String, dependency_version: String) {
-        let dependencies = self.dependencies.get_or_insert(HashMap::new());
+        let dependencies = self.dependencies.get_or_insert(Default::default());
         dependencies.insert(dependency_name, dependency_version);
     }
 

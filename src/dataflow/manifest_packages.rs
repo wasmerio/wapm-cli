@@ -71,9 +71,7 @@ impl<'a> ManifestPackages<'a> {
             .map(normalize_global_namespace)
             .collect();
 
-        for added_package_key in added_packages.packages.iter().cloned() {
-            packages.insert(added_package_key);
-        }
+        packages.extend(added_packages.packages.iter().cloned());
         Ok(Self { packages })
     }
 

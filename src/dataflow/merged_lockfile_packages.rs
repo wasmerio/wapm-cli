@@ -64,7 +64,9 @@ impl<'a> MergedLockfilePackages<'a> {
                         commands.insert(name, command);
                     }
                 }
-                PackageKey::WapmPackageRange(_) => panic!("Should not get here!"),
+                PackageKey::WapmPackageRange(_) => {
+                    unreachable!("Attempting to generate with lockfile with package version range.")
+                }
             }
         }
 

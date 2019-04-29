@@ -41,6 +41,8 @@ pub enum Error {
     SaveError(String),
     #[fail(display = "Could not install new packages. {}", _0)]
     AddError(added_packages::Error),
+    #[fail(display = "Could not operate on local package data. {}", _0)]
+    LocalPackageError(local_package::Error),
 }
 
 /// A package key for a package in the wapm.io registry.
@@ -162,7 +164,8 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let installed_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_packages)
             .map_err(|e| Error::InstallError(e))?;
-    let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages);
+    let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
+        .map_err(|e| Error::LockfileError(e))?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
@@ -199,7 +202,8 @@ pub fn update_with_manifest<P: AsRef<Path>>(
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
 
     // get the local package modules and commands from the manifest
-    let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest);
+    let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest)
+        .map_err(|e| Error::LocalPackageError(e))?;
 
     let changed_manifest_data =
         ChangedManifestPackages::get_changed_packages_from_manifest_and_lockfile(
@@ -224,7 +228,8 @@ pub fn update_with_manifest<P: AsRef<Path>>(
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
             .map_err(|e| Error::InstallError(e))?;
     let mut manifest_lockfile_data =
-        LockfilePackages::from_installed_packages(&installed_manifest_packages);
+        LockfilePackages::from_installed_packages(&installed_manifest_packages)
+            .map_err(|e| Error::LockfileError(e))?;
 
     manifest_lockfile_data.extend(local_package.into());
 
