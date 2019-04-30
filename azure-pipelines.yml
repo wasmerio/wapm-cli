@@ -5,6 +5,8 @@ resources:
   containers:
     - container: rust133
       image: rust:1.33
+    - container: rust133-windows
+      image: wasmer/windows-rust:latest
 jobs:
   - job: LinuxContainer
     pool:
@@ -21,5 +23,20 @@ jobs:
         displayName: 'Build wapm'
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          cargo test --verbose -- --test-threads=1
+        displayName: 'Test wapm'
+  - job: WindowsContainer
+    pool:
+      vmImage: 'win1803'
+    strategy:
+      matrix:
+        rust133:
+          containerResource: rust133-windows
+    container: $[ variables['containerResource'] ]
+    steps:
+      - script: |
+          cargo build --verbose
+        displayName: 'Build wapm'
+      - script: |
           cargo test --verbose -- --test-threads=1
         displayName: 'Test wapm'
