@@ -11,14 +11,14 @@ pub enum Error {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn save_in_script<P: AsRef<Path>>() -> Result<(), Error> {
-    let data = format!("#!/bin/bash\nwapm run sqlite \"$@\"\n");
+pub fn save_in_script<P: AsRef<Path>>(directory: P, command_name: String) -> Result<(), Error> {
+    let data = format!("#!/bin/bash\nwapm run {} \"$@\"\n", command_name);
     save(data, directory, command_name)
 }
 
 #[cfg(target_os = "windows")]
 pub fn save_bin_script<P: AsRef<Path>>(directory: P, command_name: String) -> Result<(), Error> {
-    let data = format!("wapm run sqlite %*\n");
+    let data = format!("wapm run {} %*\n", command_name);
     let file_name = format!("{}.cmd", command_name);
     save(data, directory, file_name)
 }
