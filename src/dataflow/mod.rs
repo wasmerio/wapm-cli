@@ -6,6 +6,7 @@ use crate::dataflow::local_package::LocalPackage;
 use crate::dataflow::lockfile_packages::{LockfileError, LockfilePackages, LockfileResult};
 use crate::dataflow::manifest_packages::{ManifestPackages, ManifestResult};
 use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
+use crate::dataflow::removed_lockfile_packages::RemovedLockfilePackages;
 use crate::dataflow::removed_packages::RemovedPackages;
 use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
@@ -24,6 +25,7 @@ pub mod local_package;
 pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
+pub mod removed_lockfile_packages;
 pub mod removed_packages;
 pub mod resolved_packages;
 pub mod retained_lockfile_packages;
@@ -46,6 +48,8 @@ pub enum Error {
     AddError(added_packages::Error),
     #[fail(display = "Could not operate on local package data. {}", _0)]
     LocalPackageError(local_package::Error),
+    #[fail(display = "Could not cleanup old artifacts. {}", _0)]
+    CleanupError(removed_lockfile_packages::Error),
 }
 
 /// A package key for a package in the wapm.io registry.
@@ -164,6 +168,16 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // capture the initial lockfile keys before any modifications
     let initial_package_keys: HashSet<_> = lockfile_packages.package_keys();
 
+    let removed_lockfile_packages = RemovedLockfilePackages::from_removed_packages_and_lockfile(
+        &removed_packages,
+        &lockfile_packages,
+    );
+
+    // cleanup any old artifacts
+    removed_lockfile_packages
+        .cleanup_old_packages(&directory)
+        .map_err(|e| Error::CleanupError(e))?;
+
     // remove/uninstall packages
     lockfile_packages.remove_packages(removed_packages);
 
@@ -238,6 +252,14 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 
     let missing_lockfile_packages = lockfile_packages.find_missing_packages(&directory);
     let new_added_packages = packages_to_install.add_missing_packages(missing_lockfile_packages);
+
+    let removed_lockfile_packages =
+        RemovedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, &lockfile_packages);
+
+    // cleanup any old artifacts
+    removed_lockfile_packages
+        .cleanup_old_packages(&directory)
+        .map_err(|e| Error::CleanupError(e))?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_packages);
