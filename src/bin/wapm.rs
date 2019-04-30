@@ -62,6 +62,10 @@ enum Command {
     #[structopt(name = "uninstall")]
     /// Uninstall a package
     Uninstall(commands::UninstallOpt),
+
+    #[structopt(name = "bin")]
+    /// Get the .bin dir path
+    Bin(commands::BinOpt),
 }
 
 fn main() {
@@ -105,6 +109,7 @@ fn main() {
             Ok(())
         }
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
+        Command::Bin(bin_options) => commands::bin(bin_options),
     };
     if let Err(e) = result {
         eprintln!("Error: {}", e);
