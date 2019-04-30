@@ -11,7 +11,7 @@ pub enum Error {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn save_in_script<P: AsRef<Path>>(directory: P, command_name: String) -> Result<(), Error> {
+pub fn save_bin_script<P: AsRef<Path>>(directory: P, command_name: String) -> Result<(), Error> {
     let data = format!("#!/bin/bash\nwapm run {} \"$@\"\n", command_name);
     save(data, directory, command_name)
 }
