@@ -17,6 +17,10 @@ jobs:
     steps:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          cargo fmt --all -- --check
+          displayName: 'Lint wapm'
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
           cargo build --verbose
         displayName: 'Build wapm'
       - script: |
