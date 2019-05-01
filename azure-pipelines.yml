@@ -56,5 +56,5 @@ jobs:
           export WAPM_DISABLE_COLOR=true
           cargo install --path . --force
           sh end-to-end-tests/install.sh > /tmp/install-out.txt
-          diff end-to-end-tests/install.txt /tmp/install-out.txt
+          diff -B end-to-end-tests/install.txt /tmp/install-out.txt
         displayName: 'Test wapm'
