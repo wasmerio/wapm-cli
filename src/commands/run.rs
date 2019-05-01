@@ -31,6 +31,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     match is_lockfile_out_of_date(&current_dir) {
         Ok(false) => {}
         _ => dataflow::update(vec![], vec![], &current_dir)
+            .map(|_| ())
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
 

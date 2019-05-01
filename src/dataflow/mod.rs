@@ -154,11 +154,12 @@ pub fn normalize_global_namespace(key: PackageKey) -> PackageKey {
 
 /// If there is no mainfest, then this is a non-manifest project. All installations are retained
 /// in the lockfile, and installs are additive.
+/// This function returns a bool on success indicating if any changes were applied
 pub fn update_with_no_manifest<P: AsRef<Path>>(
     directory: P,
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
@@ -209,19 +210,21 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
         final_lockfile_data
             .generate_lockfile(&directory)
             .map_err(|e| Error::GenerateLockfileError(e))?;
+        Ok(true)
+    } else {
+        Ok(false)
     }
-
-    Ok(())
 }
 
 /// If there is a manifest, then we construct lockfile data from manifest dependencies, and merge
 /// with existing lockfile data.
+/// This function returns a bool on success indicating if any changes were applied
 pub fn update_with_manifest<P: AsRef<Path>>(
     directory: P,
     manifest: Manifest,
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let directory = directory.as_ref();
 
     let mut manifest_packages =
@@ -235,6 +238,8 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let lockfile_result = LockfileResult::find_in_directory(&directory);
     let lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
+    // store lockfile package keys before updating it
+    let initial_package_keys = lockfile_packages.package_keys();
 
     // get the local package modules and commands from the manifest
     let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest)
@@ -279,14 +284,19 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(manifest_lockfile_data, retained_lockfile_packages);
+    let final_package_keys: HashSet<_> = final_lockfile_data.packages.keys().cloned().collect();
 
     final_lockfile_data
         .generate_lockfile(&directory)
         .map_err(|e| Error::GenerateLockfileError(e))?;
 
     // update the manifest, if applicable
-    update_manifest(manifest.clone(), &added_packages, &removed_packages)?;
-    Ok(())
+    if final_package_keys != initial_package_keys {
+        update_manifest(manifest.clone(), &added_packages, &removed_packages)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 /// The function that starts lockfile dataflow. This function finds a manifest and a lockfile,
@@ -295,7 +305,7 @@ pub fn update<P: AsRef<Path>>(
     added_packages: Vec<(&str, &str)>,
     removed_packages: Vec<&str>,
     directory: P,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let directory = directory.as_ref();
     let added_packages =
         AddedPackages::new_from_str_pairs(added_packages).map_err(|e| Error::AddError(e))?;
@@ -312,6 +322,7 @@ pub fn update<P: AsRef<Path>>(
     }
 }
 
+/// Updates the manifest and saves it
 pub fn update_manifest(
     manifest: Manifest,
     added_packages: &AddedPackages,
@@ -337,5 +348,9 @@ pub fn update_manifest(
         manifest.remove_dependency(package_name.into());
     }
 
-    manifest.save().map_err(|e| Error::SaveError(e.to_string()))
+    manifest
+        .save()
+        .map_err(|e| Error::SaveError(e.to_string()))?;
+
+    Ok(())
 }
