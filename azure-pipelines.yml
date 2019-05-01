@@ -17,6 +17,7 @@ jobs:
     steps:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          rustup component add rustfmt
           cargo fmt --all -- --check
           displayName: 'Lint wapm'
       - script: |
