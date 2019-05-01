@@ -38,7 +38,7 @@ jobs:
           cargo -V
           cargo test --verbose -- --test-threads=1
         displayName: 'test wapm'
-- job: End-to-end regression tests
+  - job: End-to-end regression tests
     pool:
       vmImage: 'ubuntu-16.04'
     strategy:
