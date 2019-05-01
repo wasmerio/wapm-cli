@@ -126,7 +126,7 @@ impl FindCommandResult {
             (_, LockfileResult::LockfileError(e)) => return FindCommandResult::Error(e.into()),
             (ManifestResult::NoManifest, LockfileResult::NoLockfile) => {} // continue
             (ManifestResult::NoManifest, LockfileResult::Lockfile(l)) => {
-                return Self::find_command_in_lockfile(command_name, l)
+                return Self::find_command_in_lockfile(command_name, l);
             }
             // the edge case of a manifest, but no lockfile would an invalid state. This function
             // should always be run after updating the lockfile with the latest manifest changes.
@@ -173,7 +173,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             return Err(Error::ErrorReadingLocalDirectory(
                 command_name.as_ref().to_string(),
                 e.to_string(),
-            ))
+            ));
         }
     };
 
@@ -200,7 +200,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
                     command_name.as_ref().to_string(),
                     e.to_string(),
                 ),
-            )
+            );
         }
     };
 

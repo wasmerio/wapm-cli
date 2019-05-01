@@ -4,10 +4,7 @@ use crate::config;
 use crate::data::lock::lockfile::{CommandMap, ModuleMap};
 use crate::dataflow::lockfile_packages::LockfileResult;
 use prettytable::{format, Table};
-use std::{
-    env,
-    fmt::Write as _,
-};
+use std::{env, fmt::Write as _};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
