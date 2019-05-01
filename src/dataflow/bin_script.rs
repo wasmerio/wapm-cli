@@ -2,7 +2,7 @@ use crate::data::manifest::PACKAGES_DIR_NAME;
 use std::fs;
 use std::path::Path;
 
-const BIN_DIR_NAME: &str = ".bin";
+pub const BIN_DIR_NAME: &str = ".bin";
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {

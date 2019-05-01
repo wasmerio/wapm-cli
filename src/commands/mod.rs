@@ -1,3 +1,4 @@
+mod bin;
 mod completions;
 mod config;
 mod init;
@@ -12,6 +13,7 @@ mod uninstall;
 mod validate;
 mod whoami;
 
+pub use self::bin::{bin, BinOpt};
 pub use self::completions::CompletionOpt;
 pub use self::config::{config, ConfigOpt};
 pub use self::init::{init, InitOpt};

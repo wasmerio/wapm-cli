@@ -108,6 +108,11 @@ pub fn publish() -> Result<(), failure::Error> {
     assert!(archive_path.is_file());
     let _response: publish_package_mutation::ResponseData =
         execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())?;
+
+    println!(
+        "Successfully published package `{}@{}`",
+        package.name, package.version
+    );
     Ok(())
 }
 
