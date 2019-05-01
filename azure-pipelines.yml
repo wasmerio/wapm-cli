@@ -26,6 +26,7 @@ jobs:
           cargo test --verbose -- --test-threads=1
         displayName: 'Test wapm'
   - job: WindowsContainer
+    timeoutInMinutes: 120
     pool:
       vmImage: 'win1803'
     strategy:
