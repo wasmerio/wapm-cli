@@ -53,6 +53,7 @@ jobs:
         displayName: 'Build wapm'
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          export WAPM_DISABLE_COLOR=true
           cargo install --path . --force
           sh end-to-end-tests/install.sh > /tmp/install-out.txt
           diff end-to-end-tests/install.txt /tmp/install-out.txt
