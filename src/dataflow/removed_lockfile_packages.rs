@@ -45,7 +45,7 @@ impl<'a> RemovedLockfilePackages<'a> {
             .packages
             .iter()
             .cloned()
-            .map(|removed_package_name| {
+            .filter_map(|removed_package_name| {
                 lockfile_packages
                     .packages
                     .iter()
@@ -58,7 +58,6 @@ impl<'a> RemovedLockfilePackages<'a> {
                         ),
                     })
                     .map(|(key, data)| (key.clone(), data.clone()))
-                    .unwrap()
             })
             .collect();
         Self { packages }
