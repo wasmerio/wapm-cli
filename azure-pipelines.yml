@@ -39,7 +39,7 @@ jobs:
           Remove-Item .\rustup-init.exe
         displayName: 'install rust'
       - script: |
-          export PATH=$PATH:$HOME/.cargo/bin
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
           rustup component add rustfmt
           cargo fmt --all -- --check
         displayName: 'Lint wapm'
