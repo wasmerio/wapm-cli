@@ -1,0 +1,20 @@
+[INFO] Installing _/cowsay@0.1.2
+Package installed successfully to wapm_packages!
+ ______________
+< hello, world >
+ --------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+               ||----w |
+                ||     ||
+LOCAL PACKAGES:
+ PACKAGE  | VERSION | MODULE | ABI 
+ _/cowsay | 0.1.2   | cowsay | generic 
+
+LOCAL COMMANDS:
+ COMMAND  | PACKAGE  | VERSION 
+ cowsay   | _/cowsay | 0.1.2 
+ cowthink | _/cowsay | 0.1.2 
+[INFO] Package "cowsay" is uninstalled.
+No packages found

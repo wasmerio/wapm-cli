@@ -38,3 +38,21 @@ jobs:
           cargo -V
           cargo test --verbose -- --test-threads=1
         displayName: 'test wapm'
+- job: End-to-end regression tests
+    pool:
+      vmImage: 'ubuntu-16.04'
+    strategy:
+      matrix:
+        rust133:
+          containerResource: rust133
+    container: $[ variables['containerResource'] ]
+    steps:
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo build --verbose
+        displayName: 'Build wapm'
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          sh end-to-end-tests/install.sh > /tmp/install-out.txt
+          diff end-to-end-tests/install.txt /tmp/install-out.txt
+        displayName: 'Test wapm'
