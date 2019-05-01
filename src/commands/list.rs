@@ -112,8 +112,8 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
         }
     }
 
-    if handle.len() == 0 {
-        // we should only have length 0 if we unset both global and local
+    if handle.is_empty() {
+        // we should only have an empty string if we unset both global and local
         debug_assert!(!global);
         debug_assert!(!local);
         println!("No packages found");
