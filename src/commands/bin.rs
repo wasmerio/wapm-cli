@@ -13,8 +13,8 @@ pub struct BinOpt {
 
 #[derive(Clone, Debug, Fail)]
 pub enum BinError {
-    #[fail(display = "The directory does not contain wapm packages.")]
-    NotWapmProjectDir,
+    #[fail(display = "The directory \"{}\" does not contain wapm packages.", _0)]
+    NotWapmProjectDir(String),
 }
 
 pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
@@ -25,7 +25,7 @@ pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
     root_dir.push(PACKAGES_DIR_NAME);
 
     if !root_dir.exists() {
-        return Err(BinError::NotWapmProjectDir.into());
+        return Err(BinError::NotWapmProjectDir(root_dir.to_string_lossy().to_string()).into());
     }
 
     root_dir.push(BIN_DIR_NAME);
