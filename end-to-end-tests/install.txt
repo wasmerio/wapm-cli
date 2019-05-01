@@ -10,11 +10,11 @@ Package installed successfully to wapm_packages!
                 ||     ||
 LOCAL PACKAGES:
  PACKAGE  | VERSION | MODULE | ABI 
- _/cowsay | 0.1.3   | cowsay | generic
+ _/cowsay | 0.1.3   | cowsay | generic 
 
 LOCAL COMMANDS:
  COMMAND  | PACKAGE  | VERSION 
- cowsay   | _/cowsay | 0.1.3
- cowthink | _/cowsay | 0.1.3
+ cowsay   | _/cowsay | 0.1.3 
+ cowthink | _/cowsay | 0.1.3 
 [INFO] Package "cowsay" is uninstalled.
 No packages found
