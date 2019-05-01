@@ -32,6 +32,7 @@ jobs:
           Invoke-WebRequest "https://win.rustup.rs/x86_64" -OutFile rustup-init.exe -UseBasicParsing
           Start-Process -FilePath 'rustup-init.exe' -ArgumentList '-y', '--default-toolchain', 'stable-x86_64-pc-windows-msvc' -Wait
           Remove-Item .\rustup-init.exe
+      - script: |
           cargo -V
           cargo test --verbose -- --test-threads=1
         displayName: 'test wapm'
