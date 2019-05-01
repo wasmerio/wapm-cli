@@ -52,7 +52,9 @@ jobs:
           cargo build --verbose
         displayName: 'Build wapm'
       - script: |
+          curl https://get.wasmer.io -sSfL | sh
           export PATH=$PATH:$HOME/.cargo/bin
+          export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
           chmod +x end-to-end-tests/install.sh
           ./end-to-end-tests/install.sh > /tmp/install-out.txt
