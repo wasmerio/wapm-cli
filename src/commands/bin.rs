@@ -11,12 +11,23 @@ pub struct BinOpt {
     pub global: bool,
 }
 
+#[derive(Clone, Debug, Fail)]
+pub enum BinError {
+    #[fail(display = "The directory does not contain wapm packages.")]
+    NotWapmProjectDir,
+}
+
 pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
     let mut root_dir = match options.global {
         true => Config::get_globals_directory()?,
         false => env::current_dir()?,
     };
     root_dir.push(PACKAGES_DIR_NAME);
+
+    if !root_dir.exists() {
+        return Err(BinError::NotWapmProjectDir.into());
+    }
+
     root_dir.push(BIN_DIR_NAME);
     let bin_dir = root_dir;
     println!("{}", bin_dir.display());
