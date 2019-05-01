@@ -55,7 +55,8 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export WAPM_DISABLE_COLOR=true
           alias wapm=target/debug/wapm
-          sh end-to-end-tests/install.sh > /tmp/install-out.txt
+          chmod +x end-to-end-tests/install.sh
+          ./end-to-end-tests/install.sh > /tmp/install-out.txt
           cat /tmp/install-out.txt
           echo "comparing"
           diff -B end-to-end-tests/install.txt /tmp/install-out.txt
