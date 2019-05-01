@@ -122,13 +122,17 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                 false => Cow::Borrowed(&current_directory),
             };
 
-            dataflow::update(installed_packages, vec![], install_directory)
+            let changes_applied = dataflow::update(installed_packages, vec![], install_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
-            if options.global {
-                println!("Global package installed successfully!");
+            if changes_applied {
+                if options.global {
+                    println!("Global package installed successfully!");
+                } else {
+                    println!("Package installed successfully to wapm_packages!");
+                }
             } else {
-                println!("Package installed successfully to wapm_packages!");
+                println!("No packages to install")
             }
         }
     }
