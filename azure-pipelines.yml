@@ -23,3 +23,18 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           cargo test --verbose -- --test-threads=1
         displayName: 'Test wapm'
+  - job: Windows
+    pool:
+      vmImage: 'windows-2019'
+    steps:
+      - powershell: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest "https://win.rustup.rs/x86_64" -OutFile rustup-init.exe -UseBasicParsing
+          Start-Process -FilePath 'rustup-init.exe' -ArgumentList '-y', '--default-toolchain', 'stable-x86_64-pc-windows-msvc' -Wait
+          Remove-Item .\rustup-init.exe
+        displayName: 'install rust'
+      - script: |
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+          cargo -V
+          cargo test --verbose -- --test-threads=1
+        displayName: 'test wapm'
