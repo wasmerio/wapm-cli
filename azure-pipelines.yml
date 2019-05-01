@@ -33,6 +33,7 @@ jobs:
           Start-Process -FilePath 'rustup-init.exe' -ArgumentList '-y', '--default-toolchain', 'stable-x86_64-pc-windows-msvc' -Wait
           Remove-Item .\rustup-init.exe
       - script: |
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
           cargo -V
           cargo test --verbose -- --test-threads=1
         displayName: 'test wapm'
