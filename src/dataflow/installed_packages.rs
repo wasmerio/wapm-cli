@@ -148,7 +148,15 @@ impl<'a> Install<'a> for RegistryInstaller {
             .get(download_url.as_ref())
             .header(reqwest::header::USER_AGENT, user_agent)
             .send()
-            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+            .map_err(|e| {
+                let error_message = e.to_string();
+                #[cfg(feature = "telemetry")]
+                {
+                    let e = e.into();
+                    sentry::integrations::failure::capture_error(&e);
+                }
+                Error::DownloadError(key.to_string(), error_message)
+            })?;
         let temp_dir = tempdir::TempDir::new("wapm_package_install")
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");

@@ -112,6 +112,10 @@ fn main() {
         Command::Bin(bin_options) => commands::bin(bin_options),
     };
     if let Err(e) = result {
+        #[cfg(feature = "telemetry")]
+        {
+            drop(_guard);
+        };
         eprintln!("Error: {}", e);
         std::process::exit(-1);
     }
