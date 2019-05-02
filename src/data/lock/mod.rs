@@ -1,6 +1,7 @@
 pub mod lockfile;
 pub mod lockfile_command;
 pub mod lockfile_module;
+pub mod migrate;
 
 pub static LOCKFILE_NAME: &str = "wapm.lock";
 
