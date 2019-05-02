@@ -1,6 +1,7 @@
 use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::migrate::{fix_up_v1_package_names, LockfileVersion};
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
 use crate::dataflow::removed_packages::RemovedPackages;
@@ -9,7 +10,6 @@ use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
-use crate::data::lock::migrate::{LockfileVersion, fix_up_v1_package_names};
 
 #[derive(Clone, Debug, Fail)]
 pub enum LockfileError {
@@ -53,18 +53,14 @@ impl LockfileResult {
             Err(_) => return LockfileResult::NoLockfile,
         };
         match LockfileVersion::from_lockfile_string(&source) {
-            Ok(lockfile_version) => {
-                match lockfile_version {
-                    LockfileVersion::V1(mut lockfile_v1) => {
-                        fix_up_v1_package_names(&mut lockfile_v1);
-                        LockfileResult::Lockfile(lockfile_v1)
-                    },
-                    LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+            Ok(lockfile_version) => match lockfile_version {
+                LockfileVersion::V1(mut lockfile_v1) => {
+                    fix_up_v1_package_names(&mut lockfile_v1);
+                    LockfileResult::Lockfile(lockfile_v1)
                 }
-            }
-            Err(e) => {
-                LockfileResult::LockfileError(e)
-            }
+                LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+            },
+            Err(e) => LockfileResult::LockfileError(e),
         }
     }
 }
