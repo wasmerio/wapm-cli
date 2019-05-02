@@ -5,7 +5,7 @@ use structopt::StructOpt;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
-    #[fail(display = "Packages may be uninstalled with the package name only.")]
+    #[fail(display = "Packages may only be uninstalled by the package name.")]
     NoAtSignAllowed,
 }
 
