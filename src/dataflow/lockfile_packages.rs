@@ -1,6 +1,7 @@
 use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::migrate::{fix_up_v1_package_names, LockfileVersion};
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
 use crate::dataflow::removed_packages::RemovedPackages;
@@ -21,6 +22,8 @@ pub enum LockfileError {
         _0
     )]
     CommandPackageVersionParseError(Error),
+    #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
+    InvalidOrMissingVersion,
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -49,11 +52,15 @@ impl LockfileResult {
             Ok(s) => s,
             Err(_) => return LockfileResult::NoLockfile,
         };
-        match toml::from_str::<Lockfile>(&source) {
-            Ok(l) => LockfileResult::Lockfile(l),
-            Err(e) => {
-                LockfileResult::LockfileError(LockfileError::LockfileTomlParseError(e.to_string()))
-            }
+        match LockfileVersion::from_lockfile_string(&source) {
+            Ok(lockfile_version) => match lockfile_version {
+                LockfileVersion::V1(mut lockfile_v1) => {
+                    fix_up_v1_package_names(&mut lockfile_v1);
+                    LockfileResult::Lockfile(lockfile_v1)
+                }
+                LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+            },
+            Err(e) => LockfileResult::LockfileError(e),
         }
     }
 }
