@@ -1,5 +1,6 @@
 //! Utilities for setting up logging
 
+use crate::config::Config;
 use crate::util;
 use fern::colors::{Color, ColoredLevelConfig};
 use std::{fs, path::PathBuf};
@@ -63,7 +64,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
         });
 
     // verbose logging to file
-    let dispatch = if let Ok(wasmer_dir) = std::env::var("WASMER_DIR") {
+    let dispatch = if let Ok(wasmer_dir) = Config::get_folder() {
         let mut log_out = PathBuf::from(wasmer_dir);
         log_out.push("wapm.log");
         dispatch.chain(
