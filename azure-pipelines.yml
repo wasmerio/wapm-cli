@@ -17,6 +17,11 @@ jobs:
     steps:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+        displayName: 'Lint wapm'
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
           cargo build --verbose
         displayName: 'Build wapm'
       - script: |
@@ -33,6 +38,11 @@ jobs:
           Start-Process -FilePath 'rustup-init.exe' -ArgumentList '-y', '--default-toolchain', 'stable-x86_64-pc-windows-msvc' -Wait
           Remove-Item .\rustup-init.exe
         displayName: 'install rust'
+      - script: |
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+        displayName: 'Lint wapm'
       - script: |
           set PATH=%PATH%;%USERPROFILE%\.cargo\bin
           cargo -V

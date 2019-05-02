@@ -79,14 +79,14 @@ impl<'a> InstalledPackages<'a> {
                             return Err(Error::InstalledDependencyIsMissingManifest(
                                 key.clone().to_string(),
                                 e.to_string(),
-                            ))
+                            ));
                         }
                         ManifestResult::Manifest(m) => m,
                         ManifestResult::NoManifest => {
                             return Err(Error::InstalledDependencyIsMissingManifest(
                                 key.clone().to_string(),
                                 "Manifest was not found.".to_string(),
-                            ))
+                            ));
                         }
                     };
                     Ok((key.clone(), manifest, download_url))
