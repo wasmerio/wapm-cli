@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforce semantic version numbers on the package and dependencies.
 - Allow ranges of semantic versions when declaring dependencies e.g. `"_/sqlite": "^0.1"`
 - Uninstall a package with `wapm uninstall` and use the `-g` flag for global uninstall.
+- Get the bin directory for wapm-run-scripts using `wapm bin` command.
+- Add CI job for Windows
+- Add CI integration tests
 ### Changed
 - Refactored process for generating updates to manifest, regenerating the lockfile, and installing packages.
 - Changed OpenSSL to statically link for Linux builds (because version 1.1 is not widely deployed yet)

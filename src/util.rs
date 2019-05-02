@@ -107,3 +107,9 @@ pub fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }
+
+pub fn wapm_should_print_color() -> bool {
+    std::env::var("WAPM_DISABLE_COLOR")
+        .map(|_| false)
+        .unwrap_or(true)
+}

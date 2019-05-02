@@ -28,6 +28,20 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           cargo test --verbose -- --test-threads=1
         displayName: 'Test wapm'
+      - script: |
+          curl https://get.wasmer.io -sSfL | sh
+          export PATH=$PATH:$HOME/.cargo/bin
+          export PATH=$PATH:$HOME/.wasmer/bin
+          export WAPM_DISABLE_COLOR=true
+          chmod +x end-to-end-tests/install.sh
+          ./end-to-end-tests/install.sh > /tmp/install-out.txt
+          cat /tmp/install-out.txt
+          echo "comparing"
+          diff -B end-to-end-tests/install.txt /tmp/install-out.txt
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
+        displayName: 'Regression test: Install, Uninstall, Run, and List'
   - job: Windows
     pool:
       vmImage: 'windows-2019'
