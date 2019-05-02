@@ -18,7 +18,9 @@ pub fn uninstall(options: UninstallOpt) -> Result<(), failure::Error> {
     };
     let uninstalled_package_names = vec![options.package.as_str()];
 
-    // returned bool indicates if there was any change
+    // returned bool indicates if there was any to the lockfile. If this pacakge is uninstalled,
+    // there will be a diff created, which causes update to return true. Because no other change
+    // is made, we can assume any change resulted in successfully uninstalled package.
     let result = dataflow::update(vec![], uninstalled_package_names, dir)?;
 
     if !result {
