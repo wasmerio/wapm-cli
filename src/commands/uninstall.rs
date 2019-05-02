@@ -36,8 +36,7 @@ pub fn uninstall(options: UninstallOpt) -> Result<(), failure::Error> {
 
     if !result {
         info!("Package \"{}\" is not installed.", options.package);
-    }
-    else {
+    } else {
         info!("Package \"{}\" is uninstalled.", options.package);
     }
 
