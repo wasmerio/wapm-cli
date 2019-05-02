@@ -9,6 +9,7 @@ use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
+use crate::data::lock::migrate::{LockfileVersion, fix_up_v1_package_names};
 
 #[derive(Clone, Debug, Fail)]
 pub enum LockfileError {
@@ -21,6 +22,8 @@ pub enum LockfileError {
         _0
     )]
     CommandPackageVersionParseError(Error),
+    #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
+    InvalidOrMissingVersion,
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -49,10 +52,18 @@ impl LockfileResult {
             Ok(s) => s,
             Err(_) => return LockfileResult::NoLockfile,
         };
-        match toml::from_str::<Lockfile>(&source) {
-            Ok(l) => LockfileResult::Lockfile(l),
+        match LockfileVersion::from_lockfile_string(&source) {
+            Ok(lockfile_version) => {
+                match lockfile_version {
+                    LockfileVersion::V1(mut lockfile_v1) => {
+                        fix_up_v1_package_names(&mut lockfile_v1);
+                        LockfileResult::Lockfile(lockfile_v1)
+                    },
+                    LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+                }
+            }
             Err(e) => {
-                LockfileResult::LockfileError(LockfileError::LockfileTomlParseError(e.to_string()))
+                LockfileResult::LockfileError(e)
             }
         }
     }
