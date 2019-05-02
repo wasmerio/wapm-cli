@@ -61,4 +61,7 @@ jobs:
           cat /tmp/install-out.txt
           echo "comparing"
           diff -B end-to-end-tests/install.txt /tmp/install-out.txt
-        displayName: 'Install regression test'
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
+        displayName: 'Regression test: Install, Uninstall, Run, and List'

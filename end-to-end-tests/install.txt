@@ -1,5 +1,6 @@
 [INFO] Installing _/cowsay@0.1.2
 Package installed successfully to wapm_packages!
+No packages to install
  ______________
 < hello, world >
  --------------
@@ -17,4 +18,11 @@ LOCAL COMMANDS:
  cowsay   | _/cowsay | 0.1.2 
  cowthink | _/cowsay | 0.1.2 
 [INFO] Package "cowsay" is uninstalled.
+[INFO] Installing _/cowsay@0.1.2
+Package installed successfully to wapm_packages!
+[INFO] Package "cowsay" is uninstalled.
+[INFO] Installing mark/rust-example@0.1.9
+Global package installed successfully!
+Hello, world!
+
 No packages found
