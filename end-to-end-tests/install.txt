@@ -21,15 +21,17 @@ LOCAL COMMANDS:
 [INFO] Installing _/cowsay@0.1.2
 Package installed successfully to wapm_packages!
 [INFO] Package "cowsay" is uninstalled.
+[INFO] Package "cowsay" is not installed.
 [INFO] Installing mark/rust-example@0.1.9
 Global package installed successfully!
 Hello, world!
 
+[INFO] Package "mark/rust-example" is uninstalled.
 No packages found
 [INFO] Installing mark/wapm-override-test@0.1.0
 Global package installed successfully!
 Version 0.1.0
 [INFO] Installing mark/wapm-override-test@0.2.0
 Version 0.2.0
-[INFO] Package "wapm-override-test" is uninstalled.
+[INFO] Package "mark/wapm-override-test" is uninstalled.
 Version 0.1.0
