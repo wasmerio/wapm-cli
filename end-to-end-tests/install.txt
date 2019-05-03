@@ -32,6 +32,7 @@ No packages found
 Global package installed successfully!
 Version 0.1.0
 [INFO] Installing mark/wapm-override-test@0.2.0
+Package installed successfully to wapm_packages!
 Version 0.2.0
 [INFO] Package "mark/wapm-override-test" is uninstalled.
 Version 0.1.0
