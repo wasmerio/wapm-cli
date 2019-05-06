@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
 
+const DEFAULT_RUNTIME: &str = "wasmer";
+
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
     /// Command name
@@ -69,6 +71,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         current_dir
     };
 
+    debug!(
+        "Running module located at {:?}",
+        &run_dir.join(&source_path_buf)
+    );
+
     run_dir.join(&source_path_buf).metadata().map_err(|_| {
         RunError::SourceForCommandNotFound(
             command_name.to_string(),
@@ -91,7 +98,17 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         source_path_buf,
         Some(format!("wapm run {}", command_name)),
     )?;
-    let mut child = Command::new("wasmer").args(&command_vec).spawn()?;
+    let mut child = Command::new(DEFAULT_RUNTIME)
+        .args(&command_vec)
+        .spawn()
+        .map_err(|e| -> failure::Error {
+            RunError::ProcessFailed {
+                runtime: DEFAULT_RUNTIME.to_string(),
+                error: format!("{:?}", e),
+            }
+            .into()
+        })?;
+
     child.wait()?;
     Ok(())
 }
@@ -171,4 +188,6 @@ enum RunError {
         _0, _1, _2
     )]
     SourceForCommandNotFound(String, String, String),
+    #[fail(display = "Failed to run {}: {}", runtime, error)]
+    ProcessFailed { runtime: String, error: String },
 }
