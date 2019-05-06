@@ -22,7 +22,7 @@ LOCAL COMMANDS:
 Package installed successfully to wapm_packages!
 [INFO] Package "cowsay" is uninstalled.
 [INFO] Package "cowsay" is not installed.
-[INFO] Installing mark/rust-example@0.1.9
+[INFO] Installing mark/rust-example@0.1.11
 Global package installed successfully!
 Hello, world!
 
