@@ -10,8 +10,8 @@ wapm uninstall cowsay
 wapm install cowsay@0.1.2
 wapm uninstall cowsay
 wapm uninstall cowsay
-wapm install -g mark/rust-example@0.1.9
-wapm run hq9+ -- -e "H"
+wapm install -g mark/rust-example@0.1.10
+wapm run hq9+ -e "H"
 wapm uninstall -g mark/rust-example
 wapm list -a
 wapm install -g mark/wapm-override-test@0.1.0
