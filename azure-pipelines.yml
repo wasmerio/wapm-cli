@@ -44,7 +44,8 @@ jobs:
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
-          exit 0
+          exit 0;
+
         displayName: 'Regression test: Install, Uninstall, Run, and List'
   - job: Windows
     pool:
