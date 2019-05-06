@@ -40,7 +40,7 @@ jobs:
           cat /tmp/install-out.txt
           echo "COMPARING..."
           diff -B end-to-end-tests/install.txt /tmp/install-out.txt
-          ( [ -d globals ] && [ -f wapm.log ] ) || { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; }
+          ( [ -d globals ] || [ -f wapm.log ] ) && { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; }
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
