@@ -17,9 +17,51 @@ jobs:
     steps:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+        displayName: 'Lint wapm'
+      - script: |
+          export PATH=$PATH:$HOME/.cargo/bin
           cargo build --verbose
         displayName: 'Build wapm'
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo test --verbose -- --test-threads=1
         displayName: 'Test wapm'
+      - script: |
+          curl https://get.wasmer.io -sSfL | sh
+          export PATH=$PATH:$HOME/.cargo/bin
+          export PATH=$PATH:$HOME/.wasmer/bin
+          export WAPM_DISABLE_COLOR=true
+          chmod +x end-to-end-tests/install.sh
+          echo "RUNNING SCRIPT..."
+          ./end-to-end-tests/install.sh > /tmp/install-out.txt
+          echo "GENERATED OUTPUT:"
+          cat /tmp/install-out.txt
+          echo "COMPARING..."
+          diff -B end-to-end-tests/install.txt /tmp/install-out.txt
+          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
+        displayName: 'Regression test: Install, Uninstall, Run, and List'
+  - job: Windows
+    pool:
+      vmImage: 'windows-2019'
+    steps:
+      - powershell: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest "https://win.rustup.rs/x86_64" -OutFile rustup-init.exe -UseBasicParsing
+          Start-Process -FilePath 'rustup-init.exe' -ArgumentList '-y', '--default-toolchain', 'stable-x86_64-pc-windows-msvc' -Wait
+          Remove-Item .\rustup-init.exe
+        displayName: 'install rust'
+      - script: |
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+        displayName: 'Lint wapm'
+      - script: |
+          set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+          cargo -V
+          cargo test --verbose -- --test-threads=1
+        displayName: 'test wapm'

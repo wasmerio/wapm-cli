@@ -94,7 +94,7 @@ pub fn publish() -> Result<(), failure::Error> {
 
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
-        version: package.version.clone(),
+        version: package.version.to_string(),
         description: package.description.clone(),
         manifest: manifest_string,
         license: package.license.clone(),
@@ -107,7 +107,20 @@ pub fn publish() -> Result<(), failure::Error> {
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
     let _response: publish_package_mutation::ResponseData =
-        execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())?;
+        execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
+            |e| {
+                #[cfg(feature = "telemetry")]
+                {
+                    sentry::integrations::failure::capture_error(&e);
+                }
+                e
+            },
+        )?;
+
+    println!(
+        "Successfully published package `{}@{}`",
+        package.name, package.version
+    );
     Ok(())
 }
 

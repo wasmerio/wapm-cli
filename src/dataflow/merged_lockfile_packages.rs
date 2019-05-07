@@ -1,4 +1,5 @@
 use crate::data::lock::lockfile::{CommandMap, Lockfile, ModuleMap};
+use crate::dataflow::bin_script::save_bin_script;
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::{PackageKey, WapmPackageKey};
@@ -54,17 +55,23 @@ impl<'a> MergedLockfilePackages<'a> {
             match key {
                 PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
                     let versions = modules.entry(name.to_owned().to_string()).or_default();
-                    let modules = versions.entry(version.to_owned().to_string()).or_default();
+                    let modules = versions.entry(version).or_default();
                     for module in package.modules {
                         let name = module.name.clone();
                         modules.insert(name, module);
                     }
                     for command in package.commands {
                         let name = command.name.clone();
+                        let script_name = command.name.clone();
                         commands.insert(name, command);
+                        // save the bin script to execute this command from the terminal
+                        save_bin_script(directory, script_name)
+                            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
                     }
                 }
-                PackageKey::GitUrl { .. } => panic!("Git url packages are not supported yet."),
+                PackageKey::WapmPackageRange(_) => {
+                    unreachable!("Attempting to generate with lockfile with package version range.")
+                }
             }
         }
 
@@ -88,8 +95,8 @@ mod test {
     #[test]
     fn test_merge() {
         let mut new_lockfile_packages_map = HashMap::new();
-        let pkg_1 = PackageKey::new_registry_package("_/foo", "1.1.0");
-        let pkg_2 = PackageKey::new_registry_package("_/bar", "2.0.0");
+        let pkg_1 = PackageKey::new_registry_package("_/foo", semver::Version::new(1, 1, 0));
+        let pkg_2 = PackageKey::new_registry_package("_/bar", semver::Version::new(2, 0, 0));
         new_lockfile_packages_map.insert(
             pkg_1,
             LockfilePackage {
@@ -109,8 +116,8 @@ mod test {
         };
 
         let mut old_lockfile_packages_map = HashMap::new();
-        let pkg_1_old = PackageKey::new_registry_package("_/foo", "1.0.0");
-        let pkg_2_old = PackageKey::new_registry_package("_/qux", "3.0.0");
+        let pkg_1_old = PackageKey::new_registry_package("_/foo", semver::Version::new(1, 0, 0));
+        let pkg_2_old = PackageKey::new_registry_package("_/qux", semver::Version::new(3, 0, 0));
         old_lockfile_packages_map.insert(
             pkg_1_old,
             LockfilePackage {
@@ -135,18 +142,30 @@ mod test {
         // should now contain all old packages, and upgraded new ones
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.1.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/foo",
+                semver::Version::new(1, 1, 0)
+            )));
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/bar", "2.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/bar",
+                semver::Version::new(2, 0, 0)
+            )));
         assert!(result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/qux", "3.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/qux",
+                semver::Version::new(3, 0, 0)
+            )));
 
         // should no longer contain the old foo package
         assert!(!result
             .packages
-            .contains_key(&PackageKey::new_registry_package("_/foo", "1.0.0")));
+            .contains_key(&PackageKey::new_registry_package(
+                "_/foo",
+                semver::Version::new(1, 0, 0)
+            )));
 
         assert_eq!(3, result.packages.len());
     }

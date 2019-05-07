@@ -1,3 +1,4 @@
+mod bin;
 mod completions;
 mod config;
 mod init;
@@ -9,9 +10,11 @@ mod logout;
 mod publish;
 mod run;
 mod search;
+mod uninstall;
 mod validate;
 mod whoami;
 
+pub use self::bin::{bin, BinOpt};
 pub use self::completions::CompletionOpt;
 pub use self::config::{config, ConfigOpt};
 pub use self::init::{init, InitOpt};
@@ -23,5 +26,6 @@ pub use self::logout::logout;
 pub use self::publish::publish;
 pub use self::run::{run, RunOpt};
 pub use self::search::{search, SearchOpt};
+pub use self::uninstall::{uninstall, UninstallOpt};
 pub use self::validate::{validate, ValidateOpt};
 pub use self::whoami::whoami;

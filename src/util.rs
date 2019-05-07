@@ -1,6 +1,7 @@
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
+use semver::Version;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -88,7 +89,10 @@ pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str)
 }
 
 #[inline]
-pub fn fully_qualified_package_display_name(package_name: &str, package_version: &str) -> String {
+pub fn fully_qualified_package_display_name(
+    package_name: &str,
+    package_version: &Version,
+) -> String {
     format!("{}@{}", package_name, package_version)
 }
 
@@ -102,4 +106,10 @@ pub fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
     package_dir.push(&fully_qualified_package_name);
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
+}
+
+pub fn wapm_should_print_color() -> bool {
+    std::env::var("WAPM_DISABLE_COLOR")
+        .map(|_| false)
+        .unwrap_or(true)
 }

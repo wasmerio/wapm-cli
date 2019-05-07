@@ -62,6 +62,14 @@ enum Command {
     #[structopt(name = "keys")]
     /// Manage minisign keys for verifying packages
     Keys(commands::KeyOpt),
+
+    #[structopt(name = "uninstall")]
+    /// Uninstall a package
+    Uninstall(commands::UninstallOpt),
+
+    #[structopt(name = "bin")]
+    /// Get the .bin dir path
+    Bin(commands::BinOpt),
 }
 
 fn main() {
@@ -105,8 +113,14 @@ fn main() {
             );
             Ok(())
         }
+        Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
+        Command::Bin(bin_options) => commands::bin(bin_options),
     };
     if let Err(e) = result {
+        #[cfg(feature = "telemetry")]
+        {
+            drop(_guard);
+        };
         eprintln!("Error: {}", e);
         std::process::exit(-1);
     }

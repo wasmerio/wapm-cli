@@ -1,5 +1,7 @@
 //! Utilities for setting up logging
 
+use crate::config::Config;
+use crate::util;
 use fern::colors::{Color, ColoredLevelConfig};
 use std::{fs, path::PathBuf};
 
@@ -9,24 +11,37 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
         .error(Color::Red)
         .warn(Color::Yellow)
         .trace(Color::BrightBlack);
+    let should_color = util::wapm_should_print_color();
 
     let colors_level = colors_line.info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
         .level(log::LevelFilter::Debug)
-        .chain(
-            fern::Dispatch::new()
-                .format(move |out, message, record| {
+        .chain({
+            let base = if should_color {
+                fern::Dispatch::new().format(move |out, message, record| {
                     out.finish(format_args!(
-                        "{color_line}[{level}{color_line}]\x1B[0m {message}",
+                        "{color_line}[{level}{color_line}]{ansi_close} {message}",
                         color_line = format_args!(
                             "\x1B[{}m",
                             colors_line.get_color(&record.level()).to_fg_str()
                         ),
                         level = colors_level.color(record.level()),
+                        ansi_close = "\x1B[0m",
                         message = message,
                     ));
                 })
+            } else {
+                // default formatter without color
+                fern::Dispatch::new().format(move |out, message, record| {
+                    out.finish(format_args!(
+                        "[{level}] {message}",
+                        level = record.level(),
+                        message = message,
+                    ));
+                })
+            };
+            base
                 // stdout
                 .chain(
                     fern::Dispatch::new()
@@ -45,11 +60,11 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                                 && metadata.target().starts_with("wapm_cli")
                         })
                         .chain(std::io::stderr()),
-                ),
-        );
+                )
+        });
 
     // verbose logging to file
-    let dispatch = if let Ok(wasmer_dir) = std::env::var("WASMER_DIR") {
+    let dispatch = if let Ok(wasmer_dir) = Config::get_folder() {
         let mut log_out = PathBuf::from(wasmer_dir);
         log_out.push("wapm.log");
         dispatch.chain(

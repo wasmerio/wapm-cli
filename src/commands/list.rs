@@ -4,10 +4,7 @@ use crate::config;
 use crate::data::lock::lockfile::{CommandMap, ModuleMap};
 use crate::dataflow::lockfile_packages::LockfileResult;
 use prettytable::{format, Table};
-use std::{
-    env,
-    io::{self, Write},
-};
+use std::{env, fmt::Write as _};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -37,16 +34,26 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
         }
     }
 
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
+    let mut handle = String::new();
     if local {
         let cwd = env::current_dir()?;
         match LockfileResult::find_in_directory(cwd) {
             LockfileResult::Lockfile(lockfile) => {
-                writeln!(handle, "LOCAL PACKAGES:")?;
-                write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
-                writeln!(handle, "\nLOCAL COMMANDS:")?;
-                write!(handle, "{}", create_command_ascii_table(&lockfile.commands))?;
+                let has_modules = !lockfile.modules.is_empty();
+                let has_commands = !lockfile.commands.is_empty();
+                // unset local if there's nothing to list
+                local = has_modules | has_commands;
+                if has_modules {
+                    writeln!(handle, "LOCAL PACKAGES:")?;
+                    write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
+                }
+                if has_modules && has_commands {
+                    writeln!(handle, "")?;
+                }
+                if has_commands {
+                    writeln!(handle, "LOCAL COMMANDS:")?;
+                    write!(handle, "{}", create_command_ascii_table(&lockfile.commands))?;
+                }
             }
             LockfileResult::NoLockfile => {
                 if !global {
@@ -71,10 +78,21 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
         let global_path = config::Config::get_globals_directory()?;
         match LockfileResult::find_in_directory(global_path) {
             LockfileResult::Lockfile(lockfile) => {
-                writeln!(handle, "GLOBAL PACKAGES:")?;
-                write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
-                writeln!(handle, "\nGLOBAL COMMANDS:")?;
-                write!(handle, "{}", create_command_ascii_table(&lockfile.commands))?;
+                let has_modules = !lockfile.modules.is_empty();
+                let has_commands = !lockfile.commands.is_empty();
+                // unset global if there's nothing to list
+                global = has_modules || has_commands;
+                if has_modules {
+                    writeln!(handle, "GLOBAL PACKAGES:")?;
+                    write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
+                }
+                if has_modules && has_commands {
+                    writeln!(handle, "")?;
+                }
+                if has_commands {
+                    writeln!(handle, "GLOBAL COMMANDS:")?;
+                    write!(handle, "{}", create_command_ascii_table(&lockfile.commands))?;
+                }
             }
             LockfileResult::NoLockfile => {
                 if !local {
@@ -91,6 +109,14 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
         }
     }
 
+    if handle.is_empty() {
+        // we should only have an empty string if we unset both global and local
+        debug_assert!(!global);
+        debug_assert!(!local);
+        println!("No packages found");
+    } else {
+        print!("{}", handle);
+    }
     Ok(())
 }
 

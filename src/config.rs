@@ -52,15 +52,20 @@ impl Default for Config {
 
 impl Config {
     pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
-        Ok(env::var(GLOBAL_CONFIG_FOLDER_ENV_VAR)
-            .map(|folder_str| PathBuf::from(folder_str))
-            .unwrap_or({
+        Ok(
+            if let Some(folder_str) = env::var(GLOBAL_CONFIG_FOLDER_ENV_VAR)
+                .ok()
+                .filter(|s| !s.is_empty())
+            {
+                PathBuf::from(folder_str)
+            } else {
                 let home_dir =
                     dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
                 let mut folder = PathBuf::from(home_dir);
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
                 folder
-            }))
+            },
+        )
     }
 
     fn get_file_location() -> Result<PathBuf, GlobalConfigError> {

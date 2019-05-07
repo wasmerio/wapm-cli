@@ -1,9 +1,11 @@
 use crate::data::lock::lockfile::Lockfile;
-use crate::data::lock::lockfile_command::LockfileCommand;
+use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::migrate::{fix_up_v1_package_names, LockfileVersion};
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
-use crate::dataflow::PackageKey;
+use crate::dataflow::removed_packages::RemovedPackages;
+use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
@@ -15,6 +17,13 @@ pub enum LockfileError {
     LockfileTomlParseError(String),
     #[fail(display = "Could not parse lockfile because {}.", _0)]
     IoError(String),
+    #[fail(
+        display = "Could not parse lockfile because of issue parsing command. {}",
+        _0
+    )]
+    CommandPackageVersionParseError(Error),
+    #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
+    InvalidOrMissingVersion,
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -43,11 +52,15 @@ impl LockfileResult {
             Ok(s) => s,
             Err(_) => return LockfileResult::NoLockfile,
         };
-        match toml::from_str::<Lockfile>(&source) {
-            Ok(l) => LockfileResult::Lockfile(l),
-            Err(e) => {
-                LockfileResult::LockfileError(LockfileError::LockfileTomlParseError(e.to_string()))
-            }
+        match LockfileVersion::from_lockfile_string(&source) {
+            Ok(lockfile_version) => match lockfile_version {
+                LockfileVersion::V1(mut lockfile_v1) => {
+                    fix_up_v1_package_names(&mut lockfile_v1);
+                    LockfileResult::Lockfile(lockfile_v1)
+                }
+                LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+            },
+            Err(e) => LockfileResult::LockfileError(e),
         }
     }
 }
@@ -72,39 +85,37 @@ pub struct LockfilePackages<'a> {
 }
 
 impl<'a> LockfilePackages<'a> {
-    pub fn from_installed_packages(installed_manifest_packages: &'a InstalledPackages<'a>) -> Self {
-        let packages: HashMap<PackageKey<'a>, LockfilePackage> = installed_manifest_packages
-            .packages
-            .iter()
-            .map(|(k, m, download_url)| {
-                let modules: Vec<LockfileModule> = match m.module {
-                    Some(ref modules) => modules
+    pub fn from_installed_packages(
+        installed_manifest_packages: &'a InstalledPackages<'a>,
+    ) -> Result<Self, LockfileError> {
+        let mut packages = HashMap::default();
+        for (k, m, download_url) in installed_manifest_packages.packages.iter() {
+            let modules: Vec<LockfileModule> = match m.module {
+                Some(ref modules) => modules
+                    .iter()
+                    .map(|m| {
+                        LockfileModule::from_module(k.name.as_ref(), &k.version, m, download_url)
+                    })
+                    .collect(),
+                _ => vec![],
+            };
+            let commands: Vec<LockfileCommand> = match m.command {
+                Some(ref modules) => {
+                    let commands = modules
                         .iter()
-                        .map(|m| {
-                            LockfileModule::from_module(
-                                k.name.as_ref(),
-                                k.version.as_ref(),
-                                m,
-                                download_url,
-                            )
-                        })
-                        .collect(),
-                    _ => vec![],
-                };
-                let commands: Vec<LockfileCommand> = match m.command {
-                    Some(ref modules) => modules
-                        .iter()
-                        .map(|c| LockfileCommand::from_command(&k.name, &k.version, c))
-                        .collect(),
-                    _ => vec![],
-                };
-                (
-                    PackageKey::WapmPackage(k.clone()),
-                    LockfilePackage { modules, commands },
-                )
-            })
-            .collect();
-        Self { packages }
+                        .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
+                        .collect::<Result<Vec<LockfileCommand>, Error>>()
+                        .map_err(|e| LockfileError::CommandPackageVersionParseError(e))?;
+                    commands
+                }
+                _ => vec![],
+            };
+            packages.insert(
+                PackageKey::WapmPackage(k.clone()),
+                LockfilePackage { modules, commands },
+            );
+        }
+        Ok(Self { packages })
     }
 
     pub fn new_from_result(result: LockfileResult) -> Result<Self, LockfileError> {
@@ -178,6 +189,28 @@ impl<'a> LockfilePackages<'a> {
             })
             .collect();
         missing_packages
+    }
+
+    pub fn remove_packages(&mut self, removed_packages: RemovedPackages<'a>) {
+        let removed_package_keys = removed_packages
+            .packages
+            .into_iter()
+            .flat_map(|pkg_name| {
+                self.packages
+                    .iter()
+                    .map(|(package_key, _)| package_key)
+                    .cloned()
+                    .filter(|package_key| match package_key {
+                        PackageKey::WapmPackage(WapmPackageKey { name, .. }) => name == &pkg_name,
+                        _ => false,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        for removed_package_key in removed_package_keys {
+            self.packages.remove(&removed_package_key);
+        }
     }
 
     pub fn extend(&mut self, other_packages: LockfilePackages<'a>) {

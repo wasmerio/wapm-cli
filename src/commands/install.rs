@@ -49,13 +49,13 @@ enum InstallError {
 struct GetPackageQuery;
 
 mod global_flag {
-    pub const GLOBAL_INSTALL: bool = false;
-    pub const LOCAL_INSTALL: bool = true;
+    pub const GLOBAL_INSTALL: bool = true;
+    pub const LOCAL_INSTALL: bool = false;
 }
 
 mod package_args {
-    pub const NO_PACKAGES: bool = false;
-    pub const SOME_PACKAGES: bool = true;
+    pub const NO_PACKAGES: bool = true;
+    pub const SOME_PACKAGES: bool = false;
 }
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
@@ -68,7 +68,7 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
         (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => {
             // install all packages locally
             let added_packages = vec![];
-            dataflow::update(added_packages, &current_directory)
+            dataflow::update(added_packages, vec![], &current_directory)
                 .map_err(|err| InstallError::FailureInstallingPackages(err))?;
             println!("Packages installed to wapm_packages!");
         }
@@ -122,13 +122,17 @@ pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
                 false => Cow::Borrowed(&current_directory),
             };
 
-            dataflow::update(installed_packages, install_directory)
+            let changes_applied = dataflow::update(installed_packages, vec![], install_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
-            if options.global {
-                println!("Global package installed successfully!");
+            if changes_applied {
+                if options.global {
+                    println!("Global package installed successfully!");
+                } else {
+                    println!("Package installed successfully to wapm_packages!");
+                }
             } else {
-                println!("Package installed successfully to wapm_packages!");
+                println!("No packages to install")
             }
         }
     }
