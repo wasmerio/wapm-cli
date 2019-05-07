@@ -23,7 +23,7 @@ pub enum Error {
 
 /// Struct containing wapm registry resolved packages. This is realized as a pairing of wapm.io keys
 /// and download URLs.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ResolvedPackages<'a> {
     pub packages: Vec<(WapmPackageKey<'a>, String)>,
 }
@@ -35,13 +35,17 @@ impl<'a> ResolvedPackages<'a> {
     where
         Resolver: Resolve<'a>,
     {
-        let wapm_pkgs = packages
+        let wapm_pkgs: Vec<PackageKey> = packages
             .into_iter()
             .filter_map(|key| match key {
                 PackageKey::WapmPackage(_) => Some(key),
                 PackageKey::WapmPackageRange(_) => Some(key),
             })
             .collect();
+        // return early if no packages to resolve
+        if wapm_pkgs.is_empty() {
+            return Ok(Self::default());
+        }
         let packages = Resolver::sync_packages(wapm_pkgs)
             .map_err(|e| Error::CouldNotResolvePackages(e.to_string()))?;
         Ok(Self { packages })
