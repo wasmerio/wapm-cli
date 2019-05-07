@@ -24,7 +24,9 @@ pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
     };
     root_dir.push(PACKAGES_DIR_NAME);
 
-    if !root_dir.exists() {
+    // for wapm bin -g, display the global path even if it does not exist
+    // otherwise error if the bin directory does not exist in the local directory
+    if !root_dir.exists() && !options.global {
         return Err(BinError::NotWapmProjectDir(root_dir.to_string_lossy().to_string()).into());
     }
 
