@@ -15,8 +15,6 @@ pub struct BinOpt {
 pub enum BinError {
     #[fail(display = "The directory \"{}\" does not contain wapm packages.", _0)]
     NotWapmProjectDir(String),
-    #[fail(display = "No global packages installed.")]
-    NoGlobalPackagesInstalled,
 }
 
 pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
@@ -26,10 +24,7 @@ pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
     };
     root_dir.push(PACKAGES_DIR_NAME);
 
-    if !root_dir.exists() && options.global {
-        return Err(BinError::NoGlobalPackagesInstalled.into());
-    }
-    if !root_dir.exists() {
+    if !root_dir.exists() && !options.global {
         return Err(BinError::NotWapmProjectDir(root_dir.to_string_lossy().to_string()).into());
     }
 
