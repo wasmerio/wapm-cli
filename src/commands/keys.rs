@@ -95,17 +95,18 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             let full_public_key =
                 get_full_personal_public_key_by_pattern(&key_db, public_key.clone())?;
             warn!(
-                "You are about to delete the key pair associated with {:?} from wapm. This cannot be undone.",
+                "You are about to delete the key pair associated with {:?} from wapm.\nThis cannot be undone.",
                 &full_public_key
             );
             print!("Please confirm that you want to permanently delete this key pair from wapm:\n[y/n] ");
             std::io::stdout().flush()?;
             let mut input_str = String::new();
             std::io::stdin().read_line(&mut input_str)?;
-            if let Some(first_char) = input_str.to_lowercase().chars().next() {
-                if first_char == 'y' {
+            match input_str.to_lowercase().trim_end() {
+                "yes" | "y" => {
                     delete_key_pair(&mut key_db, full_public_key)?;
-                } else {
+                }
+                _ => {
                     println!("Aborting");
                 }
             }
