@@ -167,12 +167,19 @@ pub enum MigrationError {
         _0
     )]
     CommitFailed(i32),
+    #[fail(
+        display = "Critical internal error: transaction failed on migration number {}: {}",
+        _0, _1
+    )]
+    TransactionFailed(i32, String),
 }
 
 /// Applies migrations to the database and updates the `user_version` pragma.
 /// Every migration must leave the database in a valid state.
-fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), failure::Error> {
-    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), MigrationError> {
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
     match migration_number {
         0 => {
             tx.execute(
@@ -185,7 +192,8 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), f
     date_added text not null
 )",
                 params![],
-            )?;
+            )
+            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
 
             tx.execute(
                 "create table wapm_public_keys
@@ -196,7 +204,8 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), f
     date_added text not null
 )",
                 params![],
-            )?;
+            )
+            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
         }
         _ => {
             return Err(MigrationError::MigrationNumberDoesNotExist(
@@ -206,7 +215,8 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), f
             .into());
         }
     }
-    tx.pragma_update(None, "user_version", &(migration_number + 1))?;
+    tx.pragma_update(None, "user_version", &(migration_number + 1))
+        .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
     tx.commit()
         .map_err(|_| MigrationError::CommitFailed(migration_number).into())
 }
@@ -226,5 +236,18 @@ mod test {
             .pragma_query_value(None, "user_version", |val| val.get(0))
             .unwrap();
         assert_eq!(user_version, CURRENT_DATA_VERSION);
+    }
+
+    #[test]
+    fn data_version_was_updated() {
+        let tmp_dir = tempdir::TempDir::new("DB").unwrap().path().to_owned();
+        let mut conn = Connection::open(tmp_dir).unwrap();
+        if let Err(MigrationError::MigrationNumberDoesNotExist { .. }) =
+            apply_migration(&mut conn, CURRENT_DATA_VERSION)
+        {
+            // failed for the correct reason
+        } else {
+            panic!("Migration for CURRENT_DATA_VERSION ({}) found!  Did you forget to increment CURRENT_DATA_VERSION?", CURRENT_DATA_VERSION);
+        }
     }
 }
