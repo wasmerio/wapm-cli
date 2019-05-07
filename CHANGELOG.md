@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
-## [0.2.0] - 2019-05-02
+## [0.2.0] - 2019-05-06
 ### Added
 - Install packages with name and version e.g. `wapm install lua@0.1.2`.
 - Fall back to default for `WASMER_DIR` env var if it doesn't exist
