@@ -59,6 +59,11 @@ enum Command {
     /// List the currently installed packages and their commands
     List(commands::ListOpt),
 
+    #[cfg(feature = "packagesigning")]
+    #[structopt(name = "keys")]
+    /// Manage minisign keys for verifying packages
+    Keys(commands::KeyOpt),
+
     #[structopt(name = "uninstall")]
     /// Uninstall a package
     Uninstall(commands::UninstallOpt),
@@ -100,6 +105,8 @@ fn main() {
         Command::Validate(validate_options) => commands::validate(validate_options),
         Command::Init(init_options) => commands::init(init_options),
         Command::List(list_options) => commands::list(list_options),
+        #[cfg(feature = "packagesigning")]
+        Command::Keys(key_options) => commands::keys(key_options),
         Command::Completions(completion_options) => {
             Command::clap().gen_completions_to(
                 "wapm",

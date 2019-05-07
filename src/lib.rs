@@ -21,6 +21,7 @@ pub mod data;
 mod dataflow;
 mod graphql;
 mod init;
+mod keys;
 pub mod logging;
 pub mod util;
 mod validate;
