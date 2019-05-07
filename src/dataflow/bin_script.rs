@@ -46,13 +46,22 @@ fn save<P: AsRef<Path>>(data: String, directory: P, command_name: String) -> Res
             .map_err(|e| Error::SaveError(command_name.clone(), e.to_string()))?;
     }
     let script_path = dir.join(command_name.clone());
+    #[cfg(unix)]
+    let maybe_unix_mode = {
+        use std::os::unix::fs::PermissionsExt;
+        script_path.metadata().map(|md| md.permissions().mode())
+    };
     let mut script_file = {
         let mut oo = fs::OpenOptions::new();
         oo.create(true).truncate(true).write(true);
         #[cfg(unix)]
         let oo = {
             use std::os::unix::fs::OpenOptionsExt;
-            oo.mode(0o731)
+            if let Ok(unix_mode) = maybe_unix_mode {
+                oo.mode(unix_mode | 0o100)
+            } else {
+                oo.mode(720)
+            }
         };
         oo.open(&script_path).map_err(|e| {
             Error::FileCreationError(script_path.to_string_lossy().to_string(), e.to_string())
