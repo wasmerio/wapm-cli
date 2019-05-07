@@ -17,7 +17,7 @@ use std::{fs, path::PathBuf};
 use time::Timespec;
 
 pub const RFC3339_FORMAT_STRING: &'static str = "%Y-%m-%dT%H:%M:%S-%f";
-pub const CURRENT_DATA_VERSION: i32 = 2;
+pub const CURRENT_DATA_VERSION: i32 = 1;
 
 /// Information about one of the user's keys
 #[derive(Debug)]
@@ -209,4 +209,22 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), f
     tx.pragma_update(None, "user_version", &(migration_number + 1))?;
     tx.commit()
         .map_err(|_| MigrationError::CommitFailed(migration_number).into())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn migrations_are_valid() {
+        let tmp_dir = tempdir::TempDir::new("DB").unwrap().path().to_owned();
+        let mut conn = Connection::open(tmp_dir).unwrap();
+        for data_version in 0..CURRENT_DATA_VERSION {
+            apply_migration(&mut conn, data_version).unwrap();
+        }
+        let user_version: i32 = conn
+            .pragma_query_value(None, "user_version", |val| val.get(0))
+            .unwrap();
+        assert_eq!(user_version, CURRENT_DATA_VERSION);
+    }
 }
