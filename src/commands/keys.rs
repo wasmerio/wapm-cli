@@ -1,6 +1,5 @@
 //! Subcommand to deal with keys for signing wapm packages
 
-use crate::config::Config;
 use crate::keys::*;
 use prettytable::{format, Table};
 use structopt::StructOpt;
@@ -42,10 +41,30 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
         KeyOpt::List(List { all }) => {
             // query server?
             let keys = get_personal_keys_from_database(&key_db)?;
-            if keys.is_empty() {
-                println!("No personal keys found");
+            if all {
+                let wapm_public_keys = get_wapm_public_keys_from_database(&key_db)?;
+                match (keys.is_empty(), wapm_public_keys.is_empty()) {
+                    (true, true) => println!("No keys found"),
+                    (true, false) => {
+                        println!("{}", create_wapm_public_key_table(wapm_public_keys)?);
+                    }
+                    (false, true) => {
+                        println!("{}", create_personal_key_table(keys)?);
+                    }
+                    (false, false) => {
+                        println!("PERSONAL KEYS:\n{}", create_personal_key_table(keys)?);
+                        println!(
+                            "\nWAPM PUBLIC KEYS:\n{}",
+                            create_wapm_public_key_table(wapm_public_keys)?
+                        );
+                    }
+                }
             } else {
-                println!("{}", create_public_key_table(keys)?);
+                if keys.is_empty() {
+                    println!("No personal keys found");
+                } else {
+                    println!("{}", create_personal_key_table(keys)?);
+                }
             }
         }
         KeyOpt::Register(Register {
@@ -65,14 +84,29 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
     Ok(())
 }
 
-pub fn create_public_key_table(keys: Vec<PersonalKey>) -> Result<String, failure::Error> {
+pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failure::Error> {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.add_row(row!["KEY", "ACTIVE", "DATE ADDED"]);
+    table.add_row(row!["KEY", "ACTIVE", "PRIVATE KEY LOCATION", "DATE ADDED"]);
     for key in keys {
         table.add_row(row![
             key.public_key_value,
             key.active,
+            key.private_key_location.unwrap_or("None".to_string()),
+            time::strftime("%Y-%m-%d", &time::at(key.date_created))?
+        ]);
+    }
+    Ok(format!("{}", table))
+}
+
+pub fn create_wapm_public_key_table(keys: Vec<WapmPublicKey>) -> Result<String, failure::Error> {
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.add_row(row!["USER", "KEY", "DATE ADDED"]);
+    for key in keys {
+        table.add_row(row![
+            key.user_name,
+            key.public_key_value,
             time::strftime("%Y-%m-%d", &time::at(key.date_created))?
         ]);
     }
