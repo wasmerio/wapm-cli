@@ -121,21 +121,23 @@ pub fn get_full_personal_public_key_by_pattern(
     public_key_id: String,
 ) -> Result<String, failure::Error> {
     if public_key_id.contains('\'') {
-        return Err(format_err!("Invalid public key pattern: pattern cannot contain the ' character"));
+        return Err(format_err!(
+            "Invalid public key pattern: pattern cannot contain the ' character"
+        ));
     }
-    let mut stmt = 
+    let mut stmt =
         conn.prepare(
             &format!("SELECT public_key_value FROM personal_keys WHERE public_key_value LIKE '{}%' ORDER BY date_added LIMIT 1", public_key_id)
         )?;
-    let result = stmt.query_map(
-        params![],
-        |row| Ok(row.get(0)?)
-    )?.next();
+    let result = stmt.query_map(params![], |row| Ok(row.get(0)?))?.next();
 
     if let Some(Ok(full_public_key)) = result {
         Ok(full_public_key)
     } else {
-        Err(format_err!("No public key matching pattern {} found", &public_key_id))
+        Err(format_err!(
+            "No public key matching pattern {} found",
+            &public_key_id
+        ))
     }
 }
 
