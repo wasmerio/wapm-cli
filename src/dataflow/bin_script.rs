@@ -58,9 +58,9 @@ fn save<P: AsRef<Path>>(data: String, directory: P, command_name: String) -> Res
         let oo = {
             use std::os::unix::fs::OpenOptionsExt;
             if let Ok(unix_mode) = maybe_unix_mode {
-                oo.mode(unix_mode | 0o100)
+                oo.mode(unix_mode | 0o110)
             } else {
-                oo.mode(720)
+                oo.mode(0o754)
             }
         };
         oo.open(&script_path).map_err(|e| {
