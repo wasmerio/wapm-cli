@@ -1,5 +1,6 @@
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 
 pub const BIN_DIR_NAME: &str = ".bin";
@@ -8,6 +9,8 @@ pub const BIN_DIR_NAME: &str = ".bin";
 pub enum Error {
     #[fail(display = "Could not save script file for command \"{}\". {}", _0, _1)]
     SaveError(String, String),
+    #[fail(display = "Could not create file at \"{}\". {}", _0, _1)]
+    FileCreationError(String, String),
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -43,7 +46,20 @@ fn save<P: AsRef<Path>>(data: String, directory: P, command_name: String) -> Res
             .map_err(|e| Error::SaveError(command_name.clone(), e.to_string()))?;
     }
     let script_path = dir.join(command_name.clone());
-    fs::write(script_path, data)
+    let mut script_file = {
+        let mut oo = fs::OpenOptions::new();
+        oo.create(true).truncate(true).write(true);
+        #[cfg(unix)]
+        let oo = {
+            use std::os::unix::fs::OpenOptionsExt;
+            oo.mode(0o731)
+        };
+        oo.open(&script_path).map_err(|e| {
+            Error::FileCreationError(script_path.to_string_lossy().to_string(), e.to_string())
+        })?
+    };
+    script_file
+        .write(data.as_bytes())
         .map_err(|e| Error::SaveError(command_name.clone(), e.to_string()))?;
     Ok(())
 }
