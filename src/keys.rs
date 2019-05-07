@@ -139,12 +139,11 @@ pub fn add_personal_key_pair_to_database(
     }
 
     // deactivate all keys
-    conn.execute("UPDATE personal_keys SET active = 0", params![])
-        .unwrap();
+    conn.execute("UPDATE personal_keys SET active = 0", params![])?;
 
     // insert the key and active it
     conn.execute("INSERT INTO personal_keys (public_key_value, active, private_key_location, date_added) values (?1, ?2, ?3, ?4)",
-                 params![public_key_value, "1", private_key, time_string]).unwrap();
+                 params![public_key_value, "1", private_key, time_string])?;
 
     Ok(())
 }
