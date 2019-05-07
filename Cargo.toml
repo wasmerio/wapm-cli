@@ -49,7 +49,8 @@ members = ["."]
 
 [features]
 telemetry = ["sentry"]
-default = []
+packagesigning = []
+default = ["packagesigning"]
 
 #[profile.release]
 #lto = true
