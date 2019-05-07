@@ -18,16 +18,20 @@ use time::Timespec;
 
 pub const RFC3339_FORMAT_STRING: &'static str = "%Y-%m-%dT%H:%M:%S-%f";
 pub const CURRENT_DATA_VERSION: i32 = 1;
+pub const MINISIGN_UNTRUSTED_COMMENT_PREFIX: &'static str =
+    "untrusted comment: minisign public key ";
 
 /// Information about one of the user's keys
 #[derive(Debug)]
 pub struct PersonalKey {
     /// Flag saying if the key will be used (there can only be one active key at a time)
     pub active: bool,
-    /// The raw value of the Minisign public key
+    /// The raw value of the public key
     pub public_key_value: String,
     /// The location in the file system of the private key
     pub private_key_location: Option<String>,
+    /// The type of private/public key this is
+    pub key_type_identifier: String,
     /// The time at which the key was registered with wapm
     pub date_created: Timespec,
 }
@@ -37,8 +41,10 @@ pub struct PersonalKey {
 pub struct WapmPublicKey {
     /// The user whose key this is
     pub user_name: String,
-    /// The raw value of the Minisign public key
+    /// The raw value of the public key
     pub public_key_value: String,
+    /// The type of private/public key this is
+    pub key_type_identifier: String,
     /// The time at which the key was seen by the user's instance of wapm
     pub date_created: Timespec,
 }
@@ -63,7 +69,7 @@ pub fn get_personal_keys_from_database(
     conn: &Connection,
 ) -> Result<Vec<PersonalKey>, failure::Error> {
     let mut stmt = conn.prepare(
-        "SELECT active, public_key_value, private_key_location, date_added FROM personal_keys 
+        "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier FROM personal_keys 
          ORDER BY date_added;",
     )?;
 
@@ -78,6 +84,7 @@ pub fn get_personal_keys_from_database(
                     .expect(&format!("Failed to parse time string {}", &time_str))
                     .to_timespec()
             },
+            key_type_identifier: row.get(4)?,
         })
     })?;
 
@@ -89,7 +96,7 @@ pub fn get_wapm_public_keys_from_database(
     conn: &Connection,
 ) -> Result<Vec<WapmPublicKey>, failure::Error> {
     let mut stmt = conn.prepare(
-        "SELECT user_name, public_key_value, date_added FROM wapm_public_keys ORDER BY date_added;",
+        "SELECT user_name, public_key_value, date_added, key_type_identifier FROM wapm_public_keys ORDER BY date_added;",
     )?;
 
     let result = stmt.query_map(params![], |row| {
@@ -102,25 +109,62 @@ pub fn get_wapm_public_keys_from_database(
                     .expect(&format!("Failed to parse time string {}", &time_str))
                     .to_timespec()
             },
+            key_type_identifier: row.get(3)?,
         })
     })?;
 
     result.collect::<Result<Vec<_>, _>>().map_err(|e| e.into())
 }
 
+pub fn get_full_personal_public_key_by_pattern(
+    conn: &Connection,
+    public_key_id: String,
+) -> Result<String, failure::Error> {
+    if public_key_id.contains('\'') {
+        return Err(format_err!("Invalid public key pattern: pattern cannot contain the ' character"));
+    }
+    let mut stmt = 
+        conn.prepare(
+            &format!("SELECT public_key_value FROM personal_keys WHERE public_key_value LIKE '{}%' ORDER BY date_added LIMIT 1", public_key_id)
+        )?;
+    let result = stmt.query_map(
+        params![],
+        |row| Ok(row.get(0)?)
+    )?.next();
+
+    if let Some(Ok(full_public_key)) = result {
+        Ok(full_public_key)
+    } else {
+        Err(format_err!("No public key matching pattern {} found", &public_key_id))
+    }
+}
+
+pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), failure::Error> {
+    conn.execute(
+        "DELETE FROM personal_keys WHERE public_key_value = (?1)",
+        params![public_key],
+    )?;
+    Ok(())
+}
+
 /// Adds a public/private key pair to the database (storing the public key directly
 /// and a path to a file containing the private key)
 pub fn add_personal_key_pair_to_database(
     conn: &mut Connection,
-    public_key: String,
-    private_key: String,
+    public_key_location: String,
+    private_key_location: String,
 ) -> Result<(), failure::Error> {
-    let public_key_value = fs::read_to_string(public_key)
-        .map_err(|e| format_err!("Could not read public key: {}", e))?;
+    let public_key_value = fs::read_to_string(&public_key_location)
+        .map_err(|e| format_err!("Could not read public key: {}", e))?
+        .trim_start_matches(MINISIGN_UNTRUSTED_COMMENT_PREFIX)
+        .to_owned();
     {
-        let private_key_path = PathBuf::from(&private_key);
+        let private_key_path = PathBuf::from(&private_key_location);
         if !private_key_path.exists() {
-            error!("Private key file not found at path: {}", &private_key);
+            error!(
+                "Private key file not found at path: {}",
+                &private_key_location
+            );
         }
     }
     let cur_time = time::now();
@@ -136,15 +180,34 @@ pub fn add_personal_key_pair_to_database(
         if let [existing_key] = &result.collect::<Result<Vec<String>, _>>()?[..] {
             return Err(PersonalKeyError::PublicKeyAlreadyExists(existing_key.to_string()).into());
         }
+
+        // check the private key path too
+        let mut private_key_check = conn.prepare(
+            "SELECT private_key_location, public_key_value FROM personal_keys WHERE private_key_location = (?1)",
+        )?;
+        let result = private_key_check.query_map(params![private_key_location], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?;
+        if let [(_, existing_public_key)] =
+            &result.collect::<Result<Vec<(Option<String>, String)>, _>>()?[..]
+        {
+            return Err(PersonalKeyError::PrivateKeyAlreadyRegistered(
+                private_key_location,
+                existing_public_key.to_string(),
+            )
+            .into());
+        }
     }
 
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
     // deactivate all keys
-    conn.execute("UPDATE personal_keys SET active = 0", params![])?;
+    tx.execute("UPDATE personal_keys SET active = 0", params![])?;
 
-    // insert the key and active it
-    conn.execute("INSERT INTO personal_keys (public_key_value, active, private_key_location, date_added) values (?1, ?2, ?3, ?4)",
-                 params![public_key_value, "1", private_key, time_string])?;
-
+    // insert the key and activate it
+    tx.execute("INSERT INTO personal_keys (public_key_value, active, private_key_location, date_added, key_type_identifier) values (?1, ?2, ?3, ?4, ?5)",
+                 params![public_key_value, "1", private_key_location, time_string, "minisign"])?;
+    tx.commit()?;
     Ok(())
 }
 
@@ -152,6 +215,11 @@ pub fn add_personal_key_pair_to_database(
 pub enum PersonalKeyError {
     #[fail(display = "The public key {:?} already exists, cannot insert", _0)]
     PublicKeyAlreadyExists(String),
+    #[fail(
+        display = "The private key at {:?} is already assoicated with public key {:?}",
+        _0, _1
+    )]
+    PrivateKeyAlreadyRegistered(String, String),
 }
 
 #[derive(Debug, Fail)]
@@ -188,6 +256,7 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), M
     active integer not null,
     public_key_value text not null UNIQUE,
     private_key_location text UNIQUE,
+    key_type_identifier text not null,
     date_added text not null
 )",
                 params![],
@@ -200,6 +269,7 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), M
     id integer primary key,
     user_name text not null UNIQUE,
     public_key_value text not null UNIQUE,
+    key_type_identifier text not null,
     date_added text not null
 )",
                 params![],

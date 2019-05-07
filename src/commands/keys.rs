@@ -2,6 +2,7 @@
 
 use crate::keys::*;
 use prettytable::{format, Table};
+use std::io::Write;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -13,6 +14,10 @@ pub enum KeyOpt {
     #[structopt(name = "register")]
     /// Register a key with wapm
     Register(Register),
+
+    #[structopt(name = "delete")]
+    /// Delete a keypair from wapm
+    Delete(Delete),
 }
 
 /// Print the keys wapm knows about in a table
@@ -28,11 +33,18 @@ pub struct List {
 pub struct Register {
     /// The location of the public key to add
     #[structopt(long = "public")]
-    public_key: String,
+    public_key_location: String,
 
     /// The location of the private key to add
     #[structopt(long = "private")]
-    private_key: String,
+    private_key_location: String,
+}
+
+/// Deletes a key to wapm
+#[derive(StructOpt, Debug)]
+pub struct Delete {
+    /// The identifier of the public key
+    public_key: String,
 }
 
 pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
@@ -68,16 +80,35 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             }
         }
         KeyOpt::Register(Register {
-            public_key,
-            private_key,
+            public_key_location,
+            private_key_location,
         }) => {
             // mutate server
             add_personal_key_pair_to_database(
                 &mut key_db,
-                public_key.clone(),
-                private_key.clone(),
+                public_key_location.clone(),
+                private_key_location.clone(),
             )?;
             println!("Key pair successfully added!")
+        }
+        KeyOpt::Delete(Delete { public_key }) => {
+            let full_public_key =
+                get_full_personal_public_key_by_pattern(&key_db, public_key.clone())?;
+            warn!(
+                "You are about to delete the key pair associated with {:?} from wapm. This cannot be undone.",
+                &full_public_key
+            );
+            print!("Please confirm that you want to permanently delete this key pair from wapm:\n[y/n] ");
+            std::io::stdout().flush()?;
+            let mut input_str = String::new();
+            std::io::stdin().read_line(&mut input_str)?;
+            if let Some(first_char) = input_str.to_lowercase().chars().next() {
+                if first_char == 'y' {
+                    delete_key_pair(&mut key_db, full_public_key)?;
+                } else {
+                    println!("Aborting");
+                }
+            }
         }
     }
 
