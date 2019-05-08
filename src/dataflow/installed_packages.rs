@@ -157,6 +157,13 @@ impl<'a> Install<'a> for RegistryInstaller {
                 }
                 Error::DownloadError(key.to_string(), error_message)
             })?;
+        // download public key
+        // all public keys on wapm.io should be signed with previous public key?
+        // if so, wapm.io must send all public keys since the one the user has... (could send all by default)
+        // [[scope creep: web of trust?]]
+        // v1: only one key allowed; quickly follewed up with a more robust implementation
+        // manage pubilc key database
+        // verify
         let temp_dir = tempdir::TempDir::new("wapm_package_install")
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");

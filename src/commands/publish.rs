@@ -91,7 +91,7 @@ pub fn publish() -> Result<(), failure::Error> {
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 
     gz_enc.write_all(&tar_archive_data).unwrap();
-    let compressed_archive = gz_enc.finish().unwrap();
+    let _compressed_archive = gz_enc.finish().unwrap();
     let mut compressed_archive_reader = fs::File::open(&archive_path)?;
 
     let maybe_archive_signature = dbg!(sign_compressed_archive(dbg!(

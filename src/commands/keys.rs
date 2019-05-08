@@ -119,11 +119,18 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
 pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failure::Error> {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.add_row(row!["KEY", "ACTIVE", "PRIVATE KEY LOCATION", "DATE ADDED"]);
+    table.add_row(row![
+        "TAG",
+        "ACTIVE",
+        "KEY",
+        "PRIVATE KEY LOCATION",
+        "DATE ADDED"
+    ]);
     for key in keys {
         table.add_row(row![
-            key.public_key_value,
+            key.public_key_tag,
             key.active,
+            key.public_key_value,
             key.private_key_location.unwrap_or("None".to_string()),
             time::strftime("%Y-%m-%d", &time::at(key.date_created))?
         ]);
@@ -134,10 +141,11 @@ pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failu
 pub fn create_wapm_public_key_table(keys: Vec<WapmPublicKey>) -> Result<String, failure::Error> {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.add_row(row!["USER", "KEY", "DATE ADDED"]);
+    table.add_row(row!["USER", "TAG", "KEY", "DATE ADDED"]);
     for key in keys {
         table.add_row(row![
             key.user_name,
+            key.public_key_tag,
             key.public_key_value,
             time::strftime("%Y-%m-%d", &time::at(key.date_created))?
         ]);
