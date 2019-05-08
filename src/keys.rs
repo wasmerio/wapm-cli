@@ -141,6 +141,36 @@ pub fn get_full_personal_public_key_by_pattern(
     }
 }
 
+pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier FROM personal_keys 
+         where active = 1",
+    )?;
+
+    let result = stmt
+        .query_map(params![], |row| {
+            Ok(PersonalKey {
+                active: row.get(0)?,
+                public_key_value: row.get(1)?,
+                private_key_location: row.get(2)?,
+                date_created: {
+                    let time_str: String = row.get(3)?;
+                    time::strptime(&time_str, RFC3339_FORMAT_STRING)
+                        .expect(&format!("Failed to parse time string {}", &time_str))
+                        .to_timespec()
+                },
+                key_type_identifier: row.get(4)?,
+            })
+        })?
+        .next();
+
+    if let Some(res) = result {
+        Ok(res?)
+    } else {
+        Err(format_err!("No active key found"))
+    }
+}
+
 pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), failure::Error> {
     conn.execute(
         "DELETE FROM personal_keys WHERE public_key_value = (?1)",

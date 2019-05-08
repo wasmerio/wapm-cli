@@ -1,5 +1,6 @@
 //! The publish command uploads the package specified in the Manifest (`wapm.toml`)
 //! to the wapm registry.
+use crate::keys;
 use crate::validate;
 
 use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
@@ -90,7 +91,13 @@ pub fn publish() -> Result<(), failure::Error> {
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 
     gz_enc.write_all(&tar_archive_data).unwrap();
-    let _compressed_archive = gz_enc.finish().unwrap();
+    let compressed_archive = gz_enc.finish().unwrap();
+    let mut compressed_archive_reader = fs::File::open(&archive_path)?;
+
+    let maybe_archive_signature = dbg!(sign_compressed_archive(dbg!(
+        &mut compressed_archive_reader
+    )))
+    .unwrap();
 
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
@@ -134,4 +141,45 @@ enum PublishError {
     MissingManifestInCwd,
     #[fail(display = "Error building package when parsing module \"{}\".", _0)]
     ErrorBuildingPackage(String),
+}
+
+pub fn sign_compressed_archive(
+    compressed_archive: &mut fs::File,
+) -> Result<String, failure::Error> {
+    let key_db = keys::open_keys_db()?;
+    let personal_key = keys::get_active_personal_key(&key_db)?;
+    // TODO: use key name as tag
+    let password = rpassword::prompt_password_stdout("Please enter your password:").ok();
+    let private_key = if let Some(priv_key_location) = personal_key.private_key_location {
+        match minisign::SecretKey::from_file(&priv_key_location, password) {
+            Ok(priv_key_data) => priv_key_data,
+            Err(e) => {
+                error!(
+                    "Could not read private key from location {}: {}",
+                    priv_key_location, e
+                );
+                return Err(e.into());
+            }
+        }
+    } else {
+        // TODO: add more info about why this might have happened and what the user can do about it
+        warn!("Active key does not have a private key location registered with it!");
+        return Err(format_err!("Cannot sign package, no private key"));
+    };
+    Ok(minisign::sign(
+        Some(&minisign::PublicKey::from_base64(
+            &personal_key
+                .public_key_value
+                .lines()
+                .skip(1)
+                .next()
+                .unwrap(),
+        )?),
+        &private_key,
+        compressed_archive,
+        false,
+        None,
+        None,
+    )?
+    .to_string())
 }
