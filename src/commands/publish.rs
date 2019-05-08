@@ -148,8 +148,11 @@ pub fn sign_compressed_archive(
 ) -> Result<String, failure::Error> {
     let key_db = keys::open_keys_db()?;
     let personal_key = keys::get_active_personal_key(&key_db)?;
-    // TODO: use key name as tag
-    let password = rpassword::prompt_password_stdout("Please enter your password:").ok();
+    let password = rpassword::prompt_password_stdout(&format!(
+        "Please enter your password for the key pair {}:",
+        &personal_key.public_key_tag
+    ))
+    .ok();
     let private_key = if let Some(priv_key_location) = personal_key.private_key_location {
         match minisign::SecretKey::from_file(&priv_key_location, password) {
             Ok(priv_key_data) => priv_key_data,
@@ -168,12 +171,7 @@ pub fn sign_compressed_archive(
     };
     Ok(minisign::sign(
         Some(&minisign::PublicKey::from_base64(
-            &personal_key
-                .public_key_value
-                .lines()
-                .skip(1)
-                .next()
-                .unwrap(),
+            &personal_key.public_key_value,
         )?),
         &private_key,
         compressed_archive,

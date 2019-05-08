@@ -12,8 +12,12 @@ pub enum KeyOpt {
     List(List),
 
     #[structopt(name = "register")]
-    /// Register a key with wapm
+    /// Register a personal key pair with wapm
     Register(Register),
+
+    #[structopt(name = "import")]
+    /// Import a public key from somewhere
+    Import(Import),
 
     #[structopt(name = "delete")]
     /// Delete a keypair from wapm
@@ -45,6 +49,14 @@ pub struct Register {
 pub struct Delete {
     /// The identifier of the public key
     public_key: String,
+}
+
+/// Import a public key from somewhere else
+#[derive(StructOpt, Debug)]
+pub struct Import {
+    #[structopt(long = "user-name")]
+    user_name: String,
+    public_key_value: String,
 }
 
 pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
@@ -110,6 +122,13 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
                     println!("Aborting");
                 }
             }
+        }
+        KeyOpt::Import(Import {
+            user_name,
+            public_key_value,
+        }) => {
+            let user_name = user_name.trim().to_string();
+            import_public_key(&mut key_db, public_key_value, user_name)?;
         }
     }
 

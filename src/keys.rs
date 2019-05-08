@@ -11,6 +11,11 @@
 //! Every data version must leave the database in a valid state.
 //! Prefer additive changes over destructive ones
 
+//TODO: Clean up this file
+//  - abstract db
+//  - separate out SQL and have test that ensures all SQL is _at least_ syntactically correct
+//  - reuse more code
+
 use crate::config::Config;
 use rusqlite::{params, Connection, TransactionBehavior};
 use std::{fs, path::PathBuf};
@@ -95,12 +100,20 @@ pub fn get_personal_keys_from_database(
     result.collect::<Result<Vec<_>, _>>().map_err(|e| e.into())
 }
 
+fn get_current_time_in_format() -> Option<String> {
+    let cur_time = time::now();
+    time::strftime(RFC3339_FORMAT_STRING, &cur_time).ok()
+}
+
 /// Gets all public keys the user has seen from WAPM from the database
 pub fn get_wapm_public_keys_from_database(
     conn: &Connection,
 ) -> Result<Vec<WapmPublicKey>, failure::Error> {
     let mut stmt = conn.prepare(
-        "SELECT user_name, public_key_value, date_added, key_type_identifier, public_key_tag FROM wapm_public_keys ORDER BY date_added;",
+        "SELECT wu.name, public_key_value, date_added, key_type_identifier, public_key_tag 
+         FROM wapm_public_keys
+         JOIN wapm_users wu ON user_key = wu.id
+         ORDER BY date_added;",
     )?;
 
     let result = stmt.query_map(params![], |row| {
@@ -188,8 +201,9 @@ pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), 
 /// This function takes the raw output from Minisign and returns the key's tag
 /// and the key's value in base64
 pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Error> {
+    dbg!(&pk);
     let mut lines = pk.lines();
-    let first_line = lines.next().ok_or(format_err!("Empty public key value"))?;
+    let first_line = dbg!(lines.next().ok_or(format_err!("Empty public key value"))?);
     let second_line = lines
         .next()
         .ok_or(format_err!("Public key value must have two lines"))?;
@@ -226,9 +240,8 @@ pub fn add_personal_key_pair_to_database(
             );
         }
     }
-    let cur_time = time::now();
-    let time_string = time::strftime(RFC3339_FORMAT_STRING, &cur_time)
-        .map_err(|e| format_err!("Corrupt value in database: {}", e))?;
+
+    let time_string = get_current_time_in_format().expect("Could not get the current time");
 
     // fail if we already have the key
     {
@@ -273,6 +286,72 @@ pub fn add_personal_key_pair_to_database(
     Ok(())
 }
 
+/// Parses a public key out of the given string and adds it to the database of
+/// trusted keys associated with the given user
+pub fn import_public_key(
+    conn: &mut Connection,
+    public_key_string: String,
+    user_name: String,
+) -> Result<(), failure::Error> {
+    let (public_key_id, public_key_value) = normalize_public_key(public_key_string)?;
+
+    // fail if we already have the key
+    {
+        let mut key_check = conn.prepare(
+            "SELECT wu.name, public_key_tag 
+FROM wapm_public_keys 
+JOIN wapm_users wu ON user_key = wu.id
+WHERE public_key_tag = (?1) 
+   OR public_key_value = (?2)",
+        )?;
+        let result = key_check.query_map(params![public_key_id, public_key_value], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?;
+
+        if let [(user_name, existing_key)] =
+            &result.collect::<Result<Vec<(String, String)>, _>>()?[..]
+        {
+            return Err(WapmPublicKeyError::PublicKeyAlreadyExists(
+                existing_key.to_string(),
+                user_name.to_string(),
+            )
+            .into());
+        }
+    }
+
+    // transact the new key
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    tx.execute(
+        "INSERT OR IGNORE INTO wapm_users (name) VALUES (?1)",
+        params![user_name],
+    )?;
+
+    let time_string = get_current_time_in_format().expect("Could not get current time");
+
+    info!(
+        "Importing key {:?} for user {:?}",
+        &public_key_id, &user_name
+    );
+    tx.execute(
+        "INSERT INTO wapm_public_keys 
+(user_key, public_key_tag, public_key_value, key_type_identifier, date_added) 
+VALUES 
+((SELECT id FROM wapm_users WHERE name = (?1)), (?2), (?3), (?4), (?5))
+    ",
+        params![
+            user_name,
+            public_key_id,
+            public_key_value,
+            "minisign",
+            time_string
+        ],
+    )?;
+
+    tx.commit()?;
+    Ok(())
+}
+
 #[derive(Debug, Fail)]
 pub enum PersonalKeyError {
     #[fail(display = "A public key matching {:?} already exists", _0)]
@@ -282,6 +361,15 @@ pub enum PersonalKeyError {
         _0, _1
     )]
     PrivateKeyAlreadyRegistered(String, String),
+}
+
+#[derive(Debug, Fail)]
+pub enum WapmPublicKeyError {
+    #[fail(
+        display = "A public key matching {:?} already exists on user {:?}",
+        _0, _1
+    )]
+    PublicKeyAlreadyExists(String, String),
 }
 
 #[derive(Debug, Fail)]
@@ -327,14 +415,25 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), M
             .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
 
             tx.execute(
+                "create table wapm_users
+(
+    id integer primary key,
+    name text not null UNIQUE
+)",
+                params![],
+            )
+            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
+
+            tx.execute(
                 "create table wapm_public_keys
 (
     id integer primary key,
-    user_name text not null UNIQUE,
+    user_key integer not null,
     public_key_tag text not null UNIQUE,
     public_key_value text not null UNIQUE,
     key_type_identifier text not null,
-    date_added text not null
+    date_added text not null,
+    FOREIGN KEY(user_key) REFERENCES wapm_users(id)
 )",
                 params![],
             )
