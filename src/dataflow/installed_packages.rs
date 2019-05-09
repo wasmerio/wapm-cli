@@ -175,8 +175,10 @@ impl<'a> Install<'a> for RegistryInstaller {
         // download public key
         // all public keys on wapm.io should be signed with previous public key?
         let timestamp = 0;
-        let public_keys_from_server = vec![(
-            "KEY_VALUE".to_string(),
+        let public_keys_from_server: Vec<(String, Option<String>, usize)> = vec![(
+            "untrusted comment: minisign public key DC249F90130EC9F7
+RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
+                .to_string(),
             Some("SIGNATURE".to_string()),
             timestamp,
         )];
@@ -190,7 +192,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
             })?;
         let mut import_public_key = |pk_str| {
-            keys::import_public_key(&mut keys_db, pk_str, pkg_name.to_string()).map_err(|e| {
+            keys::import_public_key(&mut keys_db, pk_str, namespace.to_string()).map_err(|e| {
                 Error::KeyManagementError(
                     fully_qualified_package_name.clone(),
                     format!("could not add public key: {}", e),
@@ -237,8 +239,9 @@ impl<'a> Install<'a> for RegistryInstaller {
                     }
                     Err(e) => {
                         // server key could not be normalized corrupt
-                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used: {}",
-                          &public_keys_from_server[0].0, fully_qualified_package_name, e.to_string());
+                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used.",
+                          &public_keys_from_server[0].0, fully_qualified_package_name);
+                        debug!("Corrupt public key: {}", e.to_string());
                         println!(
                             "Proceeding with local key {}",
                             &latest_local_key.public_key_tag
@@ -273,8 +276,9 @@ Would you like to trust this key?",
                     }
                     Err(e) => {
                         // key from server is corrupt
-                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used: {}",
-                          &public_keys_from_server[0].0, fully_qualified_package_name, e.to_string());
+                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used.",
+                          &public_keys_from_server[0].0, fully_qualified_package_name);
+                        debug!("Corrupt public key: {}", e.to_string());
                         let user_wants_insecure_install_on_corrupt_key =
                             util::prompt_user_for_yes(&format!(
                                 "Would you like to proceed with an insecure installation of {}",

@@ -365,16 +365,24 @@ pub fn get_latest_public_key_for_user(
          LIMIT 1",
     )?;
 
-    let result = stmt.query_row(params![user_name], |row| {
+    match stmt.query_row(params![user_name], |row| {
         Ok(Some(WapmPublicKey {
             user_name: user_name.to_string(),
             public_key_tag: row.get(0)?,
             public_key_value: row.get(1)?,
-            date_created: row.get(2)?,
+            date_created: {
+                let time_str: String = row.get(2)?;
+                time::strptime(&time_str, RFC3339_FORMAT_STRING)
+                    .expect(&format!("Failed to parse time string {}", &time_str))
+                    .to_timespec()
+            },
             key_type_identifier: row.get(3)?,
         }))
-    })?;
-    Ok(result)
+    }) {
+        Ok(v) => Ok(v),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format_err!("Internal database error: {}", e)),
+    }
 }
 
 /*pub fn validate_key_history_and_return_latest_key(
