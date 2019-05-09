@@ -113,3 +113,17 @@ pub fn wapm_should_print_color() -> bool {
         .map(|_| false)
         .unwrap_or(true)
 }
+
+/// Asks the user to confirm something. Returns a boolean indicating if the user consented
+pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
+    use std::io::Write;
+
+    print!("{}\n[y/n] ", prompt);
+    std::io::stdout().flush()?;
+    let mut input_str = String::new();
+    std::io::stdin().read_line(&mut input_str)?;
+    match input_str.to_lowercase().trim_end() {
+        "yes" | "y" => Ok(true),
+        _ => Ok(false),
+    }
+}

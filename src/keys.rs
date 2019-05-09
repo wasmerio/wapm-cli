@@ -352,6 +352,62 @@ VALUES
     Ok(())
 }
 
+pub fn get_latest_public_key_for_user(
+    conn: &Connection,
+    user_name: &str,
+) -> Result<Option<WapmPublicKey>, failure::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT public_key_tag, public_key_value, date_added, key_type_identifier
+         FROM wapm_public_keys
+         JOIN wapm_users wu ON user_key = wu.id
+         WHERE wu.name = (?1)
+         ORDER BY date_added DESC
+         LIMIT 1",
+    )?;
+
+    let result = stmt.query_row(params![user_name], |row| {
+        Ok(Some(WapmPublicKey {
+            user_name: user_name.to_string(),
+            public_key_tag: row.get(0)?,
+            public_key_value: row.get(1)?,
+            date_created: row.get(2)?,
+            key_type_identifier: row.get(3)?,
+        }))
+    })?;
+    Ok(result)
+}
+
+/*pub fn validate_key_history_and_return_latest_key(
+    conn: &Connection,
+    user_name: String,
+    key_history: Vec<(String, Option<String>)>,
+) -> Result<WapmPublicKey, failure::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT public_key_value
+FROM wapm_public_keys
+JOIN wapm_users wu ON user_key = wu.id
+WHERE public_key_tag = (?1)
+  AND wu.name = (?2)",
+    )?;
+
+    for (key, signature) in key_history.iter().rev() {
+        let (key_id, key_val) = normalize_public_key(key.clone());
+        let result = stmt
+            .query_row(params![key_id, user_name], |row| Ok(row.get(0)?))
+            .collect::<Result<_, _>>();
+        if let Ok(pkv) = result {
+            if pkv != key_val {
+                panic!("Critical error: key ID collision detected: {:?} and {:?} do not match but have the same key ID: {:?}.
+\nThis may be due to invalid data in your local wapm database. Please file a bug report and include your $WASMER_DIR/wapm.sqlite file",
+                       pkv, key_val, key_id);
+            }
+        } else {
+            // key not found in database try the one before it
+        }
+    }
+    conn
+}*/
+
 #[derive(Debug, Fail)]
 pub enum PersonalKeyError {
     #[fail(display = "A public key matching {:?} already exists", _0)]

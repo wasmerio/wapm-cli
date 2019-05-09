@@ -3,8 +3,9 @@ use crate::dataflow::manifest_packages::ManifestResult;
 use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
+use crate::keys;
 use crate::util::{
-    create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
+    self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
 use flate2::read::GzDecoder;
 use reqwest::ClientBuilder;
@@ -159,9 +160,89 @@ impl<'a> Install<'a> for RegistryInstaller {
             })?;
         // download public key
         // all public keys on wapm.io should be signed with previous public key?
-        // if so, wapm.io must send all public keys since the one the user has... (could send all by default)
-        // [[scope creep: web of trust?]]
-        // v1: only one key allowed; quickly follewed up with a more robust implementation
+        let timestamp = 0;
+        let public_keys_from_server = vec![(
+            "KEY_VALUE".to_string(),
+            Some("SIGNATURE".to_string()),
+            timestamp,
+        )];
+        // sort by timestamp
+
+        // TOOD: handle key errors
+        let mut keys_db = keys::open_keys_db().unwrap();
+        let latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace).unwrap();
+
+        match (
+            !public_keys_from_server.is_empty(),
+            latest_public_key.is_some(),
+        ) {
+            (true, true) => {
+                // verify or prompt and store
+                let (pk_id, pkv) =
+                    keys::normalize_public_key(public_keys_from_server[0].0.clone()).unwrap();
+                // the following unwrap is safe because of the check in the match expression
+                let latest_local_key = latest_public_key.unwrap();
+                if pk_id == latest_local_key.public_key_tag
+                    && pkv == latest_local_key.public_key_value
+                {
+                    // keys match
+                } else {
+                    // mismatch, prompt user
+                    let user_trusts_new_key =
+                        util::prompt_user_for_yes(&format!(
+                            "The keys {:?} and {:?} do not match. Do you want to trust the new key ({:?} {:?})?",
+                            &latest_local_key.public_key_tag, &pk_id, &pk_id, &pkv
+                        )).unwrap();
+
+                    if user_trusts_new_key {
+                        keys::import_public_key(
+                            &mut keys_db,
+                            public_keys_from_server[0].0.clone(),
+                            pkg_name.to_string(),
+                        )
+                        .expect("TODO: handle this");
+                    } else {
+                        // fail here
+                    }
+                }
+            }
+            (true, false) => {
+                // prompt and store
+                let (pk_id, pkv) =
+                    // TODO: prompt user on corrupt public key?
+                    keys::normalize_public_key(public_keys_from_server[0].0.clone()).unwrap();
+                let user_trusts_new_key = util::prompt_user_for_yes(&format!(
+                    "New public key encountered: {} {} while installing {}.
+Would you like to trust this key?",
+                    &pk_id, &pkv, &fully_qualified_package_name
+                ))
+                .unwrap();
+                if user_trusts_new_key {
+                    // add it to DB
+                } else {
+                    // otherwise fail
+                }
+            }
+            (false, true) => {
+                // server error or scary things happening
+                warn!(
+                    "The server does not have a public key for {} for the package {}. This could mean that the wapm registry has been compromised",
+                    &namespace, &fully_qualified_package_name
+                );
+                let user_wants_to_continue =
+                    util::prompt_user_for_yes("Would you like to continue?").unwrap();
+
+                if user_wants_to_continue {
+                    // proceed to insecure install
+                } else {
+                    // fail early
+                }
+            }
+            (false, false) => {
+                // insecure install
+            }
+        }
+
         // manage pubilc key database
         // verify
         let temp_dir = tempdir::TempDir::new("wapm_package_install")

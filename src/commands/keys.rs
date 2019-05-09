@@ -1,8 +1,8 @@
 //! Subcommand to deal with keys for signing wapm packages
 
 use crate::keys::*;
+use crate::util;
 use prettytable::{format, Table};
-use std::io::Write;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -110,17 +110,13 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
                 "You are about to delete the key pair associated with {:?} from wapm.\nThis cannot be undone.",
                 &full_public_key
             );
-            print!("Please confirm that you want to permanently delete this key pair from wapm:\n[y/n] ");
-            std::io::stdout().flush()?;
-            let mut input_str = String::new();
-            std::io::stdin().read_line(&mut input_str)?;
-            match input_str.to_lowercase().trim_end() {
-                "yes" | "y" => {
-                    delete_key_pair(&mut key_db, full_public_key)?;
-                }
-                _ => {
-                    println!("Aborting");
-                }
+            let user_confirmed_key_deletion = util::prompt_user_for_yes(
+                "Please confirm that you want to permanently delete this key pair from wapm:",
+            )?;
+            if user_confirmed_key_deletion {
+                delete_key_pair(&mut key_db, full_public_key)?;
+            } else {
+                println!("Aborting");
             }
         }
         KeyOpt::Import(Import {
