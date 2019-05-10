@@ -475,8 +475,7 @@ mod test {
 
     #[test]
     fn migrations_are_valid() {
-        let tmp_dir = tempdir::TempDir::new("DB").unwrap().path().to_owned();
-        let mut conn = Connection::open(tmp_dir).unwrap();
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
         for data_version in 0..CURRENT_DATA_VERSION {
             apply_migration(&mut conn, data_version).unwrap();
         }
