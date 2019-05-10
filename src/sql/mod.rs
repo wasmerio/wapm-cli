@@ -29,7 +29,6 @@ mod test {
         sql_dir.push("src/sql/queries");
         for entry in sql_dir.read_dir().unwrap() {
             let entry = entry.unwrap();
-            dbg!(entry.path());
             let sql_str = std::fs::read_to_string(entry.path()).unwrap();
 
             assert!(conn.prepare(&sql_str).unwrap().finalize().is_ok());
