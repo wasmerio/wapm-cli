@@ -143,7 +143,7 @@ pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failu
     ]);
     for key in keys {
         table.add_row(row![
-            key.public_key_tag,
+            key.public_key_id,
             key.active,
             key.public_key_value,
             key.private_key_location.unwrap_or("None".to_string()),
@@ -160,7 +160,7 @@ pub fn create_wapm_public_key_table(keys: Vec<WapmPublicKey>) -> Result<String, 
     for key in keys {
         table.add_row(row![
             key.user_name,
-            key.public_key_tag,
+            key.public_key_id,
             key.public_key_value,
             time::strftime("%Y-%m-%d", &time::at(key.date_created))?
         ]);

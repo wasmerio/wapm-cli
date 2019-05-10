@@ -33,7 +33,7 @@ pub struct PersonalKey {
     /// Flag saying if the key will be used (there can only be one active key at a time)
     pub active: bool,
     /// The public key's tag. Used to identify the key pair
-    pub public_key_tag: String,
+    pub public_key_id: String,
     /// The raw value of the public key in base64
     pub public_key_value: String,
     /// The location in the file system of the private key
@@ -50,7 +50,7 @@ pub struct WapmPublicKey {
     /// The user whose key this is
     pub user_name: String,
     /// The public key's tag. Used to identify the key pair
-    pub public_key_tag: String,
+    pub public_key_id: String,
     /// The raw value of the public key in base64
     pub public_key_value: String,
     /// The type of private/public key this is
@@ -102,7 +102,7 @@ pub fn get_personal_keys_from_database(
                     .to_timespec()
             },
             key_type_identifier: row.get(4)?,
-            public_key_tag: row.get(5)?,
+            public_key_id: row.get(5)?,
         })
     })?;
 
@@ -130,7 +130,7 @@ pub fn get_wapm_public_keys_from_database(
                     .to_timespec()
             },
             key_type_identifier: row.get(3)?,
-            public_key_tag: row.get(4)?,
+            public_key_id: row.get(4)?,
         })
     })?;
 
@@ -144,7 +144,7 @@ pub fn get_full_personal_public_key_by_id(
 ) -> Result<String, failure::Error> {
     let mut stmt =
         conn.prepare(
-            "SELECT public_key_value FROM personal_keys WHERE public_key_tag = (?1) ORDER BY date_added LIMIT 1",
+            "SELECT public_key_value FROM personal_keys WHERE public_key_id = (?1) ORDER BY date_added LIMIT 1",
         )?;
     let result = stmt
         .query_row(params![public_key_id], |row| Ok(row.get(0)?))
@@ -155,7 +155,7 @@ pub fn get_full_personal_public_key_by_id(
 
 pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure::Error> {
     let mut stmt = conn.prepare(
-        "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier, public_key_tag FROM personal_keys 
+        "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier, public_key_id FROM personal_keys 
          where active = 1",
     )?;
 
@@ -172,7 +172,7 @@ pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure
                         .to_timespec()
                 },
                 key_type_identifier: row.get(4)?,
-                public_key_tag: row.get(5)?,
+                public_key_id: row.get(5)?,
             })
         })?
         .next();
@@ -220,11 +220,11 @@ pub fn add_personal_key_pair_to_database(
     public_key_location: String,
     private_key_location: String,
 ) -> Result<(), failure::Error> {
-    let (public_key_tag, public_key_value) = normalize_public_key(
+    let (public_key_id, public_key_value) = normalize_public_key(
         fs::read_to_string(&public_key_location)
             .map_err(|e| format_err!("Could not read public key: {}", e))?,
     )?;
-    println!("{:?}", public_key_tag);
+    println!("{:?}", public_key_id);
     {
         let private_key_path = PathBuf::from(&private_key_location);
         if !private_key_path.exists() {
@@ -246,7 +246,7 @@ pub fn add_personal_key_pair_to_database(
     // fail if we already have the key
     {
         let mut key_check = conn.prepare(sql::PERSONAL_PUBLIC_KEY_VALUE_EXISTENCE_CHECK)?;
-        let result = key_check.query_map(params![public_key_tag, public_key_value], |row| {
+        let result = key_check.query_map(params![public_key_id, public_key_value], |row| {
             Ok(row.get(0)?)
         })?;
 
@@ -280,7 +280,7 @@ pub fn add_personal_key_pair_to_database(
     tx.execute(
         sql::INSERT_AND_ACTIVATE_PERSONAL_KEY_PAIR,
         params![
-            public_key_tag,
+            public_key_id,
             public_key_value,
             "1",
             private_key_location,
@@ -354,7 +354,7 @@ pub fn get_latest_public_key_for_user(
     match stmt.query_row(params![user_name], |row| {
         Ok(Some(WapmPublicKey {
             user_name: user_name.to_string(),
-            public_key_tag: row.get(0)?,
+            public_key_id: row.get(0)?,
             public_key_value: row.get(1)?,
             date_created: {
                 let time_str: String = row.get(2)?;
@@ -380,7 +380,7 @@ pub fn get_latest_public_key_for_user(
         "SELECT public_key_value
 FROM wapm_public_keys
 JOIN wapm_users wu ON user_key = wu.id
-WHERE public_key_tag = (?1)
+WHERE public_key_id = (?1)
   AND wu.name = (?2)",
     )?;
 

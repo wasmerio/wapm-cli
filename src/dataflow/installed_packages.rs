@@ -209,13 +209,13 @@ RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
                 // verify or prompt and store
                 match keys::normalize_public_key(public_keys_from_server[0].0.clone()) {
                     Ok((pk_id, pkv)) => {
-                        if pk_id == latest_local_key.public_key_tag
+                        if pk_id == latest_local_key.public_key_id
                             && pkv == latest_local_key.public_key_value
                         {
                             // keys match
                             trace!("Public key from server matches latest key locally");
                             key_to_verify_package_with = Some((
-                                latest_local_key.public_key_tag,
+                                latest_local_key.public_key_id,
                                 latest_local_key.public_key_value,
                             ));
                         } else {
@@ -223,7 +223,7 @@ RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
                             let user_trusts_new_key =
                         util::prompt_user_for_yes(&format!(
                             "The keys {:?} and {:?} do not match. Do you want to trust the new key ({:?} {:?})?",
-                            &latest_local_key.public_key_tag, &pk_id, &pk_id, &pkv
+                            &latest_local_key.public_key_id, &pk_id, &pk_id, &pkv
                         )).expect("Could not read input from user");
 
                             if user_trusts_new_key {
@@ -244,10 +244,10 @@ RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
                         debug!("Corrupt public key: {}", e.to_string());
                         println!(
                             "Proceeding with local key {}",
-                            &latest_local_key.public_key_tag
+                            &latest_local_key.public_key_id
                         );
                         key_to_verify_package_with = Some((
-                            latest_local_key.public_key_tag,
+                            latest_local_key.public_key_id,
                             latest_local_key.public_key_value,
                         ));
                     }
@@ -306,11 +306,11 @@ Would you like to trust this key?",
                 // server error or scary things happening
                 warn!(
                     "The server does not have a public key for {} for the package {}. This could mean that the wapm registry has been compromised.  Continuning with local public key {}",
-                    &namespace, &fully_qualified_package_name, &latest_local_key.public_key_tag
+                    &namespace, &fully_qualified_package_name, &latest_local_key.public_key_id
                 );
 
                 key_to_verify_package_with = Some((
-                    latest_local_key.public_key_tag,
+                    latest_local_key.public_key_id,
                     latest_local_key.public_key_value,
                 ));
             }

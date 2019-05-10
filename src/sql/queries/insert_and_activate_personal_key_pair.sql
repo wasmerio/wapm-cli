@@ -1,5 +1,5 @@
 INSERT INTO personal_keys
-  (public_key_tag,
+  (public_key_id,
   public_key_value,
   active,
   private_key_location,

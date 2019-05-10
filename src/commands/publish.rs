@@ -150,7 +150,7 @@ pub fn sign_compressed_archive(
     let personal_key = keys::get_active_personal_key(&key_db)?;
     let password = rpassword::prompt_password_stdout(&format!(
         "Please enter your password for the key pair {}:",
-        &personal_key.public_key_tag
+        &personal_key.public_key_id
     ))
     .ok();
     let private_key = if let Some(priv_key_location) = personal_key.private_key_location {

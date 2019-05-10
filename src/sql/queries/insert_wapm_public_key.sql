@@ -1,6 +1,6 @@
 INSERT INTO wapm_public_keys 
   (user_key,
-  public_key_tag,
+  public_key_id,
   public_key_value,
   key_type_identifier,
   date_added) 
