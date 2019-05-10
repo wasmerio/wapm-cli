@@ -23,5 +23,6 @@ mod graphql;
 mod init;
 mod keys;
 pub mod logging;
+mod sql;
 pub mod util;
 mod validate;

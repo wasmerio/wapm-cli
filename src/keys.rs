@@ -17,7 +17,9 @@
 //  - reuse more code
 
 use crate::config::Config;
-use rusqlite::{params, Connection, TransactionBehavior};
+use crate::sql;
+use crate::util;
+use rusqlite::{params, Connection, OpenFlags, TransactionBehavior};
 use std::{fs, path::PathBuf};
 use time::Timespec;
 
@@ -58,28 +60,35 @@ pub struct WapmPublicKey {
 }
 
 // TODO: make this more generic
-/// Connects to the database
+/// Opens an exclusive read/write connection to the database, creating it if it does not exist
 pub fn open_keys_db() -> Result<Connection, failure::Error> {
     let db_path = Config::get_database_file_path()?;
-    let mut conn = Connection::open(db_path)?;
+    let mut conn = Connection::open_with_flags(
+        db_path,
+        OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
+    )?;
 
+    apply_migrations(&mut conn)?;
+    Ok(conn)
+}
+
+/// Applies migrations to the database
+pub fn apply_migrations(conn: &mut Connection) -> Result<(), failure::Error> {
     let user_version = conn.pragma_query_value(None, "user_version", |val| val.get(0))?;
     for data_version in user_version..CURRENT_DATA_VERSION {
         debug!("Applying migration {}", data_version);
-        apply_migration(&mut conn, data_version)?;
+        apply_migration(conn, data_version)?;
     }
-
-    Ok(conn)
+    Ok(())
 }
 
 /// Gets the user's keys from the database
 pub fn get_personal_keys_from_database(
     conn: &Connection,
 ) -> Result<Vec<PersonalKey>, failure::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier, public_key_tag FROM personal_keys 
-         ORDER BY date_added;",
-    )?;
+    let mut stmt = conn.prepare(sql::GET_PERSONAL_KEYS)?;
 
     let result = stmt.query_map(params![], |row| {
         Ok(PersonalKey {
@@ -109,13 +118,7 @@ fn get_current_time_in_format() -> Option<String> {
 pub fn get_wapm_public_keys_from_database(
     conn: &Connection,
 ) -> Result<Vec<WapmPublicKey>, failure::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT wu.name, public_key_value, date_added, key_type_identifier, public_key_tag 
-         FROM wapm_public_keys
-         JOIN wapm_users wu ON user_key = wu.id
-         ORDER BY date_added;",
-    )?;
-
+    let mut stmt = conn.prepare(sql::GET_WAPM_PUBLIC_KEYS)?;
     let result = stmt.query_map(params![], |row| {
         Ok(WapmPublicKey {
             user_name: row.get(0)?,
@@ -134,29 +137,20 @@ pub fn get_wapm_public_keys_from_database(
     result.collect::<Result<Vec<_>, _>>().map_err(|e| e.into())
 }
 
-pub fn get_full_personal_public_key_by_pattern(
+/// Get the public key in base64 from its id from the local database
+pub fn get_full_personal_public_key_by_id(
     conn: &Connection,
     public_key_id: String,
 ) -> Result<String, failure::Error> {
-    if public_key_id.contains('\'') {
-        return Err(format_err!(
-            "Invalid public key pattern: pattern cannot contain the ' character"
-        ));
-    }
     let mut stmt =
         conn.prepare(
-            &format!("SELECT public_key_value FROM personal_keys WHERE public_key_value LIKE '{}%' ORDER BY date_added LIMIT 1", public_key_id)
+            "SELECT public_key_value FROM personal_keys WHERE public_key_tag = (?1) ORDER BY date_added LIMIT 1",
         )?;
-    let result = stmt.query_map(params![], |row| Ok(row.get(0)?))?.next();
+    let result = stmt
+        .query_row(params![public_key_id], |row| Ok(row.get(0)?))
+        .map_err(|_| format_err!("No public key matching pattern {} found", &public_key_id))?;
 
-    if let Some(Ok(full_public_key)) = result {
-        Ok(full_public_key)
-    } else {
-        Err(format_err!(
-            "No public key matching pattern {} found",
-            &public_key_id
-        ))
-    }
+    Ok(result)
 }
 
 pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure::Error> {
@@ -191,10 +185,7 @@ pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure
 }
 
 pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), failure::Error> {
-    conn.execute(
-        "DELETE FROM personal_keys WHERE public_key_value = (?1)",
-        params![public_key],
-    )?;
+    conn.execute(sql::DELETE_PERSONAL_KEY_PAIR, params![public_key])?;
     Ok(())
 }
 
@@ -209,12 +200,14 @@ pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Err
         .ok_or(format_err!("Public key value must have two lines"))?;
 
     let tag = first_line
+        .trim()
         .chars()
         .rev()
         .take(MINISIGN_TAG_LENGTH)
         .collect::<Vec<char>>()
         .iter()
         .rev()
+        .filter(|c| !c.is_whitespace())
         .collect();
 
     Ok((tag, second_line.to_string()))
@@ -231,6 +224,7 @@ pub fn add_personal_key_pair_to_database(
         fs::read_to_string(&public_key_location)
             .map_err(|e| format_err!("Could not read public key: {}", e))?,
     )?;
+    println!("{:?}", public_key_tag);
     {
         let private_key_path = PathBuf::from(&private_key_location);
         if !private_key_path.exists() {
@@ -238,6 +232,12 @@ pub fn add_personal_key_pair_to_database(
                 "Private key file not found at path: {}",
                 &private_key_location
             );
+            if !util::prompt_user_for_yes("Would you like to add the key anyway?")? {
+                return Err(format_err!(
+                    "Private key file not found at path: {}",
+                    &private_key_location
+                ));
+            }
         }
     }
 
@@ -245,8 +245,7 @@ pub fn add_personal_key_pair_to_database(
 
     // fail if we already have the key
     {
-        let mut key_check =
-            conn.prepare("SELECT public_key_tag FROM personal_keys WHERE public_key_tag = (?1) OR public_key_value = (?2)")?;
+        let mut key_check = conn.prepare(sql::PERSONAL_PUBLIC_KEY_VALUE_EXISTENCE_CHECK)?;
         let result = key_check.query_map(params![public_key_tag, public_key_value], |row| {
             Ok(row.get(0)?)
         })?;
@@ -256,9 +255,8 @@ pub fn add_personal_key_pair_to_database(
         }
 
         // check the private key path too
-        let mut private_key_check = conn.prepare(
-            "SELECT private_key_location, public_key_value FROM personal_keys WHERE private_key_location = (?1)",
-        )?;
+        let mut private_key_check =
+            conn.prepare(sql::PERSONAL_PRIVATE_KEY_VALUE_EXISTENCE_CHECK)?;
         let result = private_key_check.query_map(params![private_key_location], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?;
@@ -278,10 +276,18 @@ pub fn add_personal_key_pair_to_database(
 
     // deactivate all keys
     tx.execute("UPDATE personal_keys SET active = 0", params![])?;
-
-    // insert the key and activate it
-    tx.execute("INSERT INTO personal_keys (public_key_tag, public_key_value, active, private_key_location, date_added, key_type_identifier) values (?1, ?2, ?3, ?4, ?5, ?6)",
-                 params![public_key_tag, public_key_value, "1", private_key_location, time_string, "minisign"])?;
+    // insert the key, and activate it
+    tx.execute(
+        sql::INSERT_AND_ACTIVATE_PERSONAL_KEY_PAIR,
+        params![
+            public_key_tag,
+            public_key_value,
+            "1",
+            private_key_location,
+            time_string,
+            "minisign"
+        ],
+    )?;
     tx.commit()?;
     Ok(())
 }
@@ -297,13 +303,7 @@ pub fn import_public_key(
 
     // fail if we already have the key
     {
-        let mut key_check = conn.prepare(
-            "SELECT wu.name, public_key_tag 
-FROM wapm_public_keys 
-JOIN wapm_users wu ON user_key = wu.id
-WHERE public_key_tag = (?1) 
-   OR public_key_value = (?2)",
-        )?;
+        let mut key_check = conn.prepare(sql::WAPM_PUBLIC_KEY_EXISTENCE_CHECK)?;
         let result = key_check.query_map(params![public_key_id, public_key_value], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?;
@@ -322,10 +322,7 @@ WHERE public_key_tag = (?1)
     // transact the new key
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    tx.execute(
-        "INSERT OR IGNORE INTO wapm_users (name) VALUES (?1)",
-        params![user_name],
-    )?;
+    tx.execute(sql::INSERT_USER, params![user_name])?;
 
     let time_string = get_current_time_in_format().expect("Could not get current time");
 
@@ -334,11 +331,7 @@ WHERE public_key_tag = (?1)
         &public_key_id, &user_name
     );
     tx.execute(
-        "INSERT INTO wapm_public_keys 
-(user_key, public_key_tag, public_key_value, key_type_identifier, date_added) 
-VALUES 
-((SELECT id FROM wapm_users WHERE name = (?1)), (?2), (?3), (?4), (?5))
-    ",
+        sql::INSERT_WAPM_PUBLIC_KEY,
         params![
             user_name,
             public_key_id,
@@ -356,14 +349,7 @@ pub fn get_latest_public_key_for_user(
     conn: &Connection,
     user_name: &str,
 ) -> Result<Option<WapmPublicKey>, failure::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT public_key_tag, public_key_value, date_added, key_type_identifier
-         FROM wapm_public_keys
-         JOIN wapm_users wu ON user_key = wu.id
-         WHERE wu.name = (?1)
-         ORDER BY date_added DESC
-         LIMIT 1",
-    )?;
+    let mut stmt = conn.prepare(sql::GET_LATEST_PUBLIC_KEY_FOR_USER)?;
 
     match stmt.query_row(params![user_name], |row| {
         Ok(Some(WapmPublicKey {
@@ -463,45 +449,10 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), M
         .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
     match migration_number {
         0 => {
-            tx.execute(
-                "create table personal_keys
-(
-    id integer primary key,
-    active integer not null,
-    public_key_tag text not null UNIQUE,
-    public_key_value text not null UNIQUE,
-    private_key_location text UNIQUE,
-    key_type_identifier text not null,
-    date_added text not null
-)",
-                params![],
-            )
-            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
-
-            tx.execute(
-                "create table wapm_users
-(
-    id integer primary key,
-    name text not null UNIQUE
-)",
-                params![],
-            )
-            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
-
-            tx.execute(
-                "create table wapm_public_keys
-(
-    id integer primary key,
-    user_key integer not null,
-    public_key_tag text not null UNIQUE,
-    public_key_value text not null UNIQUE,
-    key_type_identifier text not null,
-    date_added text not null,
-    FOREIGN KEY(user_key) REFERENCES wapm_users(id)
-)",
-                params![],
-            )
-            .map_err(|e| MigrationError::TransactionFailed(migration_number, format!("{}", e)))?;
+            tx.execute_batch(include_str!("sql/migrations/0000.sql"))
+                .map_err(|e| {
+                    MigrationError::TransactionFailed(migration_number, format!("{}", e))
+                })?;
         }
         _ => {
             return Err(MigrationError::MigrationNumberDoesNotExist(

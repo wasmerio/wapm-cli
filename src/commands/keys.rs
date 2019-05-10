@@ -48,7 +48,7 @@ pub struct Register {
 #[derive(StructOpt, Debug)]
 pub struct Delete {
     /// The identifier of the public key
-    public_key: String,
+    public_key_id: String,
 }
 
 /// Import a public key from somewhere else
@@ -103,9 +103,9 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             )?;
             println!("Key pair successfully added!")
         }
-        KeyOpt::Delete(Delete { public_key }) => {
+        KeyOpt::Delete(Delete { public_key_id }) => {
             let full_public_key =
-                get_full_personal_public_key_by_pattern(&key_db, public_key.clone())?;
+                get_full_personal_public_key_by_id(&key_db, public_key_id.clone())?;
             warn!(
                 "You are about to delete the key pair associated with {:?} from wapm.\nThis cannot be undone.",
                 &full_public_key
