@@ -225,8 +225,9 @@ pub fn add_personal_key_pair_to_database(
             .map_err(|e| format_err!("Could not read public key: {}", e))?,
     )?;
     println!("{:?}", public_key_id);
+    let private_key_path = PathBuf::from(&private_key_location).canonicalize()?;
+    let private_key_location = private_key_path.to_string_lossy().to_string();
     {
-        let private_key_path = PathBuf::from(&private_key_location);
         if !private_key_path.exists() {
             error!(
                 "Private key file not found at path: {}",
