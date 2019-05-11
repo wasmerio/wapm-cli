@@ -94,10 +94,7 @@ pub fn publish() -> Result<(), failure::Error> {
     let _compressed_archive = gz_enc.finish().unwrap();
     let mut compressed_archive_reader = fs::File::open(&archive_path)?;
 
-    let maybe_archive_signature = dbg!(sign_compressed_archive(dbg!(
-        &mut compressed_archive_reader
-    )))
-    .unwrap();
+    let maybe_archive_signature = sign_compressed_archive(&mut compressed_archive_reader).unwrap();
 
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),

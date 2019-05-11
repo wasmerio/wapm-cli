@@ -192,9 +192,8 @@ pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), 
 /// This function takes the raw output from Minisign and returns the key's tag
 /// and the key's value in base64
 pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Error> {
-    dbg!(&pk);
     let mut lines = pk.lines();
-    let first_line = dbg!(lines.next().ok_or(format_err!("Empty public key value"))?);
+    let first_line = lines.next().ok_or(format_err!("Empty public key value"))?;
     let second_line = lines
         .next()
         .ok_or(format_err!("Public key value must have two lines"))?;
