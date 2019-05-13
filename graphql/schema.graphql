@@ -1,5 +1,5 @@
 # source: https://registry.wapm.dev/graphql
-# timestamp: Wed Apr 24 2019 15:34:55 GMT-0700 (Pacific Daylight Time)
+# timestamp: Mon May 13 2019 11:55:33 GMT-0700 (Pacific Daylight Time)
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -15,7 +15,13 @@ String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
 
+input InputSignature {
+  publicKeyKeyId: String!
+  data: String!
+}
+
 type Mutation {
+  publishPublicKey(input: PublishPublicKeyInput!): PublishPublicKeyPayload
   publishPackage(input: PublishPackageInput!): PublishPackagePayload
   tokenAuth(input: ObtainJSONWebTokenInput!): ObtainJSONWebTokenPayload
   registerUser(input: RegisterUserInput!): RegisterUserPayload
@@ -56,6 +62,9 @@ type Package implements Node {
   alias: String
   displayName: String!
   lastVersion: PackageVersion
+
+  """The public keys for all the published versions"""
+  publicKeys: [PublicKey!]!
 }
 
 type PackageConnection {
@@ -89,6 +98,7 @@ type PackageVersion {
   createdAt: DateTime!
   updatedAt: DateTime!
   publishedBy: User!
+  signature: Signature
   file: String!
   distribution: PackageDistribution!
   isLastVersion: Boolean!
@@ -121,6 +131,18 @@ type PageInfo {
   endCursor: String
 }
 
+type PublicKey implements Node {
+  """The ID of the object."""
+  id: ID!
+  owner: User!
+  keyId: String!
+  key: String!
+  revokedAt: DateTime
+  uploadedAt: DateTime!
+  verifyingSignature: Signature
+  revoked: Boolean!
+}
+
 input PublishPackageInput {
   name: String!
   version: String!
@@ -132,12 +154,26 @@ input PublishPackageInput {
   repository: String
   homepage: String
   file: String
+  signature: InputSignature
   clientMutationId: String
 }
 
 type PublishPackagePayload {
   success: Boolean!
   packageVersion: PackageVersion!
+  clientMutationId: String
+}
+
+input PublishPublicKeyInput {
+  keyId: String!
+  key: String!
+  verifyingSignatureId: String
+  clientMutationId: String
+}
+
+type PublishPublicKeyPayload {
+  success: Boolean!
+  publicKey: PublicKey!
   clientMutationId: String
 }
 
@@ -192,6 +228,13 @@ type SearchEdge {
 }
 
 union SearchResult = PackageVersion
+
+type Signature {
+  id: ID!
+  publicKey: PublicKey!
+  data: String!
+  createdAt: DateTime!
+}
 
 type User {
   """Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."""

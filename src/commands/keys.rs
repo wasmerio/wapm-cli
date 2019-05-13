@@ -1,7 +1,10 @@
 //! Subcommand to deal with keys for signing wapm packages
 
+use crate::graphql::{self, DateTime};
 use crate::keys::*;
 use crate::util;
+
+use graphql_client::*;
 use prettytable::{format, Table};
 use structopt::StructOpt;
 
@@ -43,6 +46,14 @@ pub struct Register {
     #[structopt(long = "private")]
     private_key_location: String,
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/publish_public_key.graphql",
+    response_derives = "Debug"
+)]
+struct PublishPublicKeyMutation;
 
 /// Deletes a key to wapm
 #[derive(StructOpt, Debug)]
@@ -95,13 +106,27 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             public_key_location,
             private_key_location,
         }) => {
-            // mutate server
-            add_personal_key_pair_to_database(
+            let (pk_id, pk_v) = add_personal_key_pair_to_database(
                 &mut key_db,
                 public_key_location.clone(),
                 private_key_location.clone(),
             )?;
-            println!("Key pair successfully added!")
+            let q = PublishPublicKeyMutation::build_query(publish_public_key_mutation::Variables {
+                key_id: pk_id.clone(),
+                key: pk_v,
+                verifying_signature_id: None,
+            });
+            let response_or_err: Result<publish_public_key_mutation::ResponseData, _> =
+                graphql::execute_query(&q);
+            match response_or_err {
+                Ok(_) => println!("Key pair successfully added!"),
+                Err(e) => {
+                    error!("Failed to upload public key to server: {}", e);
+                    #[cfg(feature = "telemetry")]
+                    sentry::integrations::failure::capture_error(&e);
+                    info!("Rolling back database update")
+                }
+            };
         }
         KeyOpt::Delete(Delete { public_key_id }) => {
             let full_public_key =
@@ -124,7 +149,8 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             public_key_value,
         }) => {
             let user_name = user_name.trim().to_string();
-            import_public_key(&mut key_db, public_key_value, user_name)?;
+            let (pk_id, pkv) = normalize_public_key(public_key_value)?;
+            import_public_key(&mut key_db, &pk_id, &pkv, user_name)?;
         }
     }
 

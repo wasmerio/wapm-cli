@@ -11,6 +11,7 @@ query GetPackageQuery ($name: String!) {
         downloadUrl
       }
       manifest
+      signature
     }
   }
 }

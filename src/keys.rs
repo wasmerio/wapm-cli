@@ -59,6 +59,16 @@ pub struct WapmPublicKey {
     pub date_created: Timespec,
 }
 
+/// Information about a package signature downloaded from the registry
+#[derive(Debug, Clone)]
+pub struct WapmPackageSignature {
+    pub public_key_id: String,
+    pub public_key: String,
+    pub signature_data: String,
+    pub date_created: Timespec,
+    pub revoked: bool,
+}
+
 // TODO: make this more generic
 /// Opens an exclusive read/write connection to the database, creating it if it does not exist
 pub fn open_keys_db() -> Result<Connection, failure::Error> {
@@ -214,16 +224,17 @@ pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Err
 
 /// Adds a public/private key pair to the database (storing the public key directly
 /// and a path to a file containing the private key)
+/// Returns the public key ID and the public key value on success
 pub fn add_personal_key_pair_to_database(
     conn: &mut Connection,
     public_key_location: String,
     private_key_location: String,
-) -> Result<(), failure::Error> {
+) -> Result<(String, String), failure::Error> {
     let (public_key_id, public_key_value) = normalize_public_key(
         fs::read_to_string(&public_key_location)
             .map_err(|e| format_err!("Could not read public key: {}", e))?,
     )?;
-    println!("{:?}", public_key_id);
+    info!("Adding public key {:?} to local database", public_key_id);
     let private_key_path = PathBuf::from(&private_key_location).canonicalize()?;
     let private_key_location = private_key_path.to_string_lossy().to_string();
     {
@@ -289,18 +300,17 @@ pub fn add_personal_key_pair_to_database(
         ],
     )?;
     tx.commit()?;
-    Ok(())
+    Ok((public_key_id, public_key_value))
 }
 
 /// Parses a public key out of the given string and adds it to the database of
 /// trusted keys associated with the given user
 pub fn import_public_key(
     conn: &mut Connection,
-    public_key_string: String,
+    public_key_id: &str,
+    public_key_value: &str,
     user_name: String,
 ) -> Result<(), failure::Error> {
-    let (public_key_id, public_key_value) = normalize_public_key(public_key_string)?;
-
     // fail if we already have the key
     {
         let mut key_check = conn.prepare(sql::WAPM_PUBLIC_KEY_EXISTENCE_CHECK)?;
@@ -404,10 +414,13 @@ WHERE public_key_id = (?1)
 
 #[derive(Debug, Fail)]
 pub enum PersonalKeyError {
-    #[fail(display = "A public key matching {:?} already exists", _0)]
+    #[fail(
+        display = "A public key matching {:?} already exists in the local database",
+        _0
+    )]
     PublicKeyAlreadyExists(String),
     #[fail(
-        display = "The private key at {:?} is already assoicated with public key {:?}",
+        display = "The private key at {:?} is already assoicated with public key {:?} in the local database",
         _0, _1
     )]
     PrivateKeyAlreadyRegistered(String, String),
@@ -416,7 +429,7 @@ pub enum PersonalKeyError {
 #[derive(Debug, Fail)]
 pub enum WapmPublicKeyError {
     #[fail(
-        display = "A public key matching {:?} already exists on user {:?}",
+        display = "A public key matching {:?} already exists on user {:?} in the local database",
         _0, _1
     )]
     PublicKeyAlreadyExists(String, String),

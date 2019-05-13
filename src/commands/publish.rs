@@ -94,7 +94,26 @@ pub fn publish() -> Result<(), failure::Error> {
     let _compressed_archive = gz_enc.finish().unwrap();
     let mut compressed_archive_reader = fs::File::open(&archive_path)?;
 
-    let maybe_archive_signature = sign_compressed_archive(&mut compressed_archive_reader).unwrap();
+    let maybe_signature_data = match sign_compressed_archive(&mut compressed_archive_reader)? {
+        SignArchiveResult::Ok {
+            public_key_id,
+            signature,
+        } => {
+            info!(
+                "Package successfully signed with public key: \"{}\"!",
+                &public_key_id
+            );
+            Some(publish_package_mutation::InputSignature {
+                public_key_key_id: public_key_id,
+                data: signature,
+            })
+        }
+        SignArchiveResult::NoKeyRegistered => {
+            // TODO: uncomment this when we actually want users to start using it
+            //warn!("Publishing package without a verifying signature. Consider registering a key pair with wapm");
+            None
+        }
+    };
 
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
@@ -107,6 +126,7 @@ pub fn publish() -> Result<(), failure::Error> {
         repository: package.repository.clone(),
         homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
+        signature: maybe_signature_data,
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
@@ -114,9 +134,7 @@ pub fn publish() -> Result<(), failure::Error> {
         execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
             |e| {
                 #[cfg(feature = "telemetry")]
-                {
-                    sentry::integrations::failure::capture_error(&e);
-                }
+                sentry::integrations::failure::capture_error(&e);
                 e
             },
         )?;
@@ -140,11 +158,26 @@ enum PublishError {
     ErrorBuildingPackage(String),
 }
 
+#[derive(Debug)]
+pub enum SignArchiveResult {
+    Ok {
+        public_key_id: String,
+        signature: String,
+    },
+    NoKeyRegistered,
+}
+
+/// Takes the package archive as a File and attempts to sign it using the active key
+/// returns the public key id used to sign it and the signature string itself
 pub fn sign_compressed_archive(
     compressed_archive: &mut fs::File,
-) -> Result<String, failure::Error> {
+) -> Result<SignArchiveResult, failure::Error> {
     let key_db = keys::open_keys_db()?;
-    let personal_key = keys::get_active_personal_key(&key_db)?;
+    let personal_key = if let Ok(v) = keys::get_active_personal_key(&key_db) {
+        v
+    } else {
+        return Ok(SignArchiveResult::NoKeyRegistered);
+    };
     let password = rpassword::prompt_password_stdout(&format!(
         "Please enter your password for the key pair {}:",
         &personal_key.public_key_id
@@ -166,15 +199,18 @@ pub fn sign_compressed_archive(
         warn!("Active key does not have a private key location registered with it!");
         return Err(format_err!("Cannot sign package, no private key"));
     };
-    Ok(minisign::sign(
-        Some(&minisign::PublicKey::from_base64(
-            &personal_key.public_key_value,
-        )?),
-        &private_key,
-        compressed_archive,
-        false,
-        None,
-        None,
-    )?
-    .to_string())
+    Ok(SignArchiveResult::Ok {
+        public_key_id: personal_key.public_key_id,
+        signature: (minisign::sign(
+            Some(&minisign::PublicKey::from_base64(
+                &personal_key.public_key_value,
+            )?),
+            &private_key,
+            compressed_archive,
+            false,
+            None,
+            None,
+        )?
+        .to_string()),
+    })
 }

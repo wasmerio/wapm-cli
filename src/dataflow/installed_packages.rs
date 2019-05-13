@@ -80,9 +80,9 @@ impl<'a> InstalledPackages<'a> {
             resolve_packages
                 .packages
                 .into_iter()
-                .map(|(key, download_url)| {
+                .map(|(key, (download_url, signature))| {
                     info!("Installing {}@{}", key.name, key.version);
-                    Installer::install_package(&directory, key, &download_url)
+                    Installer::install_package(&directory, key, &download_url, signature)
                 })
                 .collect();
         let packages_result: Result<Vec<(WapmPackageKey, Manifest, String)>, Error> =
@@ -118,6 +118,7 @@ pub trait Install<'a> {
         directory: P,
         key: WapmPackageKey<'a>,
         download_url: S,
+        signature: Option<keys::WapmPackageSignature>,
     ) -> Result<(WapmPackageKey, PathBuf, String), Error>;
 }
 
@@ -145,6 +146,7 @@ impl<'a> Install<'a> for RegistryInstaller {
         directory: P,
         key: WapmPackageKey,
         download_url: S,
+        signature: Option<keys::WapmPackageSignature>,
     ) -> Result<(WapmPackageKey, PathBuf, String), Error> {
         let (namespace, pkg_name) = get_package_namespace_and_name(&key.name)
             .map_err(|e| Error::FailedToParsePackageName(key.to_string(), e.to_string()))?;
@@ -172,17 +174,6 @@ impl<'a> Install<'a> for RegistryInstaller {
                 }
                 Error::DownloadError(key.to_string(), error_message)
             })?;
-        // download public key
-        // all public keys on wapm.io should be signed with previous public key?
-        let timestamp = 0;
-        let public_keys_from_server: Vec<(String, Option<String>, usize)> = vec![(
-            "untrusted comment: minisign public key DC249F90130EC9F7
-RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
-                .to_string(),
-            Some("SIGNATURE".to_string()),
-            timestamp,
-        )];
-        // sort by timestamp
 
         let mut keys_db = keys::open_keys_db().map_err(|e| {
             Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
@@ -191,8 +182,8 @@ RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
             .map_err(|e| {
                 Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
             })?;
-        let mut import_public_key = |pk_str| {
-            keys::import_public_key(&mut keys_db, pk_str, namespace.to_string()).map_err(|e| {
+        let mut import_public_key = |pk_id, pkv| {
+            keys::import_public_key(&mut keys_db, pk_id, pkv, namespace.to_string()).map_err(|e| {
                 Error::KeyManagementError(
                     fully_qualified_package_name.clone(),
                     format!("could not add public key: {}", e),
@@ -202,107 +193,79 @@ RWT3yQ4TkJ8k3D0GZp0AK4xb94n59yDu5GaDdB//x37pEjs8kFGQ1mv1"
 
         let mut insecure_install = false;
         let mut key_to_verify_package_with = None;
+        let mut signature_to_use = None;
 
-        match (!public_keys_from_server.is_empty(), latest_public_key) {
+        match (signature, latest_public_key) {
             // server has key and client has key
-            (true, Some(latest_local_key)) => {
+            (
+                Some(keys::WapmPackageSignature {
+                    public_key_id,
+                    public_key,
+                    signature_data,
+                    ..
+                }),
+                Some(latest_local_key),
+            ) => {
                 // verify or prompt and store
-                match keys::normalize_public_key(public_keys_from_server[0].0.clone()) {
-                    Ok((pk_id, pkv)) => {
-                        if pk_id == latest_local_key.public_key_id
-                            && pkv == latest_local_key.public_key_value
-                        {
-                            // keys match
-                            trace!("Public key from server matches latest key locally");
-                            key_to_verify_package_with = Some((
-                                latest_local_key.public_key_id,
-                                latest_local_key.public_key_value,
-                            ));
-                        } else {
-                            // mismatch, prompt user
-                            let user_trusts_new_key =
+                if public_key_id == latest_local_key.public_key_id
+                    && public_key == latest_local_key.public_key_value
+                {
+                    // keys match
+                    trace!("Public key from server matches latest key locally");
+                    key_to_verify_package_with = Some((
+                        latest_local_key.public_key_id,
+                        latest_local_key.public_key_value,
+                    ));
+                } else {
+                    // mismatch, prompt user
+                    let user_trusts_new_key =
                         util::prompt_user_for_yes(&format!(
                             "The keys {:?} and {:?} do not match. Do you want to trust the new key ({:?} {:?})?",
-                            &latest_local_key.public_key_id, &pk_id, &pk_id, &pkv
+                            &latest_local_key.public_key_id, &public_key_id, &public_key_id, &public_key
                         )).expect("Could not read input from user");
 
-                            if user_trusts_new_key {
-                                import_public_key(public_keys_from_server[0].0.clone())?;
-                                key_to_verify_package_with = Some((pk_id, pkv));
-                            } else {
-                                return Err(Error::InstallAborted(format!(
-                                    "Mismatching key on package {} was not trusted by user",
-                                    &fully_qualified_package_name
-                                )));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        // server key could not be normalized corrupt
-                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used.",
-                          &public_keys_from_server[0].0, fully_qualified_package_name);
-                        debug!("Corrupt public key: {}", e.to_string());
-                        println!(
-                            "Proceeding with local key {}",
-                            &latest_local_key.public_key_id
-                        );
-                        key_to_verify_package_with = Some((
-                            latest_local_key.public_key_id,
-                            latest_local_key.public_key_value,
-                        ));
+                    if user_trusts_new_key {
+                        import_public_key(&public_key_id, &public_key)?;
+                        key_to_verify_package_with = Some((public_key_id, public_key));
+                        signature_to_use = Some(signature_data);
+                    } else {
+                        return Err(Error::InstallAborted(format!(
+                            "Mismatching key on package {} was not trusted by user",
+                            &fully_qualified_package_name
+                        )));
                     }
                 }
             }
             // server has key and client does not have key
-            (true, None) => {
+            (
+                Some(keys::WapmPackageSignature {
+                    public_key_id,
+                    public_key,
+                    signature_data,
+                    ..
+                }),
+                None,
+            ) => {
                 // prompt and store
-                match keys::normalize_public_key(public_keys_from_server[0].0.clone()) {
-                    Ok((pk_id, pkv)) => {
-                        let user_trusts_new_key = util::prompt_user_for_yes(&format!(
-                            "New public key encountered: {} {} while installing {}.
+                let user_trusts_new_key = util::prompt_user_for_yes(&format!(
+                    "New public key encountered: {} {} while installing {}.
 Would you like to trust this key?",
-                            &pk_id, &pkv, &fully_qualified_package_name
-                        ))
-                        .expect("Could not read input from user");
-                        if user_trusts_new_key {
-                            import_public_key(public_keys_from_server[0].0.clone())?;
-                            key_to_verify_package_with = Some((pk_id, pkv));
-                        } else {
-                            return Err(Error::InstallAborted(format!(
-                                "User did not trust key from registry for package {}",
-                                &fully_qualified_package_name
-                            )));
-                        }
-                    }
-                    Err(e) => {
-                        // key from server is corrupt
-                        warn!("The public key ({:?}) downloaded from the registry for package {} is corrupt and cannot be used.",
-                          &public_keys_from_server[0].0, fully_qualified_package_name);
-                        debug!("Corrupt public key: {}", e.to_string());
-                        let user_wants_insecure_install_on_corrupt_key =
-                            util::prompt_user_for_yes(&format!(
-                                "Would you like to proceed with an insecure installation of {}",
-                                fully_qualified_package_name
-                            ))
-                            .expect("Could not read input from user");
-
-                        if user_wants_insecure_install_on_corrupt_key {
-                            info!(
-                                "Installing {} without verification",
-                                &fully_qualified_package_name
-                            );
-                            insecure_install = true;
-                        } else {
-                            return Err(Error::InstallAborted(format!(
-                            "Key from server was corrupt and user declined to proceed with an insecure installation for package {}",
-                            &fully_qualified_package_name
-                        )));
-                        }
-                    }
+                    &public_key_id, &public_key, &fully_qualified_package_name
+                ))
+                .expect("Could not read input from user");
+                if user_trusts_new_key {
+                    import_public_key(&public_key_id, &public_key)?;
+                    key_to_verify_package_with = Some((public_key_id, public_key));
+                    signature_to_use = Some(signature_data);
+                } else {
+                    return Err(Error::InstallAborted(format!(
+                        "User did not trust key from registry for package {}",
+                        &fully_qualified_package_name
+                    )));
                 }
             }
             // server does not have key and client has key
-            (false, Some(latest_local_key)) => {
+            (None, Some(latest_local_key)) => {
                 // server error or scary things happening
                 warn!(
                     "The server does not have a public key for {} for the package {}. This could mean that the wapm registry has been compromised.  Continuning with local public key {}",
@@ -315,7 +278,7 @@ Would you like to trust this key?",
                 ));
             }
             // server does not have key and client does not have key
-            (false, None) => {
+            (None, None) => {
                 // silently proceed to insecure install for now
                 insecure_install = true;
             }
@@ -336,10 +299,10 @@ Would you like to trust this key?",
         if !insecure_install {
             // TODO: refactor to remove extra bit of info here
             let (pk_id, pkv) = key_to_verify_package_with.expect("Critical internal logic error");
-            let sig_path = "/dog/face/nose";
+            let signature_to_use = signature_to_use.expect("Critical internal logic error");
             let public_key = minisign::PublicKey::from_base64(&pkv)
                 .map_err(|e| Error::InvalidKey(pk_id.clone(), e.to_string()))?;
-            let sig_box = minisign::SignatureBox::from_file(&sig_path)
+            let sig_box = minisign::SignatureBox::from_string(&signature_to_use)
                 .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
             if let Err(e) = minisign::verify(&public_key, &sig_box, &dest, true, false) {
                 return Err(Error::InvalidSignature(
