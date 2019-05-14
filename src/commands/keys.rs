@@ -106,7 +106,7 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             public_key_location,
             private_key_location,
         }) => {
-            let (pk_id, pk_v) = add_personal_key_pair_to_database(
+            let (pk_id, pk_v, tx) = add_personal_key_pair_to_database(
                 &mut key_db,
                 public_key_location.clone(),
                 private_key_location.clone(),
@@ -119,12 +119,19 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             let response_or_err: Result<publish_public_key_mutation::ResponseData, _> =
                 graphql::execute_query(&q);
             match response_or_err {
-                Ok(_) => println!("Key pair successfully added!"),
+                Ok(_) => {
+                    tx.commit().map_err(|e| {
+                        format_err!(
+                            "Failed to store key pair in local database: {}",
+                            e.to_string()
+                        )
+                    })?;
+                    println!("Key pair successfully added!")
+                }
                 Err(e) => {
                     error!("Failed to upload public key to server: {}", e);
                     #[cfg(feature = "telemetry")]
                     sentry::integrations::failure::capture_error(&e);
-                    info!("Rolling back database update")
                 }
             };
         }

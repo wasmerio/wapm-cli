@@ -202,9 +202,9 @@ pub fn sign_compressed_archive(
     Ok(SignArchiveResult::Ok {
         public_key_id: personal_key.public_key_id,
         signature: (minisign::sign(
-            Some(&minisign::PublicKey::from_base64(dbg!(
-                &personal_key.public_key_value
-            ))?),
+            Some(&minisign::PublicKey::from_base64(
+                &personal_key.public_key_value,
+            )?),
             &private_key,
             compressed_archive,
             false,

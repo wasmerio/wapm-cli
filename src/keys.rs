@@ -231,7 +231,7 @@ pub fn add_personal_key_pair_to_database(
     conn: &mut Connection,
     public_key_location: String,
     private_key_location: String,
-) -> Result<(String, String), failure::Error> {
+) -> Result<(String, String, rusqlite::Transaction), failure::Error> {
     let (public_key_id, public_key_value) = normalize_public_key(
         fs::read_to_string(&public_key_location)
             .map_err(|e| format_err!("Could not read public key: {}", e))?,
@@ -301,8 +301,7 @@ pub fn add_personal_key_pair_to_database(
             "minisign"
         ],
     )?;
-    tx.commit()?;
-    Ok((public_key_id, public_key_value))
+    Ok((public_key_id, public_key_value, tx))
 }
 
 /// Parses a public key out of the given string and adds it to the database of
