@@ -214,31 +214,3 @@ pub fn sign_compressed_archive(
         .to_string()),
     })
 }
-
-#[cfg(test)]
-mod test {
-    #[test]
-    fn sanity_check() {
-        let public_key = "untrusted comment: minisign public key 5FEF3CC99A1A0B9A
-RWSaCxqayTzvX7Z7WFll8+NG1fJA+km1NdpE/GGPntezgtxK0+JR+8Q2";
-        let private_key = "untrusted comment: minisign encrypted secret key
-RWRTY0Iy2cqDRku4/SMq+msoJevz1d6mEGg9U5rodI7/QoZIaVsAAAACAAAAAAAAAEAAAAAA0h8OGSC4UM/cKsyEy8SIy7vSeG50+w/Tm1L4cjfxFuGjsyxH3TKBglJSUuyR0lX3ZPt5P8Pzt7ALfqHU0eosJL5uHxSAC+jLfGQp15wiwJdUAogTh73j+erXTWECoBnEZpBNoxJ6f7I=";
-
-        let data = std::fs::File::open("/Users/mark/hello.txt").unwrap();
-
-        let pub_key = minisign::PublicKey::from_base64(&public_key.lines().skip(1).next().unwrap())
-            .expect("PK");
-        let priv_key = minisign::SecretKey::from_file(
-            "/Users/mark/.minisign/minisign.key",
-            Some("aoeu".to_string()),
-        )
-        .expect("PrivK");
-
-        let sig = minisign::sign(Some(&pub_key), &priv_key, &data, false, None, None)
-            .expect("sign")
-            .to_string();
-
-        let sig_box = minisign::SignatureBox::from_string(&sig).expect("sig box");
-        assert!(minisign::verify(&pub_key, &sig_box, &data, true, false).is_ok());
-    }
-}
