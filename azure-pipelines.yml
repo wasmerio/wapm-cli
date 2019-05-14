@@ -45,6 +45,23 @@ jobs:
           rm wapm.toml
           rm -rf wapm_packages
         displayName: 'Regression test: Install, Uninstall, Run, and List'
+      - script: |
+          curl https://get.wasmer.io -sSfL | sh
+          export PATH=$PATH:$HOME/.cargo/bin
+          export PATH=$PATH:$HOME/.wasmer/bin
+          export WAPM_DISABLE_COLOR=true
+          chmod +x end-to-end-tests/verification.sh
+          echo "RUNNING SCRIPT..."
+          ./end-to-end-tests/verification.sh > /tmp/verification-out.txt
+          echo "GENERATED OUTPUT:"
+          cat /tmp/verification-out.txt
+          echo "COMPARING..."
+          diff -B end-to-end-tests/verification.txt /tmp/verification-out.txt
+          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
+        displayName: 'Regression test: verification and public key management'
   - job: Windows
     pool:
       vmImage: 'windows-2019'

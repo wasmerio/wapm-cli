@@ -133,14 +133,18 @@ impl<'a> Resolve<'a> for RegistryResolver {
                             public_key: gq_sig.public_key.key,
                             signature_data: gq_sig.data,
                             date_created: {
-                                time::strptime(&gq_sig.created_at, keys::RFC3339_FORMAT_STRING)
-                                    .expect(&format!(
-                                        "Failed to parse time string {}",
-                                        &gq_sig.created_at
-                                    ))
-                                    .to_timespec()
+                                time::strptime(
+                                    &gq_sig.created_at,
+                                    keys::RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                                )
+                                .expect(&format!(
+                                    "Failed to parse time string {}",
+                                    &gq_sig.created_at
+                                ))
+                                .to_timespec()
                             },
                             revoked: gq_sig.public_key.revoked,
+                            owner: gq_sig.public_key.owner.username,
                         });
                         (n.clone(), version, download_url, signature)
                     })
@@ -224,6 +228,7 @@ mod test {
     use crate::dataflow::added_packages::AddedPackages;
     use crate::dataflow::resolved_packages::{Error, Resolve, ResolvedPackages};
     use crate::dataflow::{PackageKey, WapmPackageKey, WapmPackageRange};
+    use crate::keys;
     use std::collections::HashSet;
 
     struct TestResolver;
@@ -232,7 +237,13 @@ mod test {
     impl<'a> Resolve<'a> for TestResolver {
         fn sync_packages(
             added_packages: Vec<PackageKey<'a>>,
-        ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
+        ) -> Result<
+            Vec<(
+                WapmPackageKey<'a>,
+                (String, Option<keys::WapmPackageSignature>),
+            )>,
+            Error,
+        > {
             Ok(added_packages
                 .into_iter()
                 .filter(|k| {
@@ -253,14 +264,14 @@ mod test {
                             name,
                             version: semver::Version::new(0, 0, 0),
                         },
-                        "url".to_string(),
+                        ("url".to_string(), None),
                     ),
                     PackageKey::WapmPackageRange(WapmPackageRange { name, .. }) => (
                         WapmPackageKey {
                             name,
                             version: semver::Version::new(0, 0, 0),
                         },
-                        "url".to_string(),
+                        ("url".to_string(), None),
                     ),
                 })
                 .collect())

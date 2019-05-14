@@ -24,6 +24,7 @@ use std::{fs, path::PathBuf};
 use time::Timespec;
 
 pub const RFC3339_FORMAT_STRING: &'static str = "%Y-%m-%dT%H:%M:%S-%f";
+pub const RFC3339_FORMAT_STRING_WITH_TIMEZONE: &'static str = "%Y-%m-%dT%H:%M:%S.%f+%Z";
 pub const CURRENT_DATA_VERSION: i32 = 1;
 const MINISIGN_TAG_LENGTH: usize = 16;
 
@@ -67,6 +68,7 @@ pub struct WapmPackageSignature {
     pub signature_data: String,
     pub date_created: Timespec,
     pub revoked: bool,
+    pub owner: String,
 }
 
 // TODO: make this more generic

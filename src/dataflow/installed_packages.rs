@@ -11,7 +11,7 @@ use flate2::read::GzDecoder;
 use reqwest::ClientBuilder;
 use std::fs::OpenOptions;
 use std::io;
-use std::io::SeekFrom;
+use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use tar::Archive;
 
@@ -54,13 +54,8 @@ pub enum Error {
         _0, _1
     )]
     KeyManagementError(String, String),
-    #[fail(display = "Key {} could not be used because it's invalid: {}", _0, _1)]
-    InvalidKey(String, String),
-    #[fail(
-        display = "Invalid signature on package {} with key {}: {}",
-        _0, _1, _2
-    )]
-    InvalidSignature(String, String, String),
+    #[fail(display = "Failed to validate package {} with key {}: {}", _0, _1, _2)]
+    FailedToValidateSignature(String, String, String),
 }
 
 /// A structure containing installed packages. Currently contains the key, the deserialized
@@ -182,8 +177,8 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|e| {
                 Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
             })?;
-        let mut import_public_key = |pk_id, pkv| {
-            keys::import_public_key(&mut keys_db, pk_id, pkv, namespace.to_string()).map_err(|e| {
+        let mut import_public_key = |pk_id, pkv, associated_user| {
+            keys::import_public_key(&mut keys_db, pk_id, pkv, associated_user).map_err(|e| {
                 Error::KeyManagementError(
                     fully_qualified_package_name.clone(),
                     format!("could not add public key: {}", e),
@@ -202,6 +197,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                     public_key_id,
                     public_key,
                     signature_data,
+                    owner,
                     ..
                 }),
                 Some(latest_local_key),
@@ -216,6 +212,8 @@ impl<'a> Install<'a> for RegistryInstaller {
                         latest_local_key.public_key_id,
                         latest_local_key.public_key_value,
                     ));
+
+                    signature_to_use = Some(signature_data);
                 } else {
                     // mismatch, prompt user
                     let user_trusts_new_key =
@@ -225,7 +223,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                         )).expect("Could not read input from user");
 
                     if user_trusts_new_key {
-                        import_public_key(&public_key_id, &public_key)?;
+                        import_public_key(&public_key_id, &public_key, owner)?;
                         key_to_verify_package_with = Some((public_key_id, public_key));
                         signature_to_use = Some(signature_data);
                     } else {
@@ -242,6 +240,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                     public_key_id,
                     public_key,
                     signature_data,
+                    owner,
                     ..
                 }),
                 None,
@@ -254,7 +253,7 @@ Would you like to trust this key?",
                 ))
                 .expect("Could not read input from user");
                 if user_trusts_new_key {
-                    import_public_key(&public_key_id, &public_key)?;
+                    import_public_key(&public_key_id, &public_key, owner)?;
                     key_to_verify_package_with = Some((public_key_id, public_key));
                     signature_to_use = Some(signature_data);
                 } else {
@@ -297,29 +296,40 @@ Would you like to trust this key?",
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
 
         if !insecure_install {
-            // TODO: refactor to remove extra bit of info here
             let (pk_id, pkv) = key_to_verify_package_with.expect("Critical internal logic error");
             let signature_to_use = signature_to_use.expect("Critical internal logic error");
-            let public_key = minisign::PublicKey::from_base64(&pkv)
-                .map_err(|e| Error::InvalidKey(pk_id.clone(), e.to_string()))?;
-            let sig_box = minisign::SignatureBox::from_string(&signature_to_use)
-                .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-            if let Err(e) = minisign::verify(&public_key, &sig_box, &dest, true, false) {
-                return Err(Error::InvalidSignature(
+            verify_signature_on_package(&pkv, &signature_to_use, &mut dest).map_err(|e| {
+                Error::FailedToValidateSignature(
                     fully_qualified_package_name.clone(),
                     pk_id,
                     e.to_string(),
-                ));
-            } else {
-                info!(
-                    "Signature of package {} verified!",
-                    &fully_qualified_package_name
-                );
-            }
+                )
+            })?;
+            info!(
+                "Signature of package {} verified!",
+                &fully_qualified_package_name
+            );
         }
 
         Self::decompress_and_extract_archive(dest, &package_dir, &key)
             .map_err(|e| Error::DecompressionError(key.to_string(), e.to_string()))?;
         Ok((key, package_dir, download_url.as_ref().to_string()))
     }
+}
+
+/// Verifies the signature of a downloaded package archive
+fn verify_signature_on_package(
+    pkv: &str,
+    signature_to_use: &str,
+    dest: &mut std::fs::File,
+) -> Result<(), failure::Error> {
+    dest.seek(SeekFrom::Start(0))?;
+    // TODO: refactor to remove extra bit of info here
+    let public_key = minisign::PublicKey::from_base64(&pkv)
+        .map_err(|e| format_err!("Invalid key: {}", e.to_string()))?;
+    let sig_box = minisign::SignatureBox::from_string(&signature_to_use)
+        .map_err(|e| format_err!("Error with downloaded signature: {}", e.to_string()))?;
+
+    minisign::verify(&public_key, &sig_box, dest, true, false)
+        .map_err(|e| format_err!("Could not validate signature: {}", e.to_string()))
 }
