@@ -1,6 +1,7 @@
 use crate::dataflow::added_packages::AddedPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey, WapmPackageRange};
-use crate::graphql::execute_query;
+use crate::graphql::{execute_query, DateTime};
+use crate::keys;
 use graphql_client::*;
 use semver::Version;
 use std::borrow::Cow::Owned;
@@ -25,7 +26,10 @@ pub enum Error {
 /// and download URLs.
 #[derive(Clone, Debug, Default)]
 pub struct ResolvedPackages<'a> {
-    pub packages: Vec<(WapmPackageKey<'a>, String)>,
+    pub packages: Vec<(
+        WapmPackageKey<'a>,
+        (String, Option<keys::WapmPackageSignature>),
+    )>,
 }
 
 impl<'a> ResolvedPackages<'a> {
@@ -65,7 +69,13 @@ impl<'a> ResolvedPackages<'a> {
 pub trait Resolve<'a> {
     fn sync_packages(
         added_packages: Vec<PackageKey<'a>>,
-    ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error>;
+    ) -> Result<
+        Vec<(
+            WapmPackageKey<'a>,
+            (String, Option<keys::WapmPackageSignature>),
+        )>,
+        Error,
+    >;
 }
 
 pub struct RegistryResolver;
@@ -89,91 +99,123 @@ impl<'a> Resolve<'a> for RegistryResolver {
     /// This gross function queries the GraphQL server. See the schema in `/graphql/queries/get_packages.graphql`
     fn sync_packages(
         added_packages: Vec<PackageKey<'a>>,
-    ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
+    ) -> Result<
+        Vec<(
+            WapmPackageKey<'a>,
+            (String, Option<keys::WapmPackageSignature>),
+        )>,
+        Error,
+    > {
         // fetch data from graphql server
         let response = Self::get_response(added_packages.clone());
-        let all_packages_and_download_urls: Vec<(String, Version, String)> = response
+        let all_packages_and_download_urls: Vec<(
+            String,
+            Version,
+            String,
+            Option<keys::WapmPackageSignature>,
+        )> = response
             .package
             .into_iter()
             .filter_map(|p| p)
-            .filter_map(|p| {
-                let versions = p.versions.unwrap_or(vec![]);
+            .map(|p| {
+                let versions = p.versions.unwrap_or_default();
                 let name = p.name;
-                Some((name, versions))
+                (name, versions)
             })
-            .map(|(n, vs)| {
+            .flat_map(|(n, vs)| {
                 vs.into_iter()
                     .filter_map(|o| o)
                     .map(|v| {
                         let version = v.version;
                         let download_url = v.distribution.download_url;
-                        (n.clone(), version, download_url)
+                        let signature = v.signature.map(|gq_sig| keys::WapmPackageSignature {
+                            public_key_id: gq_sig.public_key.key_id,
+                            public_key: gq_sig.public_key.key,
+                            signature_data: gq_sig.data,
+                            date_created: {
+                                time::strptime(
+                                    &gq_sig.created_at,
+                                    keys::RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                                )
+                                .expect(&format!(
+                                    "Failed to parse time string {}",
+                                    &gq_sig.created_at
+                                ))
+                                .to_timespec()
+                            },
+                            revoked: gq_sig.public_key.revoked,
+                            owner: gq_sig.public_key.owner.username,
+                        });
+                        (n.clone(), version, download_url, signature)
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
-            .map(|(name, version, download_url)| {
+            .map(|(name, version, download_url, signature)| {
                 Version::parse(&version)
-                    .map(|version| (name, version, download_url))
+                    .map(|version| (name, version, download_url, signature))
                     .map_err(|e| Error::CouldNotResolvePackages(e.to_string()))
             })
-            .collect::<Result<Vec<(_, _, _)>, Error>>()?;
+            .collect::<Result<Vec<(_, _, _, _)>, Error>>()?;
 
         // lookup by exact package key
         let exact_package_lookup: HashMap<_, _> = all_packages_and_download_urls
             .iter()
             .cloned()
-            .map(|(name, version, download_url)| {
+            .map(|(name, version, download_url, signature)| {
                 (
                     WapmPackageKey {
                         name: Owned(name),
                         version,
                     },
-                    download_url,
+                    (download_url, signature),
                 )
             })
             .collect();
 
         // lookup versions by name, used for matching package version ranges
         let mut package_versions_lookup: HashMap<String, Vec<Version>> = HashMap::new();
-        for (name, version, _) in all_packages_and_download_urls {
+        for (name, version, _, _) in all_packages_and_download_urls {
             let versions = package_versions_lookup.entry(name).or_default();
             versions.push(version);
         }
 
         // filter all the package-versions + download_urls by exact version or version range
-        let packages_and_download_urls: Vec<(WapmPackageKey, String)> = added_packages
+        let packages_and_download_urls: Vec<(
+            WapmPackageKey,
+            (String, Option<keys::WapmPackageSignature>),
+        )> = added_packages
             .into_iter()
             .filter_map(|added_package| match added_package {
                 // if exact, then use the lookup table
                 PackageKey::WapmPackage(wapm_package_key) => exact_package_lookup
                     .get(&wapm_package_key)
-                    .map(|d| (wapm_package_key, d.clone())),
+                    .map(|(d, s)| (wapm_package_key, (d.clone(), s.clone()))),
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
                     let matching_version: Option<Version> = package_versions_lookup
                         .get(range.name.as_ref())
-                        .map(|versions| {
+                        .and_then(|versions| {
                             let max_version: Option<Version> = versions
                                 .iter()
                                 .cloned()
                                 .filter(|v| range.version_req.matches(v))
                                 .max(); // get the max version number after filtering by version requirement
                             max_version
-                        })
-                        .unwrap_or_default();
+                        });
                     // join the key with the download url by using the package-key lookup table
-                    let key_and_download_url: Option<(WapmPackageKey, String)> = matching_version
-                        .map(|version| {
-                            let key = WapmPackageKey {
-                                name: range.name,
-                                version,
-                            };
-                            let download_url = exact_package_lookup.get(&key);
-                            download_url.map(|dl| (key, dl.clone()))
-                        })
-                        .unwrap_or_default();
-                    key_and_download_url
+                    let key_and_data: Option<(
+                        WapmPackageKey,
+                        (String, Option<keys::WapmPackageSignature>),
+                    )> = matching_version.and_then(|version| {
+                        let key = WapmPackageKey {
+                            name: range.name,
+                            version,
+                        };
+                        let data = exact_package_lookup.get(&key);
+                        data.cloned()
+                            .map(|(dl_url, signature)| (key, (dl_url, signature)))
+                    });
+                    key_and_data
                 }
             })
             .collect();
@@ -186,6 +228,7 @@ mod test {
     use crate::dataflow::added_packages::AddedPackages;
     use crate::dataflow::resolved_packages::{Error, Resolve, ResolvedPackages};
     use crate::dataflow::{PackageKey, WapmPackageKey, WapmPackageRange};
+    use crate::keys;
     use std::collections::HashSet;
 
     struct TestResolver;
@@ -194,7 +237,13 @@ mod test {
     impl<'a> Resolve<'a> for TestResolver {
         fn sync_packages(
             added_packages: Vec<PackageKey<'a>>,
-        ) -> Result<Vec<(WapmPackageKey<'a>, String)>, Error> {
+        ) -> Result<
+            Vec<(
+                WapmPackageKey<'a>,
+                (String, Option<keys::WapmPackageSignature>),
+            )>,
+            Error,
+        > {
             Ok(added_packages
                 .into_iter()
                 .filter(|k| {
@@ -215,14 +264,14 @@ mod test {
                             name,
                             version: semver::Version::new(0, 0, 0),
                         },
-                        "url".to_string(),
+                        ("url".to_string(), None),
                     ),
                     PackageKey::WapmPackageRange(WapmPackageRange { name, .. }) => (
                         WapmPackageKey {
                             name,
                             version: semver::Version::new(0, 0, 0),
                         },
-                        "url".to_string(),
+                        ("url".to_string(), None),
                     ),
                 })
                 .collect())

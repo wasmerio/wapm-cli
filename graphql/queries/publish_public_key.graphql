@@ -1,0 +1,16 @@
+mutation PublishPublicKeyMutation($keyId: String!, $key: String!, $verifyingSignatureId: String) {
+  publishPublicKey(input: {
+    keyId: $keyId,
+    key: $key,
+    verifyingSignatureId: $verifyingSignatureId,
+    clientMutationId: ""
+  }) {
+    success
+    publicKey {
+      keyId
+      key
+      revokedAt
+      uploadedAt
+    }
+  }
+}

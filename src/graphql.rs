@@ -14,6 +14,7 @@ enum GraphQLError {
 }
 
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub type DateTime = String;
 
 pub fn execute_query_modifier<R, V, F>(
     query: &QueryBody<V>,

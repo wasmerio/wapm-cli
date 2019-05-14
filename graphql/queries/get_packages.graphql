@@ -6,6 +6,19 @@ query GetPackagesQuery ($names: [String!]!) {
             distribution {
                 downloadUrl
             }
+            signature {
+                publicKey {
+                    keyId
+                    owner {
+                        username
+                    }
+                    key
+                    uploadedAt
+                    revoked
+                }
+                data
+                createdAt
+            }
         }
     }
 }
