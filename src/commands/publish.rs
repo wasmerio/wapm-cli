@@ -80,13 +80,26 @@ pub fn publish() -> Result<(), failure::Error> {
         }
     }
 
+    for (alias, path) in manifest.fs.unwrap_or_default().iter() {
+        let md = path
+            .metadata()
+            .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
+        let normalized_alias = dbg!(format!("pkg_fs/{}", alias));
+        if md.is_dir() {
+            builder.append_dir_all(normalized_alias, &path)
+        } else {
+            builder.append_path_with_name(&path, normalized_alias)
+        }
+        .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
+    }
+
     builder.finish().ok();
     let tar_archive_data = builder.into_inner().map_err(|_|
                                                         // TODO:
                                                         PublishError::NoModule)?;
     let archive_name = "package.tar.gz".to_string();
     let archive_dir = tempdir::TempDir::new("wapm_package")?;
-    let archive_path = archive_dir.as_ref().join(&archive_name);
+    let archive_path = dbg!(archive_dir.as_ref().join(&archive_name));
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 
@@ -156,6 +169,11 @@ enum PublishError {
     MissingManifestInCwd,
     #[fail(display = "Error building package when parsing module \"{}\".", _0)]
     ErrorBuildingPackage(String),
+    #[fail(
+        display = "Path \"{}\", specified in the manifest as part of the package file system does not exist.",
+        _0
+    )]
+    MissingManifestFsPath(String),
 }
 
 #[derive(Debug)]

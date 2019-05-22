@@ -59,6 +59,7 @@ pub struct Manifest {
     pub module: Option<Vec<Module>>,
     pub dependencies: Option<HashMap<String, String>>,
     pub command: Option<Vec<Command>>,
+    pub fs: Option<HashMap<String, PathBuf>>,
     /// private data
     /// store the directory path of the manifest file for use later accessing relative path fields
     #[serde(skip)]
