@@ -61,6 +61,7 @@ jobs:
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
+        displayName: 'Regression test: verification and public key management'
       - script: |
           curl https://get.wasmer.io -sSfL | sh
           export PATH=$PATH:$HOME/.cargo/bin
@@ -78,7 +79,7 @@ jobs:
           rm wapm.toml
           rm -rf wapm_packages
           rm $HOME/.wasmer/wapm.sqlite
-        displayName: 'Regression test: verification and public key management'
+        displayName: 'Regression test: pkg_fs works globally and when installed locally'
   - job: Windows
     pool:
       vmImage: 'windows-2019'
