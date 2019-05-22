@@ -61,6 +61,23 @@ jobs:
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
+      - script: |
+          curl https://get.wasmer.io -sSfL | sh
+          export PATH=$PATH:$HOME/.cargo/bin
+          export PATH=$PATH:$HOME/.wasmer/bin
+          export WAPM_DISABLE_COLOR=true
+          chmod +x end-to-end-tests/package-fs-mapping.sh
+          echo "RUNNING SCRIPT..."
+          ./end-to-end-tests/package-fs-mapping.sh > /tmp/package-fs-mapping-out.txt
+          echo "GENERATED OUTPUT:"
+          cat /tmp/verification-out.txt
+          echo "COMPARING..."
+          diff -B end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
+          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
+          rm $HOME/.wasmer/wapm.sqlite
         displayName: 'Regression test: verification and public key management'
   - job: Windows
     pool:
