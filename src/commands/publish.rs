@@ -84,7 +84,7 @@ pub fn publish() -> Result<(), failure::Error> {
         let md = path
             .metadata()
             .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
-        let normalized_alias = dbg!(format!("pkg_fs/{}", alias));
+        let normalized_alias = format!("pkg_fs/{}", alias);
         if md.is_dir() {
             builder.append_dir_all(normalized_alias, &path)
         } else {
