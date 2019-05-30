@@ -1,0 +1,11 @@
+[package]
+name = "wapm-contract"
+version = "0.2.0"
+authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
+edition = "2018"
+repository = "https://github.com/wasmerio/wapm-cli"
+description = "WAPM Contract definition and parser"
+license = "MIT"
+
+[dependencies]
+nom = "5.0.0-beta2"
