@@ -48,7 +48,7 @@ fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
             many1(preceded(multispace0, alt((fn_import, global_import)))),
         ),
     );
-    sexp(parse_import_inner)(input)
+    s_exp(parse_import_inner)(input)
 }
 
 fn parse_exports(input: &str) -> IResult<&str, Vec<Export>> {
@@ -59,7 +59,7 @@ fn parse_exports(input: &str) -> IResult<&str, Vec<Export>> {
             many1(preceded(multispace0, alt((fn_export, global_export)))),
         ),
     );
-    sexp(parse_export_inner)(input)
+    s_exp(parse_export_inner)(input)
 }
 
 /// A quoted identifier, must be valid UTF8
@@ -79,7 +79,7 @@ fn wasm_type(input: &str) -> IResult<&str, WasmType> {
 }
 
 /// Parses an S-expression
-fn sexp<'a, O1, E: ParseError<&'a str>, F>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O1, E>
+fn s_exp<'a, O1, E: ParseError<&'a str>, F>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O1, E>
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, E>,
 {
@@ -93,7 +93,7 @@ where
 /// (global "name" (type f64))
 fn global_import(input: &str) -> IResult<&str, Import> {
     let global_type_inner = preceded(tag("type"), preceded(multispace0, wasm_type));
-    let type_sexp = sexp(global_type_inner);
+    let type_s_exp = s_exp(global_type_inner);
     let global_import_inner = context(
         "global import inner",
         preceded(
@@ -101,7 +101,7 @@ fn global_import(input: &str) -> IResult<&str, Import> {
             map(
                 tuple((
                     preceded(multispace0, identifier),
-                    preceded(multispace0, type_sexp),
+                    preceded(multispace0, type_s_exp),
                 )),
                 |(name, var_type)| Import::Global {
                     name: name.to_string(),
@@ -110,13 +110,13 @@ fn global_import(input: &str) -> IResult<&str, Import> {
             ),
         ),
     );
-    sexp(global_import_inner)(input)
+    s_exp(global_import_inner)(input)
 }
 
 /// (global "name" (type f64))
 fn global_export(input: &str) -> IResult<&str, Export> {
     let global_type_inner = preceded(tag("type"), preceded(multispace0, wasm_type));
-    let type_sexp = sexp(global_type_inner);
+    let type_s_exp = s_exp(global_type_inner);
     let global_export_inner = context(
         "global export inner",
         preceded(
@@ -124,7 +124,7 @@ fn global_export(input: &str) -> IResult<&str, Export> {
             map(
                 tuple((
                     preceded(multispace0, identifier),
-                    preceded(multispace0, type_sexp),
+                    preceded(multispace0, type_s_exp),
                 )),
                 |(name, var_type)| Export::Global {
                     name: name.to_string(),
@@ -133,15 +133,15 @@ fn global_export(input: &str) -> IResult<&str, Export> {
             ),
         ),
     );
-    sexp(global_export_inner)(input)
+    s_exp(global_export_inner)(input)
 }
 
 /// (fn "ns" "name" (param f64 i32) (result f64 i32))
 fn fn_import(input: &str) -> IResult<&str, Import> {
     let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
-    let param_list = sexp(param_list_inner);
+    let param_list = s_exp(param_list_inner);
     let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
-    let result_list = sexp(result_list_inner);
+    let result_list = s_exp(result_list_inner);
     let fn_import_inner = context(
         "fn import inner",
         preceded(
@@ -162,15 +162,15 @@ fn fn_import(input: &str) -> IResult<&str, Import> {
             ),
         ),
     );
-    sexp(fn_import_inner)(input)
+    s_exp(fn_import_inner)(input)
 }
 
 /// (fn "name" (param f64 i32) (result f64 i32))
 fn fn_export(input: &str) -> IResult<&str, Export> {
     let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
-    let param_list = sexp(param_list_inner);
+    let param_list = s_exp(param_list_inner);
     let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
-    let result_list = sexp(result_list_inner);
+    let result_list = s_exp(result_list_inner);
     let fn_export_inner = context(
         "fn export inner",
         preceded(
@@ -189,7 +189,7 @@ fn fn_export(input: &str) -> IResult<&str, Export> {
             ),
         ),
     );
-    sexp(fn_export_inner)(input)
+    s_exp(fn_export_inner)(input)
 }
 
 #[cfg(test)]
