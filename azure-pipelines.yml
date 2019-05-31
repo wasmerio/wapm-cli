@@ -27,6 +27,7 @@ jobs:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo test --verbose -- --test-threads=1
+          cargo test --manifest-path lib/wasm-contract/Cargo.toml
         displayName: 'Test wapm'
       - script: |
           curl https://get.wasmer.io -sSfL | sh
@@ -81,4 +82,5 @@ jobs:
           set PATH=%PATH%;%USERPROFILE%\.cargo\bin
           cargo -V
           cargo test --verbose -- --test-threads=1
+          cargo test --manifest-path lib/wasm-contract/Cargo.toml
         displayName: 'test wapm'

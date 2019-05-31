@@ -45,7 +45,10 @@ zstd = "0.4"
 tempdir = "0.3"
 
 [workspace]
-members = ["."]
+members = [
+   ".",
+   "lib/wasm-contract"
+]
 
 [features]
 telemetry = ["sentry"]
