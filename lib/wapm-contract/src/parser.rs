@@ -21,6 +21,9 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     let mut export_found = true;
     let mut contract = Contract::default();
     while import_found || export_found {
+        while let Result::Ok((inp, _)) = parse_comment(input) {
+            input = inp;
+        }
         if let Result::Ok((inp, out)) = preceded(multispace0, parse_imports)(input) {
             for entry in out.into_iter() {
                 if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
@@ -46,6 +49,13 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
         }
     }
     Ok(contract)
+}
+
+fn parse_comment(input: &str) -> IResult<&str, ()> {
+    map(
+        preceded(multispace0, preceded(char(';'), many0(is_not("\n")))),
+        |_| (),
+    )(input)
 }
 
 fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
@@ -400,6 +410,8 @@ i32 )
     fn duplicates_not_allowed() {
         let parse_res = parse_contract(
             " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
+;; test comment
+  ;; hello
  (assert_import (func \"ns\" \"name\" (param) (result i32)))
  (assert_import (global \"length\" (type f64)))",
         );

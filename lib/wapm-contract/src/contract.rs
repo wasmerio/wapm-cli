@@ -107,10 +107,17 @@ mod test {
         let contract1_src = r#"(assert_import (func "env" "plus_one" (param i32) (result i32)))"#;
         let contract2_src = r#"(assert_import (func "env" "plus_one" (param i64) (result i64)))"#;
         let contract3_src = r#"(assert_import (func "env" "times_two" (param i64) (result i64)))"#;
+        let contract4_src =
+            r#"(assert_import (func "env" "times_two" (param i64 i64) (result i64)))"#;
+        let contract5_src = r#"(assert_export (func "empty_bank_account" (param) (result)))"#;
+        let contract6_src = r#"(assert_export (func "empty_bank_account" (param) (result i64)))"#;
 
         let contract1 = parser::parse_contract(contract1_src).unwrap();
         let contract2 = parser::parse_contract(contract2_src).unwrap();
         let contract3 = parser::parse_contract(contract3_src).unwrap();
+        let contract4 = parser::parse_contract(contract4_src).unwrap();
+        let contract5 = parser::parse_contract(contract5_src).unwrap();
+        let contract6 = parser::parse_contract(contract6_src).unwrap();
 
         assert!(contract1.merge(contract2.clone()).is_err());
         assert!(contract2.merge(contract1.clone()).is_err());
@@ -121,5 +128,8 @@ mod test {
             contract1.merge(contract1.clone()).is_ok(),
             "exact matches are accepted"
         );
+        assert!(contract3.merge(contract4.clone()).is_err());
+        assert!(contract5.merge(contract5.clone()).is_ok());
+        assert!(contract5.merge(contract6.clone()).is_err());
     }
 }
