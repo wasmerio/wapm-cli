@@ -47,7 +47,7 @@ tempdir = "0.3"
 [workspace]
 members = [
    ".",
-   "lib/wapm-contract"
+   "lib/wasm-contract"
 ]
 
 [features]

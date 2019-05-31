@@ -1,4 +1,4 @@
-//! The definition of a WAPM contract
+//! The definition of a WASM contract
 
 use std::collections::HashMap;
 
