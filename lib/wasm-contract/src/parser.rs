@@ -180,9 +180,9 @@ fn global_export(input: &str) -> IResult<&str, Export> {
 /// (func "ns" "name" (param f64 i32) (result f64 i32))
 fn func_import(input: &str) -> IResult<&str, Import> {
     let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
-    let param_list = s_exp(param_list_inner);
+    let param_list = opt(s_exp(param_list_inner));
     let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
-    let result_list = s_exp(result_list_inner);
+    let result_list = opt(s_exp(result_list_inner));
     let func_import_inner = context(
         "func import inner",
         preceded(
@@ -197,8 +197,8 @@ fn func_import(input: &str) -> IResult<&str, Import> {
                 |(ns, name, pl, rl)| Import::Func {
                     namespace: ns.to_string(),
                     name: name.to_string(),
-                    params: pl,
-                    result: rl,
+                    params: pl.unwrap_or_default(),
+                    result: rl.unwrap_or_default(),
                 },
             ),
         ),
@@ -209,9 +209,9 @@ fn func_import(input: &str) -> IResult<&str, Import> {
 /// (func "name" (param f64 i32) (result f64 i32))
 fn func_export(input: &str) -> IResult<&str, Export> {
     let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
-    let param_list = s_exp(param_list_inner);
+    let param_list = opt(s_exp(param_list_inner));
     let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
-    let result_list = s_exp(result_list_inner);
+    let result_list = opt(s_exp(result_list_inner));
     let func_export_inner = context(
         "func export inner",
         preceded(
@@ -224,8 +224,8 @@ fn func_export(input: &str) -> IResult<&str, Export> {
                 )),
                 |(name, pl, rl)| Export::Func {
                     name: name.to_string(),
-                    params: pl,
-                    result: rl,
+                    params: pl.unwrap_or_default(),
+                    result: rl.unwrap_or_default(),
                 },
             ),
         ),
@@ -454,5 +454,41 @@ i32 )
         assert_eq!(parse_res, ("", ()));
         let parse_res = space_comments("abc").unwrap();
         assert_eq!(parse_res, ("abc", ()));
+    }
+
+    #[test]
+    fn test_param_elision() {
+        let parse_res = parse_contract(
+            " (assert_import (func \"ns\" \"name\" (result f64 i32)))
+(assert_export (func \"name\"))",
+        )
+        .unwrap();
+
+        let imports = vec![Import::Func {
+            namespace: "ns".to_string(),
+            name: "name".to_string(),
+            params: vec![],
+            result: vec![WasmType::F64, WasmType::I32],
+        }];
+        let exports = vec![Export::Func {
+            name: "name".to_string(),
+            params: vec![],
+            result: vec![],
+        }];
+        let import_map = imports
+            .into_iter()
+            .map(|entry| (entry.get_key(), entry))
+            .collect::<HashMap<String, Import>>();
+        let export_map = exports
+            .into_iter()
+            .map(|entry| (entry.get_key(), entry))
+            .collect::<HashMap<String, Export>>();
+        assert_eq!(
+            parse_res,
+            Contract {
+                imports: import_map,
+                exports: export_map,
+            }
+        );
     }
 }
