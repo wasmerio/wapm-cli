@@ -1,9 +1,9 @@
 use nom::{
     branch::*,
     bytes::complete::{escaped, is_not, tag},
-    character::complete::{char, multispace0, one_of},
+    character::complete::{char, multispace0, multispace1, one_of},
     combinator::*,
-    error::{context, ParseError},
+    error::context,
     multi::{many0, many1},
     sequence::{delimited, preceded, tuple},
     IResult,
@@ -24,7 +24,7 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
         while let Result::Ok((inp, _)) = parse_comment(input) {
             input = inp;
         }
-        if let Result::Ok((inp, out)) = preceded(multispace0, parse_imports)(input) {
+        if let Result::Ok((inp, out)) = preceded(space_comments, parse_imports)(input) {
             for entry in out.into_iter() {
                 if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
                     return Err(format!("Duplicate import found {:?}", dup));
@@ -36,7 +36,7 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
             import_found = false;
         }
 
-        if let Result::Ok((inp, out)) = preceded(multispace0, parse_exports)(input) {
+        if let Result::Ok((inp, out)) = preceded(space_comments, parse_exports)(input) {
             for entry in out.into_iter() {
                 if let Some(dup) = contract.exports.insert(entry.get_key(), entry) {
                     return Err(format!("Duplicate export found {:?}", dup));
@@ -58,12 +58,35 @@ fn parse_comment(input: &str) -> IResult<&str, ()> {
     )(input)
 }
 
+/// Consumes spaces and comments
+/// comments must terminate with a new line character
+fn space_comments<'a>(mut input: &'a str) -> IResult<&'a str, ()> {
+    let mut space_found = true;
+    let mut comment_found = true;
+    while space_found || comment_found {
+        let space: IResult<&'a str, _> = multispace1(input);
+        space_found = if let Result::Ok((inp, _)) = space {
+            input = inp;
+            true
+        } else {
+            false
+        };
+        comment_found = if let Result::Ok((inp, _)) = parse_comment(input) {
+            input = inp;
+            true
+        } else {
+            false
+        };
+    }
+    Ok((input, ()))
+}
+
 fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
     let parse_import_inner = context(
         "assert_import",
         preceded(
             tag("assert_import"),
-            many1(preceded(multispace0, alt((func_import, global_import)))),
+            many1(preceded(space_comments, alt((func_import, global_import)))),
         ),
     );
     s_exp(parse_import_inner)(input)
@@ -74,7 +97,7 @@ fn parse_exports(input: &str) -> IResult<&str, Vec<Export>> {
         "assert_export",
         preceded(
             tag("assert_export"),
-            many1(preceded(multispace0, alt((func_export, global_export)))),
+            many1(preceded(space_comments, alt((func_export, global_export)))),
         ),
     );
     s_exp(parse_export_inner)(input)
@@ -97,20 +120,20 @@ fn wasm_type(input: &str) -> IResult<&str, WasmType> {
 }
 
 /// Parses an S-expression
-fn s_exp<'a, O1, E: ParseError<&'a str>, F>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O1, E>
+fn s_exp<'a, O1, F>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O1>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O1, E>,
+    F: Fn(&'a str) -> IResult<&'a str, O1>,
 {
     delimited(
         char('('),
-        preceded(multispace0, inner),
-        preceded(multispace0, char(')')),
+        preceded(space_comments, inner),
+        preceded(space_comments, char(')')),
     )
 }
 
 /// (global "name" (type f64))
 fn global_import(input: &str) -> IResult<&str, Import> {
-    let global_type_inner = preceded(tag("type"), preceded(multispace0, wasm_type));
+    let global_type_inner = preceded(tag("type"), preceded(space_comments, wasm_type));
     let type_s_exp = s_exp(global_type_inner);
     let global_import_inner = context(
         "global import inner",
@@ -118,8 +141,8 @@ fn global_import(input: &str) -> IResult<&str, Import> {
             tag("global"),
             map(
                 tuple((
-                    preceded(multispace0, identifier),
-                    preceded(multispace0, type_s_exp),
+                    preceded(space_comments, identifier),
+                    preceded(space_comments, type_s_exp),
                 )),
                 |(name, var_type)| Import::Global {
                     name: name.to_string(),
@@ -133,7 +156,7 @@ fn global_import(input: &str) -> IResult<&str, Import> {
 
 /// (global "name" (type f64))
 fn global_export(input: &str) -> IResult<&str, Export> {
-    let global_type_inner = preceded(tag("type"), preceded(multispace0, wasm_type));
+    let global_type_inner = preceded(tag("type"), preceded(space_comments, wasm_type));
     let type_s_exp = s_exp(global_type_inner);
     let global_export_inner = context(
         "global export inner",
@@ -141,8 +164,8 @@ fn global_export(input: &str) -> IResult<&str, Export> {
             tag("global"),
             map(
                 tuple((
-                    preceded(multispace0, identifier),
-                    preceded(multispace0, type_s_exp),
+                    preceded(space_comments, identifier),
+                    preceded(space_comments, type_s_exp),
                 )),
                 |(name, var_type)| Export::Global {
                     name: name.to_string(),
@@ -156,9 +179,9 @@ fn global_export(input: &str) -> IResult<&str, Export> {
 
 /// (func "ns" "name" (param f64 i32) (result f64 i32))
 fn func_import(input: &str) -> IResult<&str, Import> {
-    let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
+    let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
     let param_list = s_exp(param_list_inner);
-    let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
+    let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
     let result_list = s_exp(result_list_inner);
     let func_import_inner = context(
         "func import inner",
@@ -166,10 +189,10 @@ fn func_import(input: &str) -> IResult<&str, Import> {
             tag("func"),
             map(
                 tuple((
-                    preceded(multispace0, identifier),
-                    preceded(multispace0, identifier),
-                    preceded(multispace0, param_list),
-                    preceded(multispace0, result_list),
+                    preceded(space_comments, identifier),
+                    preceded(space_comments, identifier),
+                    preceded(space_comments, param_list),
+                    preceded(space_comments, result_list),
                 )),
                 |(ns, name, pl, rl)| Import::Func {
                     namespace: ns.to_string(),
@@ -185,9 +208,9 @@ fn func_import(input: &str) -> IResult<&str, Import> {
 
 /// (func "name" (param f64 i32) (result f64 i32))
 fn func_export(input: &str) -> IResult<&str, Export> {
-    let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
+    let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
     let param_list = s_exp(param_list_inner);
-    let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
+    let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
     let result_list = s_exp(result_list_inner);
     let func_export_inner = context(
         "func export inner",
@@ -195,9 +218,9 @@ fn func_export(input: &str) -> IResult<&str, Export> {
             tag("func"),
             map(
                 tuple((
-                    preceded(multispace0, identifier),
-                    preceded(multispace0, param_list),
-                    preceded(multispace0, result_list),
+                    preceded(space_comments, identifier),
+                    preceded(space_comments, param_list),
+                    preceded(space_comments, result_list),
                 )),
                 |(name, pl, rl)| Export::Func {
                     name: name.to_string(),
@@ -324,10 +347,12 @@ mod test {
             "(assert_import (func \"ns\" \"name\"  
                                                (param f64 i32) (result f64 i32))
     ( global \"length\" ( type 
+;; i32 is the best type
 i32 )
 )
                                           (func \"ns\" \"name2\" (param f32
                                                                       i64)
+                               ;; The return value comes next
                                                                 (
                                                                  result
                                                                  f64
@@ -410,12 +435,24 @@ i32 )
     fn duplicates_not_allowed() {
         let parse_res = parse_contract(
             " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
-;; test comment
+; test comment
   ;; hello
  (assert_import (func \"ns\" \"name\" (param) (result i32)))
  (assert_import (global \"length\" (type f64)))",
         );
 
         assert!(parse_res.is_err());
+    }
+
+    #[test]
+    fn test_comment_space_parsing() {
+        let parse_res = space_comments(" ").unwrap();
+        assert_eq!(parse_res, ("", ()));
+        let parse_res = space_comments("").unwrap();
+        assert_eq!(parse_res, ("", ()));
+        let parse_res = space_comments("; hello\n").unwrap();
+        assert_eq!(parse_res, ("", ()));
+        let parse_res = space_comments("abc").unwrap();
+        assert_eq!(parse_res, ("abc", ()));
     }
 }
