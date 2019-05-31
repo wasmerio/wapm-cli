@@ -10,6 +10,35 @@ pub struct Contract {
     pub exports: HashMap<String, Export>,
 }
 
+impl Contract {
+    pub fn merge(&self, other: Contract) -> Result<Contract, String> {
+        let mut base = self.clone();
+
+        for (key, val) in other.imports.into_iter() {
+            if base.imports.contains_key(&key) {
+                if val != base.imports[&key] {
+                    return Err(format!("Conflict detected: the key {} was found in imports but the definitions were different: {:?} {:?}", key, base.imports[&key], val));
+                }
+            } else {
+                let res = base.imports.insert(key, val);
+                debug_assert!(res.is_none());
+            }
+        }
+
+        for (key, val) in other.exports.into_iter() {
+            if base.exports.contains_key(&key) {
+                if val != base.exports[&key] {
+                    return Err(format!("Conflict detected: the key {} was found in exports but the definitions were different: {:?} {:?}", key, base.exports[&key], val));
+                }
+            } else {
+                let res = base.exports.insert(key, val);
+                debug_assert!(res.is_none());
+            }
+        }
+        Ok(base)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Import {
     Func {
@@ -67,4 +96,30 @@ pub enum WasmType {
     I64,
     F32,
     F64,
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parser;
+
+    #[test]
+    fn merging_works() {
+        let contract1_src = r#"(assert_import (func "env" "plus_one" (param i32) (result i32)))"#;
+        let contract2_src = r#"(assert_import (func "env" "plus_one" (param i64) (result i64)))"#;
+        let contract3_src = r#"(assert_import (func "env" "times_two" (param i64) (result i64)))"#;
+
+        let contract1 = parser::parse_contract(contract1_src).unwrap();
+        let contract2 = parser::parse_contract(contract2_src).unwrap();
+        let contract3 = parser::parse_contract(contract3_src).unwrap();
+
+        assert!(contract1.merge(contract2.clone()).is_err());
+        assert!(contract2.merge(contract1.clone()).is_err());
+        assert!(contract1.merge(contract3.clone()).is_ok());
+        assert!(contract2.merge(contract3.clone()).is_ok());
+        assert!(contract3.merge(contract2.clone()).is_ok());
+        assert!(
+            contract1.merge(contract1.clone()).is_ok(),
+            "exact matches are accepted"
+        );
+    }
 }
