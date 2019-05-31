@@ -12,40 +12,48 @@ use nom::{
 use crate::contract::*;
 
 /// Some example input:
-/// (assert-import (fn "ns" "name" (param f64 i32) (result f64 i32)))
-/// (assert-export (fn "name" (param f64 i32) (result f64 i32)))
-/// (assert-import (global "name" (type f64)))
+/// (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
+/// (assert_export (func "name" (param f64 i32) (result f64 i32)))
+/// (assert_import (global "name" (type f64)))
 
-pub fn parse_contract(mut input: &str) -> IResult<&str, Contract> {
+pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     let mut import_found = true;
     let mut export_found = true;
     let mut contract = Contract::default();
     while import_found || export_found {
-        if let Result::Ok((inp, mut out)) = preceded(multispace0, parse_imports)(input) {
-            contract.imports.append(&mut out);
+        if let Result::Ok((inp, out)) = preceded(multispace0, parse_imports)(input) {
+            for entry in out.into_iter() {
+                if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
+                    return Err(format!("Duplicate import found {:?}", dup));
+                }
+            }
             input = inp;
             import_found = true;
         } else {
             import_found = false;
         }
 
-        if let Result::Ok((inp, mut out)) = preceded(multispace0, parse_exports)(input) {
-            contract.exports.append(&mut out);
+        if let Result::Ok((inp, out)) = preceded(multispace0, parse_exports)(input) {
+            for entry in out.into_iter() {
+                if let Some(dup) = contract.exports.insert(entry.get_key(), entry) {
+                    return Err(format!("Duplicate export found {:?}", dup));
+                }
+            }
             input = inp;
             export_found = true;
         } else {
             export_found = false;
         }
     }
-    Ok((input, contract))
+    Ok(contract)
 }
 
 fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
     let parse_import_inner = context(
-        "assert-import",
+        "assert_import",
         preceded(
-            tag("assert-import"),
-            many1(preceded(multispace0, alt((fn_import, global_import)))),
+            tag("assert_import"),
+            many1(preceded(multispace0, alt((func_import, global_import)))),
         ),
     );
     s_exp(parse_import_inner)(input)
@@ -53,10 +61,10 @@ fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
 
 fn parse_exports(input: &str) -> IResult<&str, Vec<Export>> {
     let parse_export_inner = context(
-        "assert-export",
+        "assert_export",
         preceded(
-            tag("assert-export"),
-            many1(preceded(multispace0, alt((fn_export, global_export)))),
+            tag("assert_export"),
+            many1(preceded(multispace0, alt((func_export, global_export)))),
         ),
     );
     s_exp(parse_export_inner)(input)
@@ -136,16 +144,16 @@ fn global_export(input: &str) -> IResult<&str, Export> {
     s_exp(global_export_inner)(input)
 }
 
-/// (fn "ns" "name" (param f64 i32) (result f64 i32))
-fn fn_import(input: &str) -> IResult<&str, Import> {
+/// (func "ns" "name" (param f64 i32) (result f64 i32))
+fn func_import(input: &str) -> IResult<&str, Import> {
     let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
     let param_list = s_exp(param_list_inner);
     let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
     let result_list = s_exp(result_list_inner);
-    let fn_import_inner = context(
-        "fn import inner",
+    let func_import_inner = context(
+        "func import inner",
         preceded(
-            tag("fn"),
+            tag("func"),
             map(
                 tuple((
                     preceded(multispace0, identifier),
@@ -153,7 +161,7 @@ fn fn_import(input: &str) -> IResult<&str, Import> {
                     preceded(multispace0, param_list),
                     preceded(multispace0, result_list),
                 )),
-                |(ns, name, pl, rl)| Import::Fn {
+                |(ns, name, pl, rl)| Import::Func {
                     namespace: ns.to_string(),
                     name: name.to_string(),
                     params: pl,
@@ -162,26 +170,26 @@ fn fn_import(input: &str) -> IResult<&str, Import> {
             ),
         ),
     );
-    s_exp(fn_import_inner)(input)
+    s_exp(func_import_inner)(input)
 }
 
-/// (fn "name" (param f64 i32) (result f64 i32))
-fn fn_export(input: &str) -> IResult<&str, Export> {
+/// (func "name" (param f64 i32) (result f64 i32))
+fn func_export(input: &str) -> IResult<&str, Export> {
     let param_list_inner = preceded(tag("param"), many0(preceded(multispace0, wasm_type)));
     let param_list = s_exp(param_list_inner);
     let result_list_inner = preceded(tag("result"), many0(preceded(multispace0, wasm_type)));
     let result_list = s_exp(result_list_inner);
-    let fn_export_inner = context(
-        "fn export inner",
+    let func_export_inner = context(
+        "func export inner",
         preceded(
-            tag("fn"),
+            tag("func"),
             map(
                 tuple((
                     preceded(multispace0, identifier),
                     preceded(multispace0, param_list),
                     preceded(multispace0, result_list),
                 )),
-                |(name, pl, rl)| Export::Fn {
+                |(name, pl, rl)| Export::Func {
                     name: name.to_string(),
                     params: pl,
                     result: rl,
@@ -189,12 +197,13 @@ fn fn_export(input: &str) -> IResult<&str, Export> {
             ),
         ),
     );
-    s_exp(fn_export_inner)(input)
+    s_exp(func_export_inner)(input)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn parse_wasm_type() {
@@ -249,13 +258,14 @@ mod test {
     }
 
     #[test]
-    fn parse_fn_import() {
-        let parse_res = fn_import("(fn \"ns\" \"name\" (param f64 i32) (result f64 i32))").unwrap();
+    fn parse_func_import() {
+        let parse_res =
+            func_import("(func \"ns\" \"name\" (param f64 i32) (result f64 i32))").unwrap();
         assert_eq!(
             parse_res,
             (
                 "",
-                Import::Fn {
+                Import::Func {
                     namespace: "ns".to_string(),
                     name: "name".to_string(),
                     params: vec![WasmType::F64, WasmType::I32],
@@ -266,13 +276,13 @@ mod test {
     }
 
     #[test]
-    fn parse_fn_export() {
-        let parse_res = fn_export("(fn \"name\" (param f64 i32) (result f64 i32))").unwrap();
+    fn parse_func_export() {
+        let parse_res = func_export("(func \"name\" (param f64 i32) (result f64 i32))").unwrap();
         assert_eq!(
             parse_res,
             (
                 "",
-                Export::Fn {
+                Export::Func {
                     name: "name".to_string(),
                     params: vec![WasmType::F64, WasmType::I32],
                     result: vec![WasmType::F64, WasmType::I32],
@@ -283,14 +293,15 @@ mod test {
 
     #[test]
     fn parse_imports_test() {
-        let parse_res =
-            parse_imports("(assert-import (fn \"ns\" \"name\" (param f64 i32) (result f64 i32)))")
-                .unwrap();
+        let parse_res = parse_imports(
+            "(assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))",
+        )
+        .unwrap();
         assert_eq!(
             parse_res,
             (
                 "",
-                vec![Import::Fn {
+                vec![Import::Func {
                     namespace: "ns".to_string(),
                     name: "name".to_string(),
                     params: vec![WasmType::F64, WasmType::I32],
@@ -300,12 +311,12 @@ mod test {
         );
 
         let parse_res = parse_imports(
-            "(assert-import (fn \"ns\" \"name\"  
+            "(assert_import (func \"ns\" \"name\"  
                                                (param f64 i32) (result f64 i32))
     ( global \"length\" ( type 
 i32 )
 )
-                                          (fn \"ns\" \"name2\" (param f32
+                                          (func \"ns\" \"name2\" (param f32
                                                                       i64)
                                                                 (
                                                                  result
@@ -321,7 +332,7 @@ i32 )
             (
                 "",
                 vec![
-                    Import::Fn {
+                    Import::Func {
                         namespace: "ns".to_string(),
                         name: "name".to_string(),
                         params: vec![WasmType::F64, WasmType::I32],
@@ -331,7 +342,7 @@ i32 )
                         name: "length".to_string(),
                         var_type: WasmType::I32,
                     },
-                    Import::Fn {
+                    Import::Func {
                         namespace: "ns".to_string(),
                         name: "name2".to_string(),
                         params: vec![WasmType::F32, WasmType::I64],
@@ -345,36 +356,54 @@ i32 )
     #[test]
     fn top_level_test() {
         let parse_res = parse_contract(
-            " (assert-import (fn \"ns\" \"name\" (param f64 i32) (result f64 i32)))
- (assert-export (fn \"name2\" (param) (result i32)))
- (assert-import (global \"length\" (type f64)))",
+            " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
+ (assert_export (func \"name2\" (param) (result i32)))
+ (assert_import (global \"length\" (type f64)))",
         )
         .unwrap();
 
+        let imports = vec![
+            Import::Func {
+                namespace: "ns".to_string(),
+                name: "name".to_string(),
+                params: vec![WasmType::F64, WasmType::I32],
+                result: vec![WasmType::F64, WasmType::I32],
+            },
+            Import::Global {
+                name: "length".to_string(),
+                var_type: WasmType::F64,
+            },
+        ];
+        let exports = vec![Export::Func {
+            name: "name2".to_string(),
+            params: vec![],
+            result: vec![WasmType::I32],
+        }];
+        let import_map = imports
+            .into_iter()
+            .map(|entry| (entry.get_key(), entry))
+            .collect::<HashMap<String, Import>>();
+        let export_map = exports
+            .into_iter()
+            .map(|entry| (entry.get_key(), entry))
+            .collect::<HashMap<String, Export>>();
         assert_eq!(
             parse_res,
-            (
-                "",
-                Contract {
-                    imports: vec![
-                        Import::Fn {
-                            namespace: "ns".to_string(),
-                            name: "name".to_string(),
-                            params: vec![WasmType::F64, WasmType::I32],
-                            result: vec![WasmType::F64, WasmType::I32],
-                        },
-                        Import::Global {
-                            name: "length".to_string(),
-                            var_type: WasmType::F64,
-                        }
-                    ],
-                    exports: vec![Export::Fn {
-                        name: "name2".to_string(),
-                        params: vec![],
-                        result: vec![WasmType::I32]
-                    }]
-                }
-            )
+            Contract {
+                imports: import_map,
+                exports: export_map,
+            }
         );
+    }
+
+    #[test]
+    fn duplicates_not_allowed() {
+        let parse_res = parse_contract(
+            " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
+ (assert_import (func \"ns\" \"name\" (param) (result i32)))
+ (assert_import (global \"length\" (type f64)))",
+        );
+
+        assert!(parse_res.is_err());
     }
 }

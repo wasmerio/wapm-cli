@@ -1,16 +1,18 @@
 //! The definition of a WAPM contract
 
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Contract {
     /// Things that the module can import
-    pub imports: Vec<Import>,
+    pub imports: HashMap<String, Import>,
     /// Things that the module must export
-    pub exports: Vec<Export>,
+    pub exports: HashMap<String, Export>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Import {
-    Fn {
+    Func {
         namespace: String,
         name: String,
         params: Vec<WasmType>,
@@ -22,9 +24,22 @@ pub enum Import {
     },
 }
 
+// TODO: figure out this separator... '/' is a valid character in names so we can have collisions
+impl Import {
+    /// Get the key used to look this import up in the Contract's import hashmap
+    pub fn get_key(&self) -> String {
+        match self {
+            Import::Func {
+                namespace, name, ..
+            } => format!("{}/{}", &namespace, &name),
+            Import::Global { name, .. } => name.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Export {
-    Fn {
+    Func {
         name: String,
         params: Vec<WasmType>,
         result: Vec<WasmType>,
@@ -33,6 +48,16 @@ pub enum Export {
         name: String,
         var_type: WasmType,
     },
+}
+
+impl Export {
+    /// Get the key used to look this export up in the Contract's export hashmap
+    pub fn get_key(&self) -> String {
+        match self {
+            Export::Func { name, .. } => name.clone(),
+            Export::Global { name, .. } => name.clone(),
+        }
+    }
 }
 
 /// Primitive wasm type
