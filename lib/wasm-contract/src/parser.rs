@@ -1,3 +1,10 @@
+//! Parsers to get a wasm contract from text
+//! The grammar of the text format is:
+//! DECL_TYPE = assert_import | assert_export
+//! IMPORT_DATA =
+//! EXPORT_DATA =
+//! (DECL_TYPE ())
+
 use nom::{
     branch::*,
     bytes::complete::{escaped, is_not, tag},
@@ -21,9 +28,6 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     let mut export_found = true;
     let mut contract = Contract::default();
     while import_found || export_found {
-        while let Result::Ok((inp, _)) = parse_comment(input) {
-            input = inp;
-        }
         if let Result::Ok((inp, out)) = preceded(space_comments, parse_imports)(input) {
             for entry in out.into_iter() {
                 if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
@@ -48,7 +52,11 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
             export_found = false;
         }
     }
-    Ok(contract)
+    if !input.is_empty() {
+        Err(format!("Could not parse remaining input: {}", input))
+    } else {
+        Ok(contract)
+    }
 }
 
 fn parse_comment(input: &str) -> IResult<&str, ()> {
@@ -438,7 +446,9 @@ i32 )
 ; test comment
   ;; hello
  (assert_import (func \"ns\" \"name\" (param) (result i32)))
- (assert_import (global \"length\" (type f64)))",
+ (assert_import (global \"length\" (type f64)))
+
+",
         );
 
         assert!(parse_res.is_err());
@@ -490,5 +500,14 @@ i32 )
                 exports: export_map,
             }
         );
+    }
+
+    #[test]
+    fn typo_gets_caught() {
+        let contract_src = r#"
+(assert_import (func "env" "do_panic" (params i32 i64)))
+(assert_import (global "length" (type i32)))"#;
+        let result = parse_contract(contract_src);
+        assert!(result.is_err());
     }
 }

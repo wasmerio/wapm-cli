@@ -55,13 +55,21 @@ pub enum Import {
 
 // TODO: figure out this separator... '/' is a valid character in names so we can have collisions
 impl Import {
+    pub fn format_fn_key(ns: &str, name: &str) -> String {
+        format!("{}/{}", &ns, &name)
+    }
+
+    pub fn format_global_key(name: &str) -> String {
+        name.to_string()
+    }
+
     /// Get the key used to look this import up in the Contract's import hashmap
     pub fn get_key(&self) -> String {
         match self {
             Import::Func {
                 namespace, name, ..
-            } => format!("{}/{}", &namespace, &name),
-            Import::Global { name, .. } => name.clone(),
+            } => Self::format_fn_key(&namespace, &name),
+            Import::Global { name, .. } => Self::format_global_key(&name),
         }
     }
 }
@@ -80,11 +88,19 @@ pub enum Export {
 }
 
 impl Export {
+    pub fn format_fn_key(name: &str) -> String {
+        name.to_string()
+    }
+
+    pub fn format_global_key(name: &str) -> String {
+        name.to_string()
+    }
+
     /// Get the key used to look this export up in the Contract's export hashmap
     pub fn get_key(&self) -> String {
         match self {
-            Export::Func { name, .. } => name.clone(),
-            Export::Global { name, .. } => name.clone(),
+            Export::Func { name, .. } => Self::format_fn_key(&name),
+            Export::Global { name, .. } => Self::format_global_key(&name),
         }
     }
 }
@@ -96,6 +112,21 @@ pub enum WasmType {
     I64,
     F32,
     F64,
+}
+
+impl std::fmt::Display for WasmType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                WasmType::I32 => "i32",
+                WasmType::I64 => "i64",
+                WasmType::F32 => "f32",
+                WasmType::F64 => "f64",
+            }
+        )
+    }
 }
 
 #[cfg(test)]
