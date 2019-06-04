@@ -1,4 +1,3 @@
-use crate::abi::Abi;
 use crate::dataflow::manifest_packages::ManifestResult;
 use std::collections::HashMap;
 use std::{fs, io::Read, path::PathBuf};
@@ -32,17 +31,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                 }
             })?;
             let contract = Contract::default();
-            let detected_abi =
-                validate_wasm_and_report_errors(&wasm_buffer, &contract, source_path_string)?;
-
-            if module.abi != Abi::None && module.abi != detected_abi {
-                return Err(ValidationError::MismatchedABI {
-                    module_name: module.name.clone(),
-                    found_abi: detected_abi,
-                    expected_abi: module.abi,
-                }
-                .into());
-            }
+            validate_wasm_and_report_errors(&wasm_buffer, &contract, source_path_string)?;
         }
     }
 
@@ -360,15 +349,6 @@ pub enum ValidationError {
     MissingFile { file: String },
     #[fail(display = "Failed to read file {}; {}", file, error)]
     MiscCannotRead { file: String, error: String },
-    #[fail(
-        display = "Detected ABI ({}) does not match ABI specified in wapm.toml ({}) for module \"{}\"",
-        found_abi, expected_abi, module_name
-    )]
-    MismatchedABI {
-        module_name: String,
-        found_abi: Abi,
-        expected_abi: Abi,
-    },
     #[fail(display = "Failed to unpack archive \"{}\"! {}", file, error)]
     CannotUnpackArchive { file: String, error: String },
 }
