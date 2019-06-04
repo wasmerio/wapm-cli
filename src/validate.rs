@@ -49,28 +49,21 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct WasmValidation {
-    pub imports: Vec<Import>,
-    pub exports: Vec<Export>,
-}
-
 pub fn validate_wasm_and_report_errors(
     wasm: &[u8],
     contract: &Contract,
     file_name: String,
-) -> Result<Abi, failure::Error> {
+) -> Result<(), failure::Error> {
     use wasmparser::WasmDecoder;
 
     let mut errors: Vec<String> = vec![];
-    let mut import_fns: HashMap<String, u32> = HashMap::new();
+    let mut import_fns: HashMap<(String, String), u32> = HashMap::new();
     let mut export_fns: HashMap<String, u32> = HashMap::new();
     let mut export_globals: HashMap<String, u32> = HashMap::new();
     let mut type_defs: Vec<FuncType> = vec![];
     let mut global_types: Vec<GlobalType> = vec![];
 
     let mut parser = wasmparser::ValidatingParser::new(wasm, None);
-    let mut abi = Abi::None;
     loop {
         let state = parser.read();
         match state {
@@ -88,12 +81,9 @@ pub fn validate_wasm_and_report_errors(
                 ref ty,
             } => match ty {
                 ImportSectionEntryType::Function(idx) => {
-                    import_fns.insert(Import::format_fn_key(module, field), *idx);
+                    import_fns.insert(Import::format_key(module, field), *idx);
                 }
-                ImportSectionEntryType::Global(GlobalType {
-                    content_type,
-                    mutable,
-                }) => {
+                ImportSectionEntryType::Global(GlobalType { content_type, .. }) => {
                     let global_type =
                         wasmparser_type_into_wasm_type(*content_type).map_err(|err| {
                             format_err!(
@@ -103,7 +93,7 @@ pub fn validate_wasm_and_report_errors(
                                 err
                             )
                         })?;
-                    if let Some(val) = contract.imports.get(&Import::format_global_key(field)) {
+                    if let Some(val) = contract.imports.get(&Import::format_key(module, field)) {
                         if let Import::Global { var_type, .. } = val {
                             if *var_type != global_type {
                                 errors.push(format!(
@@ -132,10 +122,10 @@ pub fn validate_wasm_and_report_errors(
                 ref kind,
             } => match kind {
                 ExternalKind::Function => {
-                    export_fns.insert(Export::format_fn_key(field), *index);
+                    export_fns.insert(Export::format_key(field), *index);
                 }
                 ExternalKind::Global => {
-                    export_globals.insert(Export::format_global_key(field), *index);
+                    export_globals.insert(Export::format_key(field), *index);
                 }
                 _ => (),
             },
@@ -154,7 +144,7 @@ pub fn validate_wasm_and_report_errors(
     validate_export_globals(&export_globals, &global_types, contract, &mut errors);
 
     if errors.is_empty() {
-        Ok(abi)
+        Ok(())
     } else {
         Err(format_err!(
             "Error validating contract:{}",
@@ -168,7 +158,7 @@ pub fn validate_wasm_and_report_errors(
 /// Validates the import functions, checking the name and type against the given
 /// `Contract`
 fn validate_imports(
-    import_fns: &HashMap<String, u32>,
+    import_fns: &HashMap<(String, String), u32>,
     type_defs: &Vec<FuncType>,
     contract: &Contract,
     errors: &mut Vec<String>,
@@ -193,15 +183,20 @@ fn validate_imports(
                     match param {
                         Ok(t) => {
                             if params.get(i).is_none() {
-                                errors.push(format!("Found {} args but the contract only expects {} for imported function \"{}\"", i, params.len(), &key));
+                                errors.push(format!("Found {} args but the contract only expects {} for imported function \"{}\" \"{}\"", i, params.len(), &key.0, &key.1));
                                 continue;
                             }
                             if t != params[i] {
-                                errors
-                                    .push(format!("Type mismatch in params in func \"{}\"", &key));
+                                errors.push(format!(
+                                    "Type mismatch in params in func \"{}\" \"{}\"",
+                                    &key.0, &key.1
+                                ));
                             }
                         }
-                        Err(e) => errors.push(format!("Invalid type in func \"{}\": {}", &key, e)),
+                        Err(e) => errors.push(format!(
+                            "Invalid type in func \"{}\" \"{}\": {}",
+                            &key.0, &key.1, e
+                        )),
                     }
                 }
                 for (i, ret) in type_sig
@@ -214,16 +209,21 @@ fn validate_imports(
                     match ret {
                         Ok(t) => {
                             if result.get(i).is_none() {
-                                errors.push(format!("Found {} returns but the contract only expects {} for imported function \"{}\"", i, params.len(), &key));
+                                errors.push(format!("Found {} returns but the contract only expects {} for imported function \"{}\" \"{}\"", i, params.len(), &key.0, &key.1));
                                 continue;
                             }
 
                             if t != result[i] {
-                                errors
-                                    .push(format!("Type mismatch in returns in func \"{}\"", &key));
+                                errors.push(format!(
+                                    "Type mismatch in returns in func \"{}\" \"{}\"",
+                                    &key.0, &key.1
+                                ));
                             }
                         }
-                        Err(e) => errors.push(format!("Invalid type in func \"{}\": {}", &key, e)),
+                        Err(e) => errors.push(format!(
+                            "Invalid type in func \"{}\" \"{}\": {}",
+                            &key.0, &key.1, e
+                        )),
                     }
                 }
             }
@@ -361,15 +361,6 @@ pub enum ValidationError {
     #[fail(display = "Failed to read file {}; {}", file, error)]
     MiscCannotRead { file: String, error: String },
     #[fail(
-        display = "Multiple ABIs detected in file {}; previously detected {} but found {}",
-        file, first_abi, second_abi
-    )]
-    MultipleABIs {
-        file: String,
-        first_abi: Abi,
-        second_abi: Abi,
-    },
-    #[fail(
         display = "Detected ABI ({}) does not match ABI specified in wapm.toml ({}) for module \"{}\"",
         found_abi, expected_abi, module_name
     )]
@@ -397,7 +388,7 @@ mod validation_tests {
 
         let contract_src = r#"
 (assert_import (func "env" "do_panic" (param i32 i64)))
-(assert_import (global "length" (type i32)))"#;
+(assert_import (global "env" "length" (type i32)))"#;
         let contract = wasm_contract::parser::parse_contract(contract_src).unwrap();
 
         let result = validate_wasm_and_report_errors(
@@ -411,7 +402,7 @@ mod validation_tests {
         // Now set the global import type to mismatch the wasm
         let contract_src = r#"
 (assert_import (func "env" "do_panic" (param i32 i64)))
-(assert_import (global "length" (type i64)))"#;
+(assert_import (global "env" "length" (type i64)))"#;
         let contract = wasm_contract::parser::parse_contract(contract_src).unwrap();
 
         let result = validate_wasm_and_report_errors(
@@ -428,7 +419,7 @@ mod validation_tests {
         // Now set the function import type to mismatch the wasm
         let contract_src = r#"
 (assert_import (func "env" "do_panic" (param i64)))
-(assert_import (global "length" (type i32)))"#;
+(assert_import (global "env" "length" (type i32)))"#;
         let contract = wasm_contract::parser::parse_contract(contract_src).unwrap();
 
         let result = validate_wasm_and_report_errors(
