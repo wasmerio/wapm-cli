@@ -1,4 +1,6 @@
-use crate::dataflow::manifest_packages::ManifestResult;
+use crate::contracts;
+use crate::database;
+use crate::dataflow::{contracts::ContractFromServer, manifest_packages::ManifestResult};
 use std::collections::HashMap;
 use std::{fs, io::Read, path::PathBuf};
 use wasm_contract::{Contract, Export, Import, WasmType};
@@ -30,10 +32,37 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                     error: format!("{}", err),
                 }
             })?;
-            let contract = Contract::default();
+
+            let mut conn = database::open_db()?;
+            let mut contract: Contract = Default::default();
+            for contract_id in module.contracts.iter() {
+                if !contracts::contract_exists(&mut conn, &contract_id.name, &contract_id.version)?
+                {
+                    // download contract and store it if we don't have it locally
+                    let contract_data_from_server = ContractFromServer::get(
+                        contract_id.name.clone(),
+                        contract_id.version.clone(),
+                    )?;
+                    contracts::import_contract(
+                        &mut conn,
+                        &contract_id.name,
+                        &contract_id.version,
+                        &contract_data_from_server.content,
+                    )?;
+                }
+                let sub_contract = contracts::load_contract_from_db(
+                    &mut conn,
+                    &contract_id.name,
+                    &contract_id.version,
+                )?;
+                contract = contract.merge(sub_contract).map_err(|e| {
+                    format_err!("Failed to merge contract {}: {}", &contract_id.name, e)
+                })?;
+            }
             validate_wasm_and_report_errors(&wasm_buffer, &contract, source_path_string)?;
         }
     }
+    debug!("package at path {:#?} validated", &pkg_path);
 
     Ok(())
 }

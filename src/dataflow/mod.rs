@@ -19,6 +19,7 @@ use std::path::Path;
 pub mod added_packages;
 pub mod bin_script;
 pub mod changed_manifest_packages;
+pub mod contracts;
 pub mod find_command_result;
 pub mod installed_packages;
 pub mod local_package;

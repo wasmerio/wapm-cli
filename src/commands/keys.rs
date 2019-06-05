@@ -1,5 +1,6 @@
 //! Subcommand to deal with keys for signing wapm packages
 
+use crate::database;
 use crate::graphql::{self, DateTime};
 use crate::keys::*;
 use crate::util;
@@ -71,7 +72,7 @@ pub struct Import {
 }
 
 pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
-    let mut key_db = open_keys_db()?;
+    let mut key_db = database::open_db()?;
     match options {
         KeyOpt::List(List { all }) => {
             // query server?
