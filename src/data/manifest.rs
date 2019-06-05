@@ -49,7 +49,7 @@ pub struct Module {
     pub abi: Abi,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
-    pub contracts: Vec<ContractId>,
+    pub contracts: Option<Vec<ContractId>>,
 }
 
 /// The manifest represents the file used to describe a Wasm package.

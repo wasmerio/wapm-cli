@@ -14,7 +14,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
         ManifestResult::Manifest(manifest) => manifest,
     };
     if let Some(modules) = manifest.module {
-        for module in modules.iter() {
+        for module in modules.into_iter() {
             let source_path = if module.source.is_relative() {
                 manifest.base_directory_path.join(&module.source)
             } else {
@@ -35,7 +35,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
 
             let mut conn = database::open_db()?;
             let mut contract: Contract = Default::default();
-            for contract_id in module.contracts.iter() {
+            for contract_id in module.contracts.unwrap_or_default().into_iter() {
                 if !contracts::contract_exists(&mut conn, &contract_id.name, &contract_id.version)?
                 {
                     // download contract and store it if we don't have it locally
