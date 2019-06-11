@@ -26,6 +26,7 @@ jobs:
         displayName: 'Build wapm'
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
+          apt install cmake
           cargo test --verbose -- --test-threads=1
           cargo test --manifest-path lib/wasm-contract/Cargo.toml
         displayName: 'Test wapm'
