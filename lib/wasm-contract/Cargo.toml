@@ -1,6 +1,6 @@
 [package]
 name = "wasm-contract"
-version = "0.2.0"
+version = "0.0.0"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
 repository = "https://github.com/wasmerio/wapm-cli"
@@ -9,3 +9,11 @@ license = "MIT"
 
 [dependencies]
 nom = "5.0.0-beta2"
+wasmparser = { version = "0.30", optional = true }
+
+[dev-dependencies]
+wabt = "0.7"
+
+[features]
+validation = ["wasmparser"]
+default = ["validation"]

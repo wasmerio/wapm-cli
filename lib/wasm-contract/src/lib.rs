@@ -5,5 +5,7 @@
 
 pub mod contract;
 pub mod parser;
+#[cfg(feature = "validation")]
+pub mod validate;
 
 pub use contract::*;
