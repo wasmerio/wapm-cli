@@ -228,10 +228,10 @@ module = "mod"
         let manifest: Manifest = toml::from_str(manifest_str).unwrap();
         assert_eq!(
             manifest.module.unwrap()[0].contracts,
-            vec![ContractId {
+            Some(vec![ContractId {
                 name: "wasi".to_string(),
                 version: "0.0.0-unstable".to_string()
-            }]
+            }])
         )
     }
 }

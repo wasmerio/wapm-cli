@@ -245,6 +245,10 @@ fn validate_imports(
                     }
                 }
             }
+        } else {
+            // we didn't find the import at all in the contract
+            // TODO: improve error messages by including type information
+            errors.push(format!("Missing import \"{}\" \"{}\"", key.0, key.1));
         }
     }
 }
@@ -441,6 +445,23 @@ mod validation_tests {
             result.is_err(),
             "function import type mismatch causes an error"
         );
+
+        // Now try with a module that has an import that the contract doesn't have
+        let contract_src = r#"
+(assert_import (func "env" "do_panic" (param i64)))
+(assert_import (global "env" "length_plus_plus" (type i32)))"#;
+        let contract = wasm_contract::parser::parse_contract(contract_src).unwrap();
+
+        let result = validate_wasm_and_report_errors(
+            &wasm[..],
+            &contract,
+            "global_imports_test".to_string(),
+        );
+
+        assert!(
+            result.is_err(),
+            "all imports must be covered by the contract"
+        );
     }
 
     #[test]
@@ -498,5 +519,19 @@ mod validation_tests {
             result.is_err(),
             "function export type mismatch causes an error"
         );
+
+        // Now try a contract that requires an export that the module doesn't have
+        let contract_src = r#"
+(assert_export (func "as-set_local-first" (param i64) (result i64)))
+(assert_export (global "numb_trees" (type i64)))"#;
+        let contract = wasm_contract::parser::parse_contract(contract_src).unwrap();
+
+        let result = validate_wasm_and_report_errors(
+            &wasm[..],
+            &contract,
+            "global_exports_test".to_string(),
+        );
+
+        assert!(result.is_err(), "missing a required export is an error");
     }
 }
