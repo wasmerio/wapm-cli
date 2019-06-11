@@ -5,3 +5,5 @@
 
 pub mod contract;
 pub mod parser;
+
+pub use contract::*;

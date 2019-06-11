@@ -5,7 +5,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Contract {
     /// Things that the module can import
-    pub imports: HashMap<String, Import>,
+    pub imports: HashMap<(String, String), Import>,
     /// Things that the module must export
     pub exports: HashMap<String, Export>,
 }
@@ -17,7 +17,7 @@ impl Contract {
         for (key, val) in other.imports.into_iter() {
             if base.imports.contains_key(&key) {
                 if val != base.imports[&key] {
-                    return Err(format!("Conflict detected: the key {} was found in imports but the definitions were different: {:?} {:?}", key, base.imports[&key], val));
+                    return Err(format!("Conflict detected: the import \"{}\" \"{}\" was found but the definitions were different: {:?} {:?}", &key.0, &key.1, base.imports[&key], val));
                 }
             } else {
                 let res = base.imports.insert(key, val);
@@ -48,20 +48,26 @@ pub enum Import {
         result: Vec<WasmType>,
     },
     Global {
+        namespace: String,
         name: String,
         var_type: WasmType,
     },
 }
 
-// TODO: figure out this separator... '/' is a valid character in names so we can have collisions
 impl Import {
+    pub fn format_key(ns: &str, name: &str) -> (String, String) {
+        (ns.to_string(), name.to_string())
+    }
+
     /// Get the key used to look this import up in the Contract's import hashmap
-    pub fn get_key(&self) -> String {
+    pub fn get_key(&self) -> (String, String) {
         match self {
             Import::Func {
                 namespace, name, ..
-            } => format!("{}/{}", &namespace, &name),
-            Import::Global { name, .. } => name.clone(),
+            } => Self::format_key(&namespace, &name),
+            Import::Global {
+                namespace, name, ..
+            } => Self::format_key(&namespace, &name),
         }
     }
 }
@@ -80,11 +86,15 @@ pub enum Export {
 }
 
 impl Export {
+    pub fn format_key(name: &str) -> String {
+        name.to_string()
+    }
+
     /// Get the key used to look this export up in the Contract's export hashmap
     pub fn get_key(&self) -> String {
         match self {
-            Export::Func { name, .. } => name.clone(),
-            Export::Global { name, .. } => name.clone(),
+            Export::Func { name, .. } => Self::format_key(&name),
+            Export::Global { name, .. } => Self::format_key(&name),
         }
     }
 }
@@ -96,6 +106,21 @@ pub enum WasmType {
     I64,
     F32,
     F64,
+}
+
+impl std::fmt::Display for WasmType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                WasmType::I32 => "i32",
+                WasmType::I64 => "i64",
+                WasmType::F32 => "f32",
+                WasmType::F64 => "f64",
+            }
+        )
+    }
 }
 
 #[cfg(test)]

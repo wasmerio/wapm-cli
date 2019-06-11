@@ -1,5 +1,25 @@
 # source: https://registry.wapm.dev/graphql
-# timestamp: Mon May 13 2019 11:55:33 GMT-0700 (Pacific Daylight Time)
+# timestamp: Tue Jun 04 2019 15:18:55 GMT-0700 (Pacific Daylight Time)
+
+type Contract implements Node {
+  """The ID of the object."""
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  versions: [ContractVersion]
+  lastVersion: ContractVersion
+}
+
+type ContractVersion {
+  id: ID!
+  contract: Contract!
+  version: String!
+  content: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publishedBy: User!
+}
 
 """
 The `DateTime` scalar type represents a DateTime
@@ -23,6 +43,8 @@ input InputSignature {
 type Mutation {
   publishPublicKey(input: PublishPublicKeyInput!): PublishPublicKeyPayload
   publishPackage(input: PublishPackageInput!): PublishPackagePayload
+
+  """Obtain JSON Web Token mutation"""
   tokenAuth(input: ObtainJSONWebTokenInput!): ObtainJSONWebTokenPayload
   registerUser(input: RegisterUserInput!): RegisterUserPayload
   verifyToken(input: VerifyInput!): VerifyPayload
@@ -68,14 +90,19 @@ type Package implements Node {
 }
 
 type PackageConnection {
+  """Pagination data for this connection."""
   pageInfo: PageInfo!
+
+  """Contains the nodes in this connection."""
   edges: [PackageEdge]!
 }
 
 type PackageDistribution {
   downloadUrl: String!
+  size: Int!
 }
 
+"""A Relay edge containing a `Package` and its cursor."""
 type PackageEdge {
   """The item at the end of the edge"""
   node: Package
@@ -94,21 +121,25 @@ type PackageVersion {
   readme: String
   repository: String
   homepage: String
-  versionPosition: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
   publishedBy: User!
   signature: Signature
   file: String!
+  fileSize: Int!
   distribution: PackageDistribution!
   isLastVersion: Boolean!
 }
 
 type PackageVersionConnection {
+  """Pagination data for this connection."""
   pageInfo: PageInfo!
+
+  """Contains the nodes in this connection."""
   edges: [PackageVersionEdge]!
 }
 
+"""A Relay edge containing a `PackageVersion` and its cursor."""
 type PackageVersionEdge {
   """The item at the end of the edge"""
   node: PackageVersion
@@ -117,6 +148,9 @@ type PackageVersionEdge {
   cursor: String!
 }
 
+"""
+The Relay compliant `PageInfo` type, containing data necessary to paginate this connection.
+"""
 type PageInfo {
   """When paginating forwards, are there more items?"""
   hasNextPage: Boolean!
@@ -185,6 +219,9 @@ type Query {
   getPackage(name: String!): Package
   getPackages(names: [String!]!): [Package]!
   getPackageVersion(name: String!, version: String): PackageVersion
+  getContract(name: String!): Contract
+  getContracts(names: [String!]!): [Contract]!
+  getContractVersion(name: String!, version: String): ContractVersion
   search(query: String!, before: String, after: String, first: Int, last: Int): SearchConnection!
   viewer: User
 }
@@ -215,10 +252,14 @@ type RegisterUserPayload {
 }
 
 type SearchConnection {
+  """Pagination data for this connection."""
   pageInfo: PageInfo!
+
+  """Contains the nodes in this connection."""
   edges: [SearchEdge]!
 }
 
+"""A Relay edge containing a `Search` and its cursor."""
 type SearchEdge {
   """The item at the end of the edge"""
   node: SearchResult

@@ -1,3 +1,10 @@
+//! Parsers to get a wasm contract from text
+//! The grammar of the text format is:
+//! DECL_TYPE = assert_import | assert_export
+//! IMPORT_DATA =
+//! EXPORT_DATA =
+//! (DECL_TYPE ())
+
 use nom::{
     branch::*,
     bytes::complete::{escaped, is_not, tag},
@@ -21,9 +28,6 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     let mut export_found = true;
     let mut contract = Contract::default();
     while import_found || export_found {
-        while let Result::Ok((inp, _)) = parse_comment(input) {
-            input = inp;
-        }
         if let Result::Ok((inp, out)) = preceded(space_comments, parse_imports)(input) {
             for entry in out.into_iter() {
                 if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
@@ -48,7 +52,11 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
             export_found = false;
         }
     }
-    Ok(contract)
+    if !input.is_empty() {
+        Err(format!("Could not parse remaining input: {}", input))
+    } else {
+        Ok(contract)
+    }
 }
 
 fn parse_comment(input: &str) -> IResult<&str, ()> {
@@ -142,9 +150,11 @@ fn global_import(input: &str) -> IResult<&str, Import> {
             map(
                 tuple((
                     preceded(space_comments, identifier),
+                    preceded(space_comments, identifier),
                     preceded(space_comments, type_s_exp),
                 )),
-                |(name, var_type)| Import::Global {
+                |(ns, name, var_type)| Import::Global {
+                    namespace: ns.to_string(),
                     name: name.to_string(),
                     var_type,
                 },
@@ -262,12 +272,13 @@ mod test {
 
     #[test]
     fn parse_global_import() {
-        let parse_res = global_import("(global \"length\" (type i32))").unwrap();
+        let parse_res = global_import("(global \"env\" \"length\" (type i32))").unwrap();
         assert_eq!(
             parse_res,
             (
                 "",
                 Import::Global {
+                    namespace: "env".to_string(),
                     name: "length".to_string(),
                     var_type: WasmType::I32,
                 }
@@ -346,7 +357,7 @@ mod test {
         let parse_res = parse_imports(
             "(assert_import (func \"ns\" \"name\"  
                                                (param f64 i32) (result f64 i32))
-    ( global \"length\" ( type 
+    ( global \"env\" \"length\" ( type 
 ;; i32 is the best type
 i32 )
 )
@@ -374,6 +385,7 @@ i32 )
                         result: vec![WasmType::F64, WasmType::I32],
                     },
                     Import::Global {
+                        namespace: "env".to_string(),
                         name: "length".to_string(),
                         var_type: WasmType::I32,
                     },
@@ -393,7 +405,7 @@ i32 )
         let parse_res = parse_contract(
             " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
  (assert_export (func \"name2\" (param) (result i32)))
- (assert_import (global \"length\" (type f64)))",
+ (assert_import (global \"env\" \"length\" (type f64)))",
         )
         .unwrap();
 
@@ -405,6 +417,7 @@ i32 )
                 result: vec![WasmType::F64, WasmType::I32],
             },
             Import::Global {
+                namespace: "env".to_string(),
                 name: "length".to_string(),
                 var_type: WasmType::F64,
             },
@@ -417,7 +430,7 @@ i32 )
         let import_map = imports
             .into_iter()
             .map(|entry| (entry.get_key(), entry))
-            .collect::<HashMap<String, Import>>();
+            .collect::<HashMap<(String, String), Import>>();
         let export_map = exports
             .into_iter()
             .map(|entry| (entry.get_key(), entry))
@@ -438,7 +451,9 @@ i32 )
 ; test comment
   ;; hello
  (assert_import (func \"ns\" \"name\" (param) (result i32)))
- (assert_import (global \"length\" (type f64)))",
+ (assert_import (global \"length\" (type f64)))
+
+",
         );
 
         assert!(parse_res.is_err());
@@ -478,7 +493,7 @@ i32 )
         let import_map = imports
             .into_iter()
             .map(|entry| (entry.get_key(), entry))
-            .collect::<HashMap<String, Import>>();
+            .collect::<HashMap<(String, String), Import>>();
         let export_map = exports
             .into_iter()
             .map(|entry| (entry.get_key(), entry))
@@ -490,5 +505,14 @@ i32 )
                 exports: export_map,
             }
         );
+    }
+
+    #[test]
+    fn typo_gets_caught() {
+        let contract_src = r#"
+(assert_import (func "env" "do_panic" (params i32 i64)))
+(assert_import (global "length" (type i32)))"#;
+        let result = parse_contract(contract_src);
+        assert!(result.is_err());
     }
 }

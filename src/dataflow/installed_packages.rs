@@ -1,4 +1,5 @@
 use crate::data::manifest::Manifest;
+use crate::database;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
@@ -170,7 +171,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Error::DownloadError(key.to_string(), error_message)
             })?;
 
-        let mut keys_db = keys::open_keys_db().map_err(|e| {
+        let mut keys_db = database::open_db().map_err(|e| {
             Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
         })?;
         let latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
