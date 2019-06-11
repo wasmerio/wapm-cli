@@ -3,16 +3,16 @@ trigger:
 
 resources:
   containers:
-    - container: rust133
-      image: rust:1.33
+    - container: rust135
+      image: rust:1.35
 jobs:
   - job: LinuxContainer
     pool:
       vmImage: 'ubuntu-16.04'
     strategy:
       matrix:
-        rust133:
-          containerResource: rust133
+        rust135:
+          containerResource: rust135
     container: $[ variables['containerResource'] ]
     steps:
       - script: |
