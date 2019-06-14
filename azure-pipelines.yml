@@ -5,6 +5,7 @@ resources:
   containers:
     - container: rust135
       image: rust:1.35
+      image: lycantropos/cmake:3.9.5
 jobs:
   - job: LinuxContainer
     pool:
