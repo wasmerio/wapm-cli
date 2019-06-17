@@ -1,9 +1,35 @@
 //! Parsers to get a wasm contract from text
+//!
 //! The grammar of the text format is:
-//! DECL_TYPE = assert_import | assert_export
-//! IMPORT_DATA =
-//! EXPORT_DATA =
-//! (DECL_TYPE ())
+//! contract = contract-entry+
+//! contract-entry = import-assertion | export-assertion
+//!
+//! import-assertion = "(" "assert_import" import-entry+ ")"
+//! import-entry = import-fn | import-global
+//! import-fn = "(" "func" namespace name param-list? result-list? ")"
+//! import-global = "(" "global" namespace name type-decl ")"
+//!
+//! export-assertion = "(" "assert_export" export-entry+ ")"
+//! export-entry = export-fn | export-global
+//! export-fn = "(" "func" name param-list? result-list? ")"
+//! export-global = "(" "global" name type-decl ")"
+//!
+//! param-list = "(" param type* ")"
+//! result-list = "(" result type* ")"
+//! type-decl = "(" "type" type ")"
+//! namespace = "\"" identifier "\""
+//! name = "\"" identifier "\""
+//! identifier = any character that's not a whitespace character or an open or close parenthesis
+//! type = "i32" | "i64" | "f32" | "f64"
+//!
+//! + means 1 or more
+//! * means 0 or more
+//! ? means 0 or 1
+//! | means "or"
+//! "\"" means one `"` character
+//!
+//! comments start with a `;` character and go until a newline `\n` character is reached
+//! comments and whitespace are valid between any tokens
 
 use nom::{
     branch::*,
@@ -21,7 +47,7 @@ use crate::contract::*;
 /// Some example input:
 /// (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
 /// (assert_export (func "name" (param f64 i32) (result f64 i32)))
-/// (assert_import (global "name" (type f64)))
+/// (assert_import (global "ns" "name" (type f64)))
 
 pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     let mut import_found = true;

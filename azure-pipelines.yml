@@ -4,7 +4,7 @@ trigger:
 resources:
   containers:
     - container: rust135
-      image: rust:1.35
+      image: wasmer/rust-and-cmake:latest
 jobs:
   - job: LinuxContainer
     pool:
