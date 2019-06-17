@@ -31,6 +31,14 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                 }
             })?;
 
+            // hack, short circuit if no contract for now
+            if module.contracts.is_none() {
+                return validate_wasm_and_report_errors_old(
+                    &wasm_buffer[..],
+                    source_path_string.clone(),
+                );
+            }
+
             let mut conn = database::open_db()?;
             let mut contract: Contract = Default::default();
             for contract_id in module.contracts.unwrap_or_default().into_iter() {
@@ -83,4 +91,27 @@ pub enum ValidationError {
     MiscCannotRead { file: String, error: String },
     #[fail(display = "Failed to unpack archive \"{}\"! {}", file, error)]
     CannotUnpackArchive { file: String, error: String },
+}
+
+// legacy function, validates wasm.  TODO: clean up
+pub fn validate_wasm_and_report_errors_old(
+    wasm: &[u8],
+    file_name: String,
+) -> Result<(), failure::Error> {
+    use wasmparser::WasmDecoder;
+    let mut parser = wasmparser::ValidatingParser::new(wasm, None);
+    loop {
+        let state = parser.read();
+        match *state {
+            wasmparser::ParserState::EndWasm => return Ok(()),
+            wasmparser::ParserState::Error(e) => {
+                return Err(ValidationError::InvalidWasm {
+                    file: file_name,
+                    error: format!("{}", e),
+                }
+                .into());
+            }
+            _ => {}
+        }
+    }
 }
