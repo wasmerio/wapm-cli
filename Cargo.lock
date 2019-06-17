@@ -2278,7 +2278,7 @@ dependencies = [
 
 [[package]]
 name = "wapm-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
