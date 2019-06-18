@@ -36,7 +36,7 @@ jobs:
           export WAPM_DISABLE_COLOR=true
           chmod +x end-to-end-tests/install.sh
           echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/install.sh > /tmp/install-out.txt
+          ./end-to-end-tests/install.sh &> /tmp/install-out.txt
           echo "GENERATED OUTPUT:"
           cat /tmp/install-out.txt
           echo "COMPARING..."
@@ -56,7 +56,7 @@ jobs:
           export WAPM_DISABLE_COLOR=true
           chmod +x end-to-end-tests/verification.sh
           echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/verification.sh > /tmp/verification-out.txt
+          ./end-to-end-tests/verification.sh &> /tmp/verification-out.txt
           echo "GENERATED OUTPUT:"
           cat /tmp/verification-out.txt
           echo "COMPARING..."
