@@ -45,6 +45,7 @@ jobs:
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
+          rm /tmp/install-out.txt
         displayName: 'Regression test: Install, Uninstall, Run, and List'
       - script: |
           curl https://get.wasmer.io -sSfL | sh
@@ -62,6 +63,7 @@ jobs:
           rm wapm.lock
           rm wapm.toml
           rm -rf wapm_packages
+          rm /tmp/verification-out.txt
         displayName: 'Regression test: verification and public key management'
   - job: Windows
     pool:
