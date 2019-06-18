@@ -20,3 +20,4 @@ wapm install mark/wapm-override-test@0.2.0
 wapm run wapm-override-test
 wapm uninstall mark/wapm-override-test
 wapm run wapm-override-test
+wapm install cowsay@0.1.1 cowsay@0.1.2
