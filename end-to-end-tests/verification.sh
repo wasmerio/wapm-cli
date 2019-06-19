@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#alias wapm=target/debug/wapm
+alias wapm=target/debug/wapm
 wapm config set registry.url "https://registry.wapm.dev"
 # redirect stderr to /dev/null so we can capture important stderr
 yes no 2> /dev/null | wapm install mark2/dog2@0.0.0

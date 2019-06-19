@@ -4,7 +4,7 @@ Would you like to trust this key?
 [y/n]
 [INFO] Importing key "3F6D278A36843FFE" for user "mark2"
 [INFO] Signature of package dog2@0.0.6 verified!
-Package installed successfully to wapm_packages!
+Global package installed successfully!
 "./data"
 "./prog-src"
 [INFO] Installing mark2/dog2@0.0.6
@@ -14,5 +14,6 @@ Package installed successfully to wapm_packages!
 "./prog-src"
 [INFO] Package "mark2/dog2" is uninstalled.
 [INFO] Package "mark2/dog2" is uninstalled.
+[INFO] Creating pkg_fs in current directory for local development!
 [INFO] Copying src/bin/wapm.rs to {{CURRENT_DIR}}/pkg_fs/wapm_file
 "./wapm_file"
