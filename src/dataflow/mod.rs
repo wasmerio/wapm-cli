@@ -86,10 +86,13 @@ pub fn detect_duplicate_packages(packages: &HashSet<PackageKey>) -> Result<(), E
         match pkg {
             PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
                 if let Some(old_version) = seen_pkg_versions.insert(name, version) {
+                    // we sort the versions so that output is stable
+                    let mut versions = [old_version.to_string(), version.to_string()];
+                    versions.sort();
                     return Err(Error::DuplicatePackage(
                         name.to_string(),
-                        old_version.to_string(),
-                        version.to_string(),
+                        versions[0].clone(),
+                        versions[1].clone(),
                     ));
                 }
             }
