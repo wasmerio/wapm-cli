@@ -9,8 +9,7 @@ Would you like to trust this key?
 [y/n] [INFO] Importing key "3F6D278A36843FFE" for user "mark2"
 [INFO] Signature of package dog@0.0.4 verified!
 Package installed successfully to wapm_packages!
-       3
-
+3
 [INFO] Package "mark2/dog" is uninstalled.
 [INFO] Installing mark2/dog@0.0.4
 [INFO] Signature of package dog@0.0.4 verified!
