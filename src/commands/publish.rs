@@ -1,5 +1,6 @@
 //! The publish command uploads the package specified in the Manifest (`wapm.toml`)
 //! to the wapm registry.
+use crate::database;
 use crate::keys;
 use crate::validate;
 
@@ -190,7 +191,7 @@ pub enum SignArchiveResult {
 pub fn sign_compressed_archive(
     compressed_archive: &mut fs::File,
 ) -> Result<SignArchiveResult, failure::Error> {
-    let key_db = keys::open_keys_db()?;
+    let key_db = database::open_db()?;
     let personal_key = if let Ok(v) = keys::get_active_personal_key(&key_db) {
         v
     } else {

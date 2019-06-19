@@ -1,4 +1,5 @@
 use crate::data::manifest::Manifest;
+use crate::database;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
@@ -170,7 +171,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Error::DownloadError(key.to_string(), error_message)
             })?;
 
-        let mut keys_db = keys::open_keys_db().map_err(|e| {
+        let mut keys_db = database::open_db().map_err(|e| {
             Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
         })?;
         let latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
@@ -267,14 +268,23 @@ Would you like to trust this key?",
             (None, Some(latest_local_key)) => {
                 // server error or scary things happening
                 warn!(
-                    "The server does not have a public key for {} for the package {}. This could mean that the wapm registry has been compromised.  Continuning with local public key {}",
-                    &namespace, &fully_qualified_package_name, &latest_local_key.public_key_id
+                    "The server does not have a public key for {} for the package {} and the package is not signed but a public key for {} is known locally ({}).\nThis could mean that the wapm registry has been compromised, that the package was created before the publisher started signing their packages, or that the publisher decided not to sign this package.",
+                    &namespace, &fully_qualified_package_name, &namespace, &latest_local_key.public_key_id
                 );
 
-                key_to_verify_package_with = Some((
-                    latest_local_key.public_key_id,
-                    latest_local_key.public_key_value,
-                ));
+                let user_wants_to_do_insecure_install = util::prompt_user_for_yes(
+                    "Would you like to proceed with an unverified installation?",
+                )
+                .expect("Could not read input from user");
+
+                if user_wants_to_do_insecure_install {
+                    insecure_install = true;
+                } else {
+                    return Err(Error::InstallAborted(format!(
+                        "User did not trust unsigned package {}",
+                        &fully_qualified_package_name
+                    )));
+                }
             }
             // server does not have key and client does not have key
             (None, None) => {

@@ -39,6 +39,12 @@ pub struct Command {
     pub package: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct ContractId {
+    pub name: String,
+    pub version: String,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
@@ -47,6 +53,7 @@ pub struct Module {
     pub abi: Abi,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
+    pub contracts: Option<Vec<ContractId>>,
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -141,6 +148,7 @@ mod command_tests {
             module = "target.wasm"
             source = "source.wasm"
             description = "description"
+            contracts = [{"name" = "wasi", "version" = "0.0.0-unstable"}]
             [[command]]
             name = "foo"
             module = "test"
@@ -174,7 +182,7 @@ mod dependency_tests {
             [[module]]
             name = "test"
             source = "test.wasm"
-            abi = "none"
+            contracts = []
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
@@ -198,5 +206,38 @@ mod dependency_tests {
             dependency_version_2.to_string(),
         );
         assert_eq!(2, manifest.dependencies.as_ref().unwrap().len());
+    }
+}
+
+#[cfg(test)]
+mod manifest_tests {
+    use super::*;
+
+    #[test]
+    fn contract_test() {
+        let manifest_str = r#"
+[package]
+name = "test"
+version = "0.0.0"
+description = "This is a test package"
+license = "MIT"
+
+[[module]]
+name = "mod"
+source = "target/wasm32-wasi/release/mod.wasm"
+contracts = [{name = "wasi", version = "0.0.0-unstable"}]
+
+[[command]]
+name = "command"
+module = "mod"
+"#;
+        let manifest: Manifest = toml::from_str(manifest_str).unwrap();
+        assert_eq!(
+            manifest.module.unwrap()[0].contracts,
+            Some(vec![ContractId {
+                name: "wasi".to_string(),
+                version: "0.0.0-unstable".to_string()
+            }])
+        )
     }
 }

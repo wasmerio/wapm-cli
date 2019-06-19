@@ -36,3 +36,5 @@ Package installed successfully to wapm_packages!
 Version 0.2.0
 [INFO] Package "mark/wapm-override-test" is uninstalled.
 Version 0.1.0
+
+Error: Failed to install packages. Attempting to install multiple versions of package _/cowsay (0.1.1 and 0.1.2)

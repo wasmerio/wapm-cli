@@ -1,6 +1,8 @@
-use crate::abi::Abi;
-use crate::dataflow::manifest_packages::ManifestResult;
+use crate::contracts;
+use crate::database;
+use crate::dataflow::{contracts::ContractFromServer, manifest_packages::ManifestResult};
 use std::{fs, io::Read, path::PathBuf};
+use wasm_contract::{validate, Contract};
 
 pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     // validate as dir
@@ -10,7 +12,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
         ManifestResult::Manifest(manifest) => manifest,
     };
     if let Some(modules) = manifest.module {
-        for module in modules.iter() {
+        for module in modules.into_iter() {
             let source_path = if module.source.is_relative() {
                 manifest.base_directory_path.join(&module.source)
             } else {
@@ -28,74 +30,52 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                     error: format!("{}", err),
                 }
             })?;
-            let detected_abi = validate_wasm_and_report_errors(&wasm_buffer, source_path_string)?;
 
-            if module.abi != Abi::None && module.abi != detected_abi {
-                return Err(ValidationError::MismatchedABI {
-                    module_name: module.name.clone(),
-                    found_abi: detected_abi,
-                    expected_abi: module.abi,
-                }
-                .into());
+            // hack, short circuit if no contract for now
+            if module.contracts.is_none() {
+                return validate_wasm_and_report_errors_old(
+                    &wasm_buffer[..],
+                    source_path_string.clone(),
+                );
             }
+
+            let mut conn = database::open_db()?;
+            let mut contract: Contract = Default::default();
+            for contract_id in module.contracts.unwrap_or_default().into_iter() {
+                if !contracts::contract_exists(&mut conn, &contract_id.name, &contract_id.version)?
+                {
+                    // download contract and store it if we don't have it locally
+                    let contract_data_from_server = ContractFromServer::get(
+                        contract_id.name.clone(),
+                        contract_id.version.clone(),
+                    )?;
+                    contracts::import_contract(
+                        &mut conn,
+                        &contract_id.name,
+                        &contract_id.version,
+                        &contract_data_from_server.content,
+                    )?;
+                }
+                let sub_contract = contracts::load_contract_from_db(
+                    &mut conn,
+                    &contract_id.name,
+                    &contract_id.version,
+                )?;
+                contract = contract.merge(sub_contract).map_err(|e| {
+                    format_err!("Failed to merge contract {}: {}", &contract_id.name, e)
+                })?;
+            }
+            validate::validate_wasm_and_report_errors(&wasm_buffer, &contract).map_err(|e| {
+                ValidationError::InvalidWasm {
+                    file: source_path_string,
+                    error: format!("{:?}", e),
+                }
+            })?;
         }
     }
+    debug!("package at path {:#?} validated", &pkg_path);
 
     Ok(())
-}
-
-pub fn validate_wasm_and_report_errors(
-    wasm: &[u8],
-    file_name: String,
-) -> Result<Abi, failure::Error> {
-    use wasmparser::WasmDecoder;
-    let mut parser = wasmparser::ValidatingParser::new(wasm, None);
-    let mut abi = Abi::None;
-    loop {
-        let state = parser.read();
-        match *state {
-            wasmparser::ParserState::EndWasm => return Ok(abi),
-            wasmparser::ParserState::Error(e) => {
-                return Err(ValidationError::InvalidWasm {
-                    file: file_name,
-                    error: format!("{}", e),
-                }
-                .into());
-            }
-            wasmparser::ParserState::ImportSectionEntry {
-                module: "wasi_unstable",
-                ..
-            } => {
-                if abi == Abi::None || abi == Abi::Wasi {
-                    abi = Abi::Wasi;
-                } else {
-                    return Err(ValidationError::MultipleABIs {
-                        file: file_name,
-                        first_abi: abi,
-                        second_abi: Abi::Wasi,
-                    }
-                    .into());
-                }
-            }
-            wasmparser::ParserState::ImportSectionEntry {
-                module: "env",
-                field: "_emscripten_memcpy_big",
-                ..
-            } => {
-                if abi == Abi::None || abi == Abi::Emscripten {
-                    abi = Abi::Emscripten;
-                } else {
-                    return Err(ValidationError::MultipleABIs {
-                        file: file_name,
-                        first_abi: abi,
-                        second_abi: Abi::Emscripten,
-                    }
-                    .into());
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
 #[derive(Debug, Fail)]
@@ -109,24 +89,29 @@ pub enum ValidationError {
     MissingFile { file: String },
     #[fail(display = "Failed to read file {}; {}", file, error)]
     MiscCannotRead { file: String, error: String },
-    #[fail(
-        display = "Multiple ABIs detected in file {}; previously detected {} but found {}",
-        file, first_abi, second_abi
-    )]
-    MultipleABIs {
-        file: String,
-        first_abi: Abi,
-        second_abi: Abi,
-    },
-    #[fail(
-        display = "Detected ABI ({}) does not match ABI specified in wapm.toml ({}) for module \"{}\"",
-        found_abi, expected_abi, module_name
-    )]
-    MismatchedABI {
-        module_name: String,
-        found_abi: Abi,
-        expected_abi: Abi,
-    },
     #[fail(display = "Failed to unpack archive \"{}\"! {}", file, error)]
     CannotUnpackArchive { file: String, error: String },
+}
+
+// legacy function, validates wasm.  TODO: clean up
+pub fn validate_wasm_and_report_errors_old(
+    wasm: &[u8],
+    file_name: String,
+) -> Result<(), failure::Error> {
+    use wasmparser::WasmDecoder;
+    let mut parser = wasmparser::ValidatingParser::new(wasm, None);
+    loop {
+        let state = parser.read();
+        match *state {
+            wasmparser::ParserState::EndWasm => return Ok(()),
+            wasmparser::ParserState::Error(e) => {
+                return Err(ValidationError::InvalidWasm {
+                    file: file_name,
+                    error: format!("{}", e),
+                }
+                .into());
+            }
+            _ => {}
+        }
+    }
 }

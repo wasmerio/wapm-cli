@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.3.0] - 2019-06-17
+### Adedd
+- Wasm contracts (experimental way of validating imports and exports)
+- Package signing
+  - Packages can be signed and verified with Minisign keys
+  - `wapm keys` for relevant subcommands
+- SQLite database as backing store for data like keys and contracts
+
 ## [0.2.0] - 2019-05-06
 ### Added
 - Install packages with name and version e.g. `wapm install lua@0.1.2`.
@@ -33,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2019-04-22
 ☄ First release of `wapm-cli` 🌌
 
-[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/wasmerio/wapm-cli/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.3.0
+[0.2.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/wasmerio/wapm-cli/releases/tag/v0.1.0

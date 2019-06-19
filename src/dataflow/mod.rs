@@ -12,13 +12,14 @@ use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use semver::{Version, VersionReq};
 use std::borrow::Cow;
-use std::collections::hash_set::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::Path;
 
 pub mod added_packages;
 pub mod bin_script;
 pub mod changed_manifest_packages;
+pub mod contracts;
 pub mod find_command_result;
 pub mod installed_packages;
 pub mod local_package;
@@ -50,6 +51,11 @@ pub enum Error {
     LocalPackageError(local_package::Error),
     #[fail(display = "Could not cleanup old artifacts. {}", _0)]
     CleanupError(removed_lockfile_packages::Error),
+    #[fail(
+        display = "Attempting to install multiple versions of package {} ({} and {})",
+        _0, _1, _2
+    )]
+    DuplicatePackage(String, String, String),
 }
 
 /// A package key for a package in the wapm.io registry.
@@ -71,6 +77,31 @@ impl<'a> fmt::Display for WapmPackageKey<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{} {}", self.name, self.version)
     }
+}
+
+pub fn detect_duplicate_packages(packages: &HashSet<PackageKey>) -> Result<(), Error> {
+    let mut seen_pkg_versions = HashMap::new();
+
+    for pkg in packages.iter() {
+        match pkg {
+            PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
+                if let Some(old_version) = seen_pkg_versions.insert(name, version) {
+                    // we sort the versions so that output is stable
+                    let mut versions = [old_version.to_string(), version.to_string()];
+                    versions.sort();
+                    return Err(Error::DuplicatePackage(
+                        name.to_string(),
+                        versions[0].clone(),
+                        versions[1].clone(),
+                    ));
+                }
+            }
+            // ignore package ranges for now
+            _ => (),
+        }
+    }
+
+    Ok(())
 }
 
 /// A package key can be anything reference to a package, be it a wapm.io registry, a local directory.
@@ -165,6 +196,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     let lockfile_result = LockfileResult::find_in_directory(&directory);
     let mut lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
+    detect_duplicate_packages(&added_packages.packages)?;
 
     // capture the initial lockfile keys before any modifications
     let initial_package_keys: HashSet<_> = lockfile_packages.package_keys();
@@ -230,6 +262,8 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     let mut manifest_packages =
         ManifestPackages::new_from_manifest_and_added_packages(&manifest, &added_packages)
             .map_err(|e| Error::ManifestError(e))?;
+
+    detect_duplicate_packages(&manifest_packages.packages)?;
 
     // remove/uninstall packages
     manifest_packages.remove_packages(&removed_packages);

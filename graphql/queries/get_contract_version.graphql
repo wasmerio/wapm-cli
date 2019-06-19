@@ -1,0 +1,9 @@
+query GetContractVersionQuery ($name: String!, $version: String!) {
+  contract: getContractVersion(name: $name, version: $version) {
+    version,
+    content,
+    contract {
+      name,
+    }
+  }
+}
