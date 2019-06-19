@@ -1,8 +1,7 @@
 [INFO] Installing mark2/dog2@0.0.6
 New public key encountered: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog2@0.0.6.
 Would you like to trust this key?
-[y/n]
-[INFO] Importing key "3F6D278A36843FFE" for user "mark2"
+[y/n] [INFO] Importing key "3F6D278A36843FFE" for user "mark2"
 [INFO] Signature of package dog2@0.0.6 verified!
 Global package installed successfully!
 "./data"
