@@ -14,5 +14,5 @@ Package installed successfully to wapm_packages!
 "./prog-src"
 [INFO] Package "mark2/dog2" is uninstalled.
 [INFO] Package "mark2/dog2" is uninstalled.
-[INFO] Copying src/bin/wapm.rs to /Users/mark/wapm-cli/pkg_fs/wapm_file
+[INFO] Copying src/bin/wapm.rs to {{CURRENT_DIR}}/pkg_fs/wapm_file
 "./wapm_file"
