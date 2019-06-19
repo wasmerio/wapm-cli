@@ -1,6 +1,6 @@
 use crate::dataflow::{normalize_global_namespace, PackageKey};
 use semver::Version;
-use std::collections::hash_set::HashSet;
+use std::collections::HashSet;
 
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
