@@ -81,7 +81,7 @@ jobs:
           cat /tmp/verification-out.txt
           echo "COMPARING..."
           # hack to get the current directory in the expected output
-          sed -i end-to-end-tests/package-fs-mapping.txt "s/{{CURRENT_DIR}}/$(pwd | sed 's/\//\\\//g')/g"
+          sed -i '' "s/{{CURRENT_DIR}}/$(pwd | sed 's/\//\\\//g')/g" end-to-end-tests/package-fs-mapping.txt
           diff -B end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
