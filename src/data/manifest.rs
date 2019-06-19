@@ -24,6 +24,10 @@ pub struct Package {
     pub homepage: Option<String>,
     #[serde(rename = "wasmer-extra-flags")]
     pub wasmer_extra_flags: Option<String>,
+    /// The location in the guest FS where the program will see the contents of
+    /// the pkg_fs folder when run
+    #[serde(rename = "pkg-fs-mount-point")]
+    pub pkg_fs_mount_point: Option<PathBuf>,
 }
 
 /// Describes a command for a wapm module
@@ -58,7 +62,8 @@ pub struct Module {
 ///
 /// The `source` is used to create bundles with the `fs` section.
 ///
-/// The `fs` section represents assets that will be embedded into the Wasm module as custom sections.
+/// The `fs` section represents fs assets that will be made available to the
+/// program at `package.pkg-fs-mount-point`
 /// These are pairs of paths.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
@@ -66,6 +71,7 @@ pub struct Manifest {
     pub module: Option<Vec<Module>>,
     pub dependencies: Option<HashMap<String, String>>,
     pub command: Option<Vec<Command>>,
+    pub fs: Option<HashMap<String, PathBuf>>,
     /// private data
     /// store the directory path of the manifest file for use later accessing relative path fields
     #[serde(skip)]

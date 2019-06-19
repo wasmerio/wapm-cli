@@ -4,6 +4,7 @@ use crate::dataflow;
 use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -68,7 +69,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()
     } else {
-        current_dir
+        current_dir.clone()
     };
 
     debug!(
@@ -84,11 +85,46 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         )
     })?;
 
-    let wasi_preopened_dir_flags = run_options
+    let manifest_dir = {
+        if source_path_buf
+            .components()
+            .find(|comp| comp.as_os_str().to_string_lossy() == "wapm_packages")
+            .is_some()
+        {
+            let mut base_path = run_dir.clone();
+            base_path.push(&source_path_buf);
+            // remove the `module.wasm` part of the path
+            base_path.pop();
+            base_path
+        } else {
+            // otherwise we're running in the current dir in dev-mode
+            current_dir.clone()
+        }
+    };
+
+    let mut wasi_preopened_dir_flags: Vec<OsString> = run_options
         .pre_opened_directories
         .iter()
         .map(|entry| OsString::from(format!("--dir={}", entry)))
         .collect();
+
+    match ManifestResult::find_in_directory(&manifest_dir) {
+        ManifestResult::Manifest(manifest) => {
+            if let Some(pkg_fs_moint_point) = manifest.package.pkg_fs_mount_point {
+                wasi_preopened_dir_flags.push(OsString::from(format!(
+                    "--mapdir={}:{}",
+                    pkg_fs_moint_point.to_string_lossy(),
+                    manifest_dir.join("pkg_fs").to_string_lossy(),
+                )));
+                if manifest_dir == current_dir {
+                    if let Some(fs) = manifest.fs {
+                        copy_pkg_fs_to_directory(&manifest_dir, &fs)?;
+                    }
+                }
+            }
+        }
+        _ => (),
+    }
 
     let command_vec = create_run_command(
         args,
@@ -98,6 +134,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         source_path_buf,
         Some(format!("wapm run {}", command_name)),
     )?;
+    debug!("Running command with args: {:?}", command_vec);
     let mut child = Command::new(DEFAULT_RUNTIME)
         .args(&command_vec)
         .spawn()
@@ -190,4 +227,64 @@ enum RunError {
     SourceForCommandNotFound(String, String, String),
     #[fail(display = "Failed to run {}: {}", runtime, error)]
     ProcessFailed { runtime: String, error: String },
+    #[fail(
+        display = "Error encountered while building pkg_fs for local development: {}",
+        _0
+    )]
+    FailedToMakeLocalPkgFs(String),
+}
+
+fn copy_pkg_fs_to_directory<P: AsRef<Path>>(
+    target_directory: P,
+    fs: &HashMap<String, PathBuf>,
+) -> Result<(), failure::Error> {
+    let pkg_fs = target_directory.as_ref().join("pkg_fs");
+    if !pkg_fs.exists() {
+        info!("Creating pkg_fs in current directory for local development!");
+        std::fs::create_dir(&pkg_fs)
+            .map_err(|e| RunError::FailedToMakeLocalPkgFs(e.to_string()))?;
+    }
+    for (alias, dir) in fs.iter() {
+        let target_loc = pkg_fs.join(alias);
+        if !target_loc.exists() {
+            info!(
+                "Copying {} to {}",
+                dir.to_string_lossy(),
+                target_loc.to_string_lossy()
+            );
+            let md = dir.metadata().expect("Could not read metadata of file");
+            if md.is_dir() {
+                let mut maybe_pb: Option<indicatif::ProgressBar> = None;
+                fs_extra::dir::copy_with_progress(
+                    dir,
+                    target_loc,
+                    &fs_extra::dir::CopyOptions {
+                        copy_inside: true,
+                        ..fs_extra::dir::CopyOptions::new()
+                    },
+                    |tp| {
+                        if let Some(pb_inner) = &mut maybe_pb {
+                            pb_inner.set_position(tp.copied_bytes);
+                        } else {
+                            if tp.copied_bytes != tp.total_bytes {
+                                let pb_inner = indicatif::ProgressBar::new(tp.total_bytes);
+                                pb_inner.set_position(tp.copied_bytes);
+                                maybe_pb = Some(pb_inner);
+                            }
+                        }
+                        fs_extra::dir::TransitProcessResult::ContinueOrAbort
+                    },
+                )
+                .unwrap();
+                if let Some(pb) = maybe_pb {
+                    pb.finish();
+                }
+            } else {
+                std::fs::create_dir_all(&target_loc.parent().unwrap())
+                    .and_then(|_| std::fs::copy(dir, target_loc))
+                    .map_err(|e| RunError::FailedToMakeLocalPkgFs(e.to_string()))?;
+            }
+        }
+    }
+    Ok(())
 }
