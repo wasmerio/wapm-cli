@@ -100,7 +100,7 @@ pub fn publish() -> Result<(), failure::Error> {
                                                         PublishError::NoModule)?;
     let archive_name = "package.tar.gz".to_string();
     let archive_dir = tempdir::TempDir::new("wapm_package")?;
-    let archive_path = dbg!(archive_dir.as_ref().join(&archive_name));
+    let archive_path = archive_dir.as_ref().join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 
