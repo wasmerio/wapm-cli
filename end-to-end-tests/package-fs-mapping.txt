@@ -1,12 +1,12 @@
-[INFO] Installing mark2/dog2@0.0.11
-New public key encountered: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.11.
+[INFO] Installing mark2/dog2@0.0.12
+New public key encountered: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.12.
 Would you like to trust this key?
 [y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
-[INFO] Signature of package dog2@0.0.11 verified!
+[INFO] Signature of package dog2@0.0.12 verified!
 Global package installed successfully!
 "data/gl.txt"
-[INFO] Installing mark2/dog2@0.0.11
-[INFO] Signature of package dog2@0.0.11 verified!
+[INFO] Installing mark2/dog2@0.0.12
+[INFO] Signature of package dog2@0.0.12 verified!
 Package installed successfully to wapm_packages!
 "data/gl.txt"
 [INFO] Package "mark2/dog2" is uninstalled.
