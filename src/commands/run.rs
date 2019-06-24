@@ -109,14 +109,13 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     match ManifestResult::find_in_directory(&manifest_dir) {
         ManifestResult::Manifest(manifest) => {
-            // TODO: update host path when run not in the current directory
             if let Some(ref fs) = manifest.fs {
                 // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
                 for (guest_path, host_path) in fs.iter() {
                     wasi_preopened_dir_flags.push(OsString::from(format!(
                         "--mapdir={}:{}",
+                        guest_path,
                         manifest_dir.join(host_path).to_string_lossy(),
-                        guest_path
                     )));
                 }
             }

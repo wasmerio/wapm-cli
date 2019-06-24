@@ -81,17 +81,34 @@ pub fn publish() -> Result<(), failure::Error> {
         }
     }
 
+    // bundle the package filesystem
     for (alias, path) in manifest.fs.unwrap_or_default().iter() {
-        let md = path
-            .metadata()
-            .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
-        let normalized_alias = format!("pkg_fs/{}", alias);
-        if md.is_dir() {
-            builder.append_dir_all(normalized_alias, &path)
+        let normalized_path = {
+            let mut out = cwd.clone();
+            let mut components = path.components();
+            if path.is_absolute() {
+                warn!(
+                    "Interpreting absolute path {} as a relative path",
+                    path.to_string_lossy()
+                );
+                components.next();
+            }
+            for comp in components {
+                out.push(comp);
+            }
+            out
+        };
+        let path_metadata = normalized_path.metadata().map_err(|_| {
+            PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
+        })?;
+        if path_metadata.is_dir() {
+            builder.append_dir_all(alias, &normalized_path)
         } else {
-            builder.append_path_with_name(&path, normalized_alias)
+            builder.append_path_with_name(&normalized_path, alias)
         }
-        .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
+        .map_err(|_| {
+            PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
+        })?;
     }
 
     builder.finish().ok();
