@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#alias wapm=target/debug/wapm
+alias wapm=target/debug/wapm
 wapm config set registry.url "https://registry.wapm.dev"
 yes 2> /dev/null | wapm install -g mark2/dog2@0.0.13
 wapm run dog -- data

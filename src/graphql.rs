@@ -13,7 +13,7 @@ enum GraphQLError {
     Error { message: String },
 }
 
-pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub type DateTime = String;
 
 pub fn execute_query_modifier<R, V, F>(
@@ -48,7 +48,7 @@ where
     let mut res = client
         .post(registry_url)
         .multipart(form)
-        .bearer_auth(&config.registry.token.unwrap_or("".to_string()))
+        .bearer_auth(&config.registry.token.unwrap_or_else(|| "".to_string()))
         .header(USER_AGENT, user_agent)
         .send()?;
 

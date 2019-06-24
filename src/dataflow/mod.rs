@@ -195,7 +195,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
     let mut lockfile_packages =
-        LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
+        LockfilePackages::new_from_result(lockfile_result).map_err(Error::LockfileError)?;
     detect_duplicate_packages(&added_packages.packages)?;
 
     // capture the initial lockfile keys before any modifications
@@ -209,7 +209,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // cleanup any old artifacts
     removed_lockfile_packages
         .cleanup_old_packages(&directory)
-        .map_err(|e| Error::CleanupError(e))?;
+        .map_err(Error::CleanupError)?;
 
     // remove/uninstall packages
     lockfile_packages.remove_packages(removed_packages);
@@ -224,12 +224,12 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
 
     let resolved_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
-            .map_err(|e| Error::ResolveError(e))?;
+            .map_err(Error::ResolveError)?;
     let installed_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_packages)
-            .map_err(|e| Error::InstallError(e))?;
+            .map_err(Error::InstallError)?;
     let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
-        .map_err(|e| Error::LockfileError(e))?;
+        .map_err(Error::LockfileError)?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
@@ -241,7 +241,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     if final_package_keys != initial_package_keys {
         final_lockfile_data
             .generate_lockfile(&directory)
-            .map_err(|e| Error::GenerateLockfileError(e))?;
+            .map_err(Error::GenerateLockfileError)?;
         Ok(true)
     } else {
         Ok(false)
@@ -261,7 +261,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 
     let mut manifest_packages =
         ManifestPackages::new_from_manifest_and_added_packages(&manifest, &added_packages)
-            .map_err(|e| Error::ManifestError(e))?;
+            .map_err(Error::ManifestError)?;
 
     detect_duplicate_packages(&manifest_packages.packages)?;
 
@@ -271,13 +271,13 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
     let lockfile_packages =
-        LockfilePackages::new_from_result(lockfile_result).map_err(|e| Error::LockfileError(e))?;
+        LockfilePackages::new_from_result(lockfile_result).map_err(Error::LockfileError)?;
     // store lockfile package keys before updating it
     let initial_package_keys = lockfile_packages.package_keys();
 
     // get the local package modules and commands from the manifest
     let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest)
-        .map_err(|e| Error::LocalPackageError(e))?;
+        .map_err(Error::LocalPackageError)?;
 
     let changed_manifest_data =
         ChangedManifestPackages::get_changed_packages_from_manifest_and_lockfile(
@@ -298,20 +298,20 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // cleanup any old artifacts
     removed_lockfile_packages
         .cleanup_old_packages(&directory)
-        .map_err(|e| Error::CleanupError(e))?;
+        .map_err(Error::CleanupError)?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_packages);
 
     let resolved_manifest_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(new_added_packages)
-            .map_err(|e| Error::ResolveError(e))?;
+            .map_err(Error::ResolveError)?;
     let installed_manifest_packages =
         InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
-            .map_err(|e| Error::InstallError(e))?;
+            .map_err(Error::InstallError)?;
     let mut manifest_lockfile_data =
         LockfilePackages::from_installed_packages(&installed_manifest_packages)
-            .map_err(|e| Error::LockfileError(e))?;
+            .map_err(Error::LockfileError)?;
 
     manifest_lockfile_data.extend(local_package.into());
 
@@ -322,7 +322,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 
     final_lockfile_data
         .generate_lockfile(&directory)
-        .map_err(|e| Error::GenerateLockfileError(e))?;
+        .map_err(Error::GenerateLockfileError)?;
 
     // update the manifest, if applicable
     if final_package_keys != initial_package_keys {
@@ -342,7 +342,7 @@ pub fn update<P: AsRef<Path>>(
 ) -> Result<bool, Error> {
     let directory = directory.as_ref();
     let added_packages =
-        AddedPackages::new_from_str_pairs(added_packages).map_err(|e| Error::AddError(e))?;
+        AddedPackages::new_from_str_pairs(added_packages).map_err(Error::AddError)?;
     let removed_packages = RemovedPackages::new_from_package_names(removed_packages);
     let manifest_result = ManifestResult::find_in_directory(&directory);
     match manifest_result {

@@ -3,7 +3,7 @@
 use crate::config::Config;
 use crate::util;
 use fern::colors::{Color, ColoredLevelConfig};
-use std::{fs, path::PathBuf};
+use std::fs;
 
 /// Subroutine to instantiate the loggers
 pub fn set_up_logging() -> Result<(), failure::Error> {
@@ -65,7 +65,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
 
     // verbose logging to file
     let dispatch = if let Ok(wasmer_dir) = Config::get_folder() {
-        let mut log_out = PathBuf::from(wasmer_dir);
+        let mut log_out = wasmer_dir;
         log_out.push("wapm.log");
         dispatch.chain(
             fern::Dispatch::new()
@@ -80,7 +80,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                         line = record
                             .line()
                             .map(|line| format!("{}", line))
-                            .unwrap_or("".to_string()),
+                            .unwrap_or_else(|| "".to_string()),
                     ));
                 })
                 .level(log::LevelFilter::Debug)
@@ -91,7 +91,6 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                         .write(true)
                         .create(true)
                         .truncate(true)
-                        .create(true)
                         .open(log_out)
                         .map_err(|e| {
                             LoggingError::FailedToOpenLoggingFile(format!(
