@@ -11,5 +11,4 @@ Package installed successfully to wapm_packages!
 "data/gl.txt"
 [INFO] Package "mark2/dog2" is uninstalled.
 [INFO] Package "mark2/dog2" is uninstalled.
-[INFO] Copying src/bin/wapm.rs to {{CURRENT_DIR}}/wapm_file
 "wapm_file/wapm.rs"

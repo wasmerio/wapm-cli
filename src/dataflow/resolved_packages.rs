@@ -40,13 +40,7 @@ impl<'a> ResolvedPackages<'a> {
     where
         Resolver: Resolve<'a>,
     {
-        let wapm_pkgs: Vec<PackageKey> = packages
-            .into_iter()
-            .filter_map(|key| match key {
-                PackageKey::WapmPackage(_) => Some(key),
-                PackageKey::WapmPackageRange(_) => Some(key),
-            })
-            .collect();
+        let wapm_pkgs: Vec<PackageKey> = packages.into_iter().collect();
         // return early if no packages to resolve
         if wapm_pkgs.is_empty() {
             return Ok(Self::default());
@@ -138,10 +132,9 @@ impl<'a> Resolve<'a> for RegistryResolver {
                                     &gq_sig.created_at,
                                     database::RFC3339_FORMAT_STRING_WITH_TIMEZONE,
                                 )
-                                .expect(&format!(
-                                    "Failed to parse time string {}",
-                                    &gq_sig.created_at
-                                ))
+                                .unwrap_or_else(|err| {
+                                    panic!("Failed to parse time string: {}", err)
+                                })
                                 .to_timespec()
                             },
                             revoked: gq_sig.public_key.revoked,
