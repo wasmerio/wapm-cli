@@ -82,7 +82,7 @@ pub fn publish() -> Result<(), failure::Error> {
     }
 
     // bundle the package filesystem
-    for (alias, path) in manifest.fs.unwrap_or_default().iter() {
+    for (_alias, path) in manifest.fs.unwrap_or_default().iter() {
         let normalized_path = {
             let mut out = cwd.clone();
             let mut components = path.components();
@@ -102,9 +102,12 @@ pub fn publish() -> Result<(), failure::Error> {
             PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
         })?;
         if path_metadata.is_dir() {
-            builder.append_dir_all(alias, &normalized_path)
+            builder.append_dir_all(path, &normalized_path)
         } else {
-            builder.append_path_with_name(&normalized_path, alias)
+            return Err(PublishError::PackageFileSystemEntryMustBeDirectory(
+                path.to_string_lossy().to_string(),
+            )
+            .into());
         }
         .map_err(|_| {
             PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
@@ -192,6 +195,11 @@ enum PublishError {
         _0
     )]
     MissingManifestFsPath(String),
+    #[fail(
+        display = "When processing the package filesystem, found path \"{}\" which is not a directory",
+        _0
+    )]
+    PackageFileSystemEntryMustBeDirectory(String),
 }
 
 #[derive(Debug)]
