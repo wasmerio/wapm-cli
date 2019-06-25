@@ -37,7 +37,7 @@ pub enum Error {
 
 pub enum FindCommandResult {
     CommandNotFound(String),
-    CommandFound(PathBuf, Option<String>, String), // source, args, module name
+    CommandFound(PathBuf, PathBuf, Option<String>, String), // source, root, args, module name
     Error(failure::Error),
 }
 
@@ -58,6 +58,7 @@ impl FindCommandResult {
                     match found_module {
                         Some(module) => FindCommandResult::CommandFound(
                             module.source.clone(),
+                            manifest.base_directory_path,
                             lockfile_command.main_args.clone(),
                             module.name.clone(),
                         ),
@@ -77,8 +78,10 @@ impl FindCommandResult {
                     ) {
                         Ok(lockfile_module) => {
                             let path = PathBuf::from(&lockfile_module.entry);
+                            let root = PathBuf::from(&lockfile_module.root);
                             FindCommandResult::CommandFound(
                                 path,
+                                root,
                                 lockfile_command.main_args.clone(),
                                 lockfile_module.name.clone(),
                             )
@@ -100,8 +103,10 @@ impl FindCommandResult {
                 ) {
                     Ok(lockfile_module) => {
                         let path = PathBuf::from(&lockfile_module.entry);
+                        let root = PathBuf::from(&lockfile_module.root);
                         FindCommandResult::CommandFound(
                             path,
+                            root,
                             lockfile_command.main_args.clone(),
                             lockfile_module.name.clone(),
                         )
@@ -147,6 +152,7 @@ impl FindCommandResult {
 pub struct Command {
     // PathBuf, Option<String>, String, bool
     pub source: PathBuf,
+    pub manifest_dir: PathBuf,
     pub args: Option<String>,
     pub module_name: String,
     pub is_global: bool,
@@ -162,9 +168,10 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     match local_command_result {
         FindCommandResult::CommandNotFound(_cmd) => {} // continue
-        FindCommandResult::CommandFound(path, args, module_name) => {
+        FindCommandResult::CommandFound(path, root, args, module_name) => {
             return Ok(Command {
                 source: path,
+                manifest_dir: root,
                 args,
                 module_name,
                 is_global: false,
@@ -187,9 +194,10 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     match global_command_result {
         FindCommandResult::CommandNotFound(_) => {} // continue
-        FindCommandResult::CommandFound(path, args, module_name) => {
+        FindCommandResult::CommandFound(path, root, args, module_name) => {
             return Ok(Command {
                 source: path,
+                manifest_dir: root,
                 args,
                 module_name,
                 is_global: true,
