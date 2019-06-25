@@ -2,7 +2,7 @@ use crate::abi::Abi;
 use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util::get_package_namespace_and_name;
 use semver::Version;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
@@ -33,7 +33,7 @@ impl LockfileModule {
                 new_style
             } else {
                 // to prevent breaking packages published before this change (~2019/06/25)
-                path.push(module.source.file_name());
+                path.push(module.source.file_name().unwrap());
                 path
             }
             .to_string_lossy()
