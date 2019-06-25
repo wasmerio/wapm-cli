@@ -2,7 +2,7 @@ use crate::abi::Abi;
 use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util::get_package_namespace_and_name;
 use semver::Version;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
@@ -16,9 +16,15 @@ pub struct LockfileModule {
 }
 
 impl LockfileModule {
-    pub fn from_module(name: &str, version: &Version, module: &Module, download_url: &str) -> Self {
+    pub fn from_module(
+        name: &str,
+        path_to_module: &Path,
+        version: &Version,
+        module: &Module,
+        download_url: &str,
+    ) -> Self {
         // build the entry path
-        // this is path like /wapm_packages/_/lua@0.1.3/lua.wasm
+        // this is path like /wapm_packages/_/lua@0.1.3/path/to/module/lua.wasm
         let (namespace, unqualified_pkg_name) =
             get_package_namespace_and_name(name.as_ref()).unwrap();
         let pkg_dir = format!("{}@{}", unqualified_pkg_name, version);
@@ -26,7 +32,7 @@ impl LockfileModule {
         path.push(PACKAGES_DIR_NAME);
         path.push(namespace);
         path.push(pkg_dir.as_str());
-        path.push(module.source.file_name().unwrap());
+        path.push(path_to_module);
         let entry = path.to_string_lossy().to_string();
 
         let lockfile_module = LockfileModule {

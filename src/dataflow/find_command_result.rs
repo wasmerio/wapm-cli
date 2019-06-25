@@ -143,6 +143,7 @@ impl FindCommandResult {
     }
 }
 
+#[derive(Debug)]
 pub struct Command {
     // PathBuf, Option<String>, String, bool
     pub source: PathBuf,

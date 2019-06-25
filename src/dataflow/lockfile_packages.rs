@@ -89,17 +89,23 @@ impl<'a> LockfilePackages<'a> {
         installed_manifest_packages: &'a InstalledPackages<'a>,
     ) -> Result<Self, LockfileError> {
         let mut packages = HashMap::default();
-        for (k, m, download_url) in installed_manifest_packages.packages.iter() {
-            let modules: Vec<LockfileModule> = match m.module {
+        for (k, manifest, download_url) in installed_manifest_packages.packages.iter() {
+            let modules: Vec<LockfileModule> = match manifest.module {
                 Some(ref modules) => modules
                     .iter()
-                    .map(|m| {
-                        LockfileModule::from_module(k.name.as_ref(), &k.version, m, download_url)
+                    .map(|module| {
+                        dbg!(LockfileModule::from_module(
+                            k.name.as_ref(),
+                            &module.source,
+                            &k.version,
+                            module,
+                            download_url,
+                        ))
                     })
                     .collect(),
                 _ => vec![],
             };
-            let commands: Vec<LockfileCommand> = match m.command {
+            let commands: Vec<LockfileCommand> = match manifest.command {
                 Some(ref modules) => {
                     let commands = modules
                         .iter()
