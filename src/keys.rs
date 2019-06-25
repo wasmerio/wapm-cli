@@ -66,7 +66,7 @@ pub fn get_personal_keys_from_database(
             date_created: {
                 let time_str: String = row.get(3)?;
                 time::strptime(&time_str, RFC3339_FORMAT_STRING)
-                    .expect(&format!("Failed to parse time string {}", &time_str))
+                    .unwrap_or_else(|_| panic!("Failed to parse time string {}", &time_str))
                     .to_timespec()
             },
             key_type_identifier: row.get(4)?,
@@ -89,7 +89,7 @@ pub fn get_wapm_public_keys_from_database(
             date_created: {
                 let time_str: String = row.get(2)?;
                 time::strptime(&time_str, RFC3339_FORMAT_STRING)
-                    .expect(&format!("Failed to parse time string {}", &time_str))
+                    .unwrap_or_else(|_| panic!("Failed to parse time string {}", &time_str))
                     .to_timespec()
             },
             key_type_identifier: row.get(3)?,
@@ -131,7 +131,7 @@ pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure
                 date_created: {
                     let time_str: String = row.get(3)?;
                     time::strptime(&time_str, RFC3339_FORMAT_STRING)
-                        .expect(&format!("Failed to parse time string {}", &time_str))
+                        .unwrap_or_else(|_| panic!("Failed to parse time string {}", &time_str))
                         .to_timespec()
                 },
                 key_type_identifier: row.get(4)?,
@@ -156,10 +156,12 @@ pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), 
 /// and the key's value in base64
 pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Error> {
     let mut lines = pk.lines();
-    let first_line = lines.next().ok_or(format_err!("Empty public key value"))?;
+    let first_line = lines
+        .next()
+        .ok_or_else(|| format_err!("Empty public key value"))?;
     let second_line = lines
         .next()
-        .ok_or(format_err!("Public key value must have two lines"))?;
+        .ok_or_else(|| format_err!("Public key value must have two lines"))?;
 
     let tag = first_line
         .trim()
@@ -321,7 +323,7 @@ pub fn get_latest_public_key_for_user(
             date_created: {
                 let time_str: String = row.get(2)?;
                 time::strptime(&time_str, RFC3339_FORMAT_STRING)
-                    .expect(&format!("Failed to parse time string {}", &time_str))
+                    .unwrap_or_else(|_| panic!("Failed to parse time string {}", &time_str))
                     .to_timespec()
             },
             key_type_identifier: row.get(3)?,

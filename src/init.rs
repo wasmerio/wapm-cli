@@ -44,7 +44,9 @@ pub fn init_manifest(dir: PathBuf, package_name: String) -> Result<(), failure::
     }
 
     let mut f = fs::File::create(manifest)?;
-    f.write(construct_template_manifest_from_data(util::get_username()?, package_name).as_bytes())?;
+    f.write_all(
+        construct_template_manifest_from_data(util::get_username()?, package_name).as_bytes(),
+    )?;
 
     Ok(())
 }
@@ -71,7 +73,7 @@ pub fn init_gitignore(mut dir: PathBuf) -> Result<(), failure::Error> {
         }
     }
 
-    f.write(b"\nwapm_packages")?;
+    f.write_all(b"\nwapm_packages")?;
     Ok(())
 }
 

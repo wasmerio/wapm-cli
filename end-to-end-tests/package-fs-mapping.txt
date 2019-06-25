@@ -1,18 +1,14 @@
-[INFO] Installing mark2/dog2@0.0.6
-New public key encountered: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog2@0.0.6.
+[INFO] Installing mark2/dog2@0.0.13
+New public key encountered: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.13.
 Would you like to trust this key?
-[y/n] [INFO] Importing key "3F6D278A36843FFE" for user "mark2"
-[INFO] Signature of package dog2@0.0.6 verified!
+[y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
+[INFO] Signature of package dog2@0.0.13 verified!
 Global package installed successfully!
-"./data"
-"./prog-src"
-[INFO] Installing mark2/dog2@0.0.6
-[INFO] Signature of package dog2@0.0.6 verified!
+"data/gl.txt"
+[INFO] Installing mark2/dog2@0.0.13
+[INFO] Signature of package dog2@0.0.13 verified!
 Package installed successfully to wapm_packages!
-"./data"
-"./prog-src"
+"data/gl.txt"
 [INFO] Package "mark2/dog2" is uninstalled.
 [INFO] Package "mark2/dog2" is uninstalled.
-[INFO] Creating pkg_fs in current directory for local development!
-[INFO] Copying src/bin/wapm.rs to {{CURRENT_DIR}}/pkg_fs/wapm_file
-"./wapm_file"
+"wapm_file/wapm.rs"

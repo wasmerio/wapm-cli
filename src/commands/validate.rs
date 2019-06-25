@@ -48,7 +48,7 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
             })?;
 
         let archive_path = {
-            let mut ar_path = out_dir.clone().to_path_buf();
+            let mut ar_path = out_dir.to_path_buf();
             let archive_folder_name = pkg_path
                 .file_name()
                 .unwrap()

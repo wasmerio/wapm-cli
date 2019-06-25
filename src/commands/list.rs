@@ -48,7 +48,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                     write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
                 }
                 if has_modules && has_commands {
-                    writeln!(handle, "")?;
+                    writeln!(handle)?;
                 }
                 if has_commands {
                     writeln!(handle, "LOCAL COMMANDS:")?;
@@ -71,7 +71,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
     }
 
     if local && global {
-        writeln!(handle, "")?;
+        writeln!(handle)?;
     }
 
     if global {
@@ -87,7 +87,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                     write!(handle, "{}", create_module_ascii_table(&lockfile.modules))?;
                 }
                 if has_modules && has_commands {
-                    writeln!(handle, "")?;
+                    writeln!(handle)?;
                 }
                 if has_commands {
                     writeln!(handle, "GLOBAL COMMANDS:")?;

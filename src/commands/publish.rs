@@ -81,17 +81,37 @@ pub fn publish() -> Result<(), failure::Error> {
         }
     }
 
-    for (alias, path) in manifest.fs.unwrap_or_default().iter() {
-        let md = path
-            .metadata()
-            .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
-        let normalized_alias = format!("pkg_fs/{}", alias);
-        if md.is_dir() {
-            builder.append_dir_all(normalized_alias, &path)
+    // bundle the package filesystem
+    for (_alias, path) in manifest.fs.unwrap_or_default().iter() {
+        let normalized_path = {
+            let mut out = cwd.clone();
+            let mut components = path.components();
+            if path.is_absolute() {
+                warn!(
+                    "Interpreting absolute path {} as a relative path",
+                    path.to_string_lossy()
+                );
+                components.next();
+            }
+            for comp in components {
+                out.push(comp);
+            }
+            out
+        };
+        let path_metadata = normalized_path.metadata().map_err(|_| {
+            PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
+        })?;
+        if path_metadata.is_dir() {
+            builder.append_dir_all(path, &normalized_path)
         } else {
-            builder.append_path_with_name(&path, normalized_alias)
+            return Err(PublishError::PackageFileSystemEntryMustBeDirectory(
+                path.to_string_lossy().to_string(),
+            )
+            .into());
         }
-        .map_err(|_| PublishError::MissingManifestFsPath(path.to_string_lossy().to_string()))?;
+        .map_err(|_| {
+            PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
+        })?;
     }
 
     builder.finish().ok();
@@ -175,6 +195,11 @@ enum PublishError {
         _0
     )]
     MissingManifestFsPath(String),
+    #[fail(
+        display = "When processing the package filesystem, found path \"{}\" which is not a directory",
+        _0
+    )]
+    PackageFileSystemEntryMustBeDirectory(String),
 }
 
 #[derive(Debug)]
