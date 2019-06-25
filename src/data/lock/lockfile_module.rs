@@ -16,13 +16,7 @@ pub struct LockfileModule {
 }
 
 impl LockfileModule {
-    pub fn from_module(
-        name: &str,
-        path_to_module: &Path,
-        version: &Version,
-        module: &Module,
-        download_url: &str,
-    ) -> Self {
+    pub fn from_module(name: &str, version: &Version, module: &Module, download_url: &str) -> Self {
         // build the entry path
         // this is path like /wapm_packages/_/lua@0.1.3/path/to/module/lua.wasm
         let (namespace, unqualified_pkg_name) =
@@ -32,8 +26,19 @@ impl LockfileModule {
         path.push(PACKAGES_DIR_NAME);
         path.push(namespace);
         path.push(pkg_dir.as_str());
-        path.push(path_to_module);
-        let entry = path.to_string_lossy().to_string();
+        let entry = {
+            let mut new_style = path.clone();
+            new_style.push(&module.source);
+            if new_style.exists() {
+                new_style
+            } else {
+                // to prevent breaking packages published before this change (~2019/06/25)
+                path.push(module.source.file_name());
+                path
+            }
+            .to_string_lossy()
+            .to_string()
+        };
 
         let lockfile_module = LockfileModule {
             name: module.name.to_string(),

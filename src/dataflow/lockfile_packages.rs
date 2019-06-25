@@ -94,13 +94,12 @@ impl<'a> LockfilePackages<'a> {
                 Some(ref modules) => modules
                     .iter()
                     .map(|module| {
-                        dbg!(LockfileModule::from_module(
+                        LockfileModule::from_module(
                             k.name.as_ref(),
-                            &module.source,
                             &k.version,
                             module,
                             download_url,
-                        ))
+                        )
                     })
                     .collect(),
                 _ => vec![],
