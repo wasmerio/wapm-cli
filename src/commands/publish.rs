@@ -44,11 +44,9 @@ pub fn publish() -> Result<(), failure::Error> {
 
     validate::validate_directory(cwd.clone())?;
 
-    let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
-    let contents =
-        fs::read_to_string(&manifest_path_buf).map_err(|_e| PublishError::MissingManifestInCwd)?;
-    let manifest: Manifest = toml::from_str(&contents)?;
+    let manifest = Manifest::find_in_directory(&cwd)?;
 
+    let manifest_path_buf = cwd.join(MANIFEST_FILE_NAME);
     builder.append_path_with_name(&manifest_path_buf, MANIFEST_FILE_NAME)?;
     let package = &manifest.package;
     let modules = manifest.module.as_ref().ok_or(PublishError::NoModule)?;
@@ -176,8 +174,6 @@ enum PublishError {
     NoModule,
     #[fail(display = "Module \"{}\" must have a source that is a file.", _0)]
     SourceMustBeFile(String),
-    #[fail(display = "Missing manifest in current directory.")]
-    MissingManifestInCwd,
     #[fail(display = "Error building package when parsing module \"{}\".", _0)]
     ErrorBuildingPackage(String),
     #[fail(

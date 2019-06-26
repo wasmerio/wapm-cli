@@ -79,14 +79,52 @@ impl Manifest {
     /// Construct a manifest by searching in the specified directory for a manifest file
     pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
         if !path.as_ref().is_dir() {
-            return Err(ManifestError::MissingManifest);
+            return Err(ManifestError::MissingManifest(
+                path.as_ref().to_string_lossy().to_string(),
+            ));
         }
         let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
-        let contents =
-            fs::read_to_string(&manifest_path_buf).map_err(|_e| ManifestError::MissingManifest)?;
+        let contents = fs::read_to_string(&manifest_path_buf).map_err(|_e| {
+            ManifestError::MissingManifest(manifest_path_buf.to_string_lossy().to_string())
+        })?;
         let manifest: Self = toml::from_str(contents.as_str())
             .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
+        manifest.validate()?;
         Ok(manifest)
+    }
+
+    pub fn validate(&self) -> Result<(), ManifestError> {
+        let module_map = self
+            .module
+            .as_ref()
+            .map(|modules| {
+                modules
+                    .iter()
+                    .map(|module| (module.name.clone(), module.clone()))
+                    .collect::<HashMap<String, Module>>()
+            })
+            .unwrap_or_default();
+
+        if let Some(ref commands) = self.command {
+            for command in commands {
+                if let Some(ref module) = module_map.get(&command.module) {
+                    if module.abi == Abi::None {
+                        return Err(ManifestError::ValidationError(ValidationError::MissingABI(
+                            command.name.clone(),
+                            module.name.clone(),
+                        )));
+                    }
+                } else {
+                    return Err(ManifestError::ValidationError(
+                        ValidationError::MissingModuleForCommand(
+                            command.name.clone(),
+                            command.module.clone(),
+                        ),
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// add a dependency
@@ -112,8 +150,8 @@ impl Manifest {
 
 #[derive(Debug, Fail)]
 pub enum ManifestError {
-    #[fail(display = "Manifest file not found.")]
-    MissingManifest,
+    #[fail(display = "Manifest file not found at {}", _0)]
+    MissingManifest(String),
     #[fail(display = "Could not save manifest file: {}.", _0)]
     CannotSaveManifest(String),
     #[fail(display = "Could not parse manifest because {}.", _0)]
@@ -125,6 +163,19 @@ pub enum ManifestError {
         _0
     )]
     SemVerError(String),
+    #[fail(display = "There was an error validating the manifest: {}", _0)]
+    ValidationError(ValidationError),
+}
+
+#[derive(Debug, Fail)]
+pub enum ValidationError {
+    #[fail(
+        display = "missing ABI field on module {} used by command {}; an ABI of `wasi` or `emscripten` is required",
+        _1, _0
+    )]
+    MissingABI(String, String),
+    #[fail(display = "missing module {} in manifest used by command {}", _1, _0)]
+    MissingModuleForCommand(String, String),
 }
 
 #[cfg(test)]
