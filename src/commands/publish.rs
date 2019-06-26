@@ -11,7 +11,7 @@ use graphql_client::*;
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tar::Builder;
 
 #[derive(GraphQLQuery)]
@@ -21,6 +21,22 @@ use tar::Builder;
     response_derives = "Debug"
 )]
 struct PublishPackageMutation;
+
+fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
+    let mut out = PathBuf::from(cwd);
+    let mut components = path.components();
+    if path.is_absolute() {
+        warn!(
+            "Interpreting absolute path {} as a relative path",
+            path.to_string_lossy()
+        );
+        components.next();
+    }
+    for comp in components {
+        out.push(comp);
+    }
+    out
+}
 
 pub fn publish() -> Result<(), failure::Error> {
     let mut builder = Builder::new(Vec::new());
@@ -39,16 +55,18 @@ pub fn publish() -> Result<(), failure::Error> {
     let manifest_string = toml::to_string(&manifest)?;
 
     let readme = package.readme.as_ref().and_then(|readme_path| {
-        if let Err(_) = builder.append_path(readme_path) {
+        let normalized_path = normalize_path(&manifest.base_directory_path, &readme_path);
+        if let Err(_) = builder.append_path(&normalized_path) {
             // Maybe do something here
         }
-        fs::read_to_string(manifest.base_directory_path.join(readme_path)).ok()
+        fs::read_to_string(normalized_path).ok()
     });
     let license_file = package.license_file.as_ref().and_then(|license_file_path| {
-        if let Err(_) = builder.append_path(license_file_path) {
+        let normalized_path = normalize_path(&manifest.base_directory_path, &license_file_path);
+        if let Err(_) = builder.append_path(&normalized_path) {
             // Maybe do something here
         }
-        fs::read_to_string(manifest.base_directory_path.join(license_file_path)).ok()
+        fs::read_to_string(normalized_path).ok()
     });
     // include a LICENSE file if it exists and an explicit license_file was not given
     if package.license_file.is_none() {
@@ -58,46 +76,18 @@ pub fn publish() -> Result<(), failure::Error> {
         }
     }
     for module in modules {
-        if module.source.is_relative() {
-            let source_path = manifest.base_directory_path.join(&module.source);
-            source_path
-                .metadata()
-                .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
-            let source_file_name = source_path
-                .file_name()
-                .ok_or(PublishError::SourceMustBeFile(module.name.clone()))?;
-            builder
-                .append_path_with_name(&source_path, source_file_name)
-                .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
-        } else {
-            module
-                .source
-                .metadata()
-                .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
-            let source_file_name = module.source.file_name().ok_or(PublishError::NoModule)?;
-            builder
-                .append_path_with_name(&module.source, source_file_name)
-                .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
-        }
+        let normalized_path = normalize_path(&manifest.base_directory_path, &module.source);
+        normalized_path
+            .metadata()
+            .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
+        builder
+            .append_path(normalized_path)
+            .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
     }
 
     // bundle the package filesystem
     for (_alias, path) in manifest.fs.unwrap_or_default().iter() {
-        let normalized_path = {
-            let mut out = cwd.clone();
-            let mut components = path.components();
-            if path.is_absolute() {
-                warn!(
-                    "Interpreting absolute path {} as a relative path",
-                    path.to_string_lossy()
-                );
-                components.next();
-            }
-            for comp in components {
-                out.push(comp);
-            }
-            out
-        };
+        let normalized_path = normalize_path(&cwd, &path);
         let path_metadata = normalized_path.metadata().map_err(|_| {
             PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
         })?;

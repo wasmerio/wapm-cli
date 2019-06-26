@@ -1,7 +1,9 @@
 use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
-use crate::data::lock::migrate::{fix_up_v1_package_names, LockfileVersion};
+use crate::data::lock::migrate::{
+    convert_lockfilev2_to_v3, fix_up_v1_package_names, LockfileVersion,
+};
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
 use crate::dataflow::removed_packages::RemovedPackages;
@@ -56,9 +58,14 @@ impl LockfileResult {
             Ok(lockfile_version) => match lockfile_version {
                 LockfileVersion::V1(mut lockfile_v1) => {
                     fix_up_v1_package_names(&mut lockfile_v1);
-                    LockfileResult::Lockfile(lockfile_v1)
+                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
+                    LockfileResult::Lockfile(lockfile_v3)
                 }
-                LockfileVersion::V2(lockfile_v2) => LockfileResult::Lockfile(lockfile_v2),
+                LockfileVersion::V2(lockfile_v2) => {
+                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v2);
+                    LockfileResult::Lockfile(lockfile_v3)
+                }
+                LockfileVersion::V3(lockfile_v3) => LockfileResult::Lockfile(lockfile_v3),
             },
             Err(e) => LockfileResult::LockfileError(e),
         }
@@ -89,17 +96,22 @@ impl<'a> LockfilePackages<'a> {
         installed_manifest_packages: &'a InstalledPackages<'a>,
     ) -> Result<Self, LockfileError> {
         let mut packages = HashMap::default();
-        for (k, m, download_url) in installed_manifest_packages.packages.iter() {
-            let modules: Vec<LockfileModule> = match m.module {
+        for (k, manifest, download_url) in installed_manifest_packages.packages.iter() {
+            let modules: Vec<LockfileModule> = match manifest.module {
                 Some(ref modules) => modules
                     .iter()
-                    .map(|m| {
-                        LockfileModule::from_module(k.name.as_ref(), &k.version, m, download_url)
+                    .map(|module| {
+                        LockfileModule::from_module(
+                            k.name.as_ref(),
+                            &k.version,
+                            module,
+                            download_url,
+                        )
                     })
                     .collect(),
                 _ => vec![],
             };
-            let commands: Vec<LockfileCommand> = match m.command {
+            let commands: Vec<LockfileCommand> = match manifest.command {
                 Some(ref modules) => {
                     let commands = modules
                         .iter()

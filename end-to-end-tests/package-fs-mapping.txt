@@ -5,10 +5,11 @@ Would you like to trust this key?
 [INFO] Signature of package dog2@0.0.13 verified!
 Global package installed successfully!
 "data/gl.txt"
+[INFO] Package "mark2/dog2" is uninstalled.
 [INFO] Installing mark2/dog2@0.0.13
 [INFO] Signature of package dog2@0.0.13 verified!
 Package installed successfully to wapm_packages!
 "data/gl.txt"
 [INFO] Package "mark2/dog2" is uninstalled.
-[INFO] Package "mark2/dog2" is uninstalled.
+[INFO] Interpreting unqualified global package name "test" as "_/test"
 "wapm_file/wapm.rs"

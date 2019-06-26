@@ -1,5 +1,5 @@
 use crate::data::lock::lockfile_command::LockfileCommand;
-use crate::data::lock::lockfile_module::LockfileModule;
+use crate::data::lock::lockfile_module::{LockfileModule, LockfileModuleV2};
 use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use semver::Version;
 use std::collections::BTreeMap;
@@ -8,9 +8,21 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
+pub type ModuleMapV2 = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModuleV2>>>;
+pub type CommandMapV2 = BTreeMap<String, LockfileCommand>;
+
+/// The lockfile for versions 2 and below (no changes to the fields happened until version 3,
+/// so these can be a singel struct)
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct LockfileV2 {
+    pub modules: ModuleMapV2, // PackageName -> VersionNumber -> ModuleName -> Module
+    pub commands: CommandMapV2, // CommandName -> Command
+}
+
 pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModule>>>;
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
+/// The latest Lockfile version
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Lockfile {
     pub modules: ModuleMap, // PackageName -> VersionNumber -> ModuleName -> Module

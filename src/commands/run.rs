@@ -39,6 +39,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let find_command_result::Command {
         source: source_path_buf,
+        manifest_dir,
         args: _,
         module_name,
         is_global,
@@ -71,6 +72,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         current_dir.clone()
     };
 
+    let manifest_dir = run_dir.join(manifest_dir);
+
     debug!(
         "Running module located at {:?}",
         &run_dir.join(&source_path_buf)
@@ -83,23 +86,6 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             source_path_buf.to_string_lossy().to_string(),
         )
     })?;
-
-    let manifest_dir = {
-        if source_path_buf
-            .components()
-            .find(|comp| comp.as_os_str().to_string_lossy() == "wapm_packages")
-            .is_some()
-        {
-            let mut base_path = run_dir.clone();
-            base_path.push(&source_path_buf);
-            // remove the `module.wasm` part of the path
-            base_path.pop();
-            base_path
-        } else {
-            // otherwise we're running in the current dir in dev-mode
-            current_dir.clone()
-        }
-    };
 
     let mut wasi_preopened_dir_flags: Vec<OsString> = run_options
         .pre_opened_directories
