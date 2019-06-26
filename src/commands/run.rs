@@ -72,6 +72,8 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         current_dir.clone()
     };
 
+    let manifest_dir = run_dir.join(manifest_dir);
+
     debug!(
         "Running module located at {:?}",
         &run_dir.join(&source_path_buf)
