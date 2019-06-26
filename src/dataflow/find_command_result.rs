@@ -35,6 +35,7 @@ pub enum Error {
     CouldNotOpenGlobalsDirectory(String, String),
 }
 
+#[derive(Debug)]
 pub enum FindCommandResult {
     CommandNotFound(String),
     CommandFound(PathBuf, PathBuf, Option<String>, String), // source, root, args, module name

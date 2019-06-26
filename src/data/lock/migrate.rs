@@ -5,6 +5,7 @@ use crate::dataflow::lockfile_packages::LockfileError;
 use crate::dataflow::normalize_global_namespace_package_name;
 
 use std::collections::*;
+use std::path::PathBuf;
 
 pub enum LockfileVersion {
     V1(LockfileV2),
@@ -76,7 +77,12 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
                     resolved: module_data.resolved,
                     abi: module_data.abi,
                     entry: module_data.entry.clone(),
-                    root: module_data.entry,
+                    root: {
+                        let mut entry = PathBuf::from(module_data.entry);
+                        // remove the module.wasm file
+                        entry.pop();
+                        entry.to_string_lossy().to_string()
+                    },
                 };
                 name_map.insert(k3, module);
             }
@@ -92,8 +98,8 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
 
 #[cfg(test)]
 mod test {
-    use crate::data::lock::lockfile::Lockfile;
-    use crate::data::lock::migrate::fix_up_v1_package_names;
+    use super::*;
+    use crate::data::lock::lockfile::{Lockfile, LockfileV2};
 
     #[test]
     fn test_fix_up_v1_lockfile() {
@@ -114,7 +120,7 @@ mod test {
             is_top_level_dependency = true
         };
 
-        let mut lockfile: Lockfile = toml::from_str(&v1_lockfile_toml.to_string()).unwrap();
+        let mut lockfile: LockfileV2 = toml::from_str(&v1_lockfile_toml.to_string()).unwrap();
 
         let v2_lockfile_toml = toml! {
             [modules."_/sqlite"."0.1.1".sqlite]
@@ -133,10 +139,58 @@ mod test {
             is_top_level_dependency = true
         };
 
-        let expected_v2_lockfile: Lockfile = toml::from_str(&v2_lockfile_toml.to_string()).unwrap();
+        let expected_v2_lockfile: LockfileV2 =
+            toml::from_str(&v2_lockfile_toml.to_string()).unwrap();
 
         fix_up_v1_package_names(&mut lockfile);
 
         assert_eq!(expected_v2_lockfile, lockfile);
+    }
+
+    #[test]
+    fn upgrade_to_v3() {
+        let v1_lockfile_toml = toml! {
+            [modules.sqlite."0.1.1".sqlite]
+            name = "sqlite"
+            package_version = "0.1.1"
+            package_name = "sqlite"
+            source = "registry+sqlite"
+            resolved = "https://registry-cdn.wapm.dev/packages/_/sqlite/sqlite-0.1.1.tar.gz"
+            abi = "emscripten"
+            entry = "wapm_packages/_/sqlite@0.1.1/sqlite.wasm"
+            [commands.sqlite]
+            name = "sqlite"
+            package_name = "sqlite"
+            package_version = "0.1.1"
+            module = "sqlite"
+            is_top_level_dependency = true
+        };
+
+        let mut lockfile_v1: LockfileV2 = toml::from_str(&v1_lockfile_toml.to_string()).unwrap();
+
+        let v3_lockfile_toml = toml! {
+            [modules."_/sqlite"."0.1.1".sqlite]
+            name = "sqlite"
+            package_version = "0.1.1"
+            package_name = "_/sqlite"
+            source = "registry+sqlite"
+            resolved = "https://registry-cdn.wapm.dev/packages/_/sqlite/sqlite-0.1.1.tar.gz"
+            abi = "emscripten"
+            entry = "wapm_packages/_/sqlite@0.1.1/sqlite.wasm"
+            root = "wapm_packages/_/sqlite@0.1.1"
+            [commands.sqlite]
+            name = "sqlite"
+            package_name = "_/sqlite"
+            package_version = "0.1.1"
+            module = "sqlite"
+            is_top_level_dependency = true
+        };
+
+        let expected_v3_lockfile: Lockfile = toml::from_str(&v3_lockfile_toml.to_string()).unwrap();
+
+        fix_up_v1_package_names(&mut lockfile_v1);
+        let converted_lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
+
+        assert_eq!(expected_v3_lockfile, converted_lockfile_v3);
     }
 }
