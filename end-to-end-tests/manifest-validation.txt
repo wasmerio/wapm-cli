@@ -6,3 +6,5 @@ Would you like to trust this key?
 [INFO] Signature of package dog2@0.0.13 verified!
 Package installed successfully to wapm_packages!
 Error: There was an error validating the manifest: missing ABI field on module test-module used by command test; an ABI of `wasi` or `emscripten` is required
+Successfully published package `test@0.0.0`
+[INFO] Publish succeeded, but package was not published because it was run in dry-run mode
