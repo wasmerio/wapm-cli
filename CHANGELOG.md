@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+### Added
+- `--dry-run` flag to `wapm publish` which runs the publish logic without sending anything to the registry
+- validation of the manifest on publish, all commands must reference valid modules
+
+### Changed
+- Lockfile version 3 with package root directory added
 
 ## [0.3.1] - 2019-06-19
 ### Added

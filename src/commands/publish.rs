@@ -1,18 +1,27 @@
 //! The publish command uploads the package specified in the Manifest (`wapm.toml`)
 //! to the wapm registry.
+use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::database;
+use crate::graphql::execute_query_modifier;
 use crate::keys;
 use crate::validate;
 
-use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
-use crate::graphql::execute_query_modifier;
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
+use structopt::StructOpt;
+use tar::Builder;
+
 use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use tar::Builder;
+
+#[derive(StructOpt, Debug)]
+pub struct PublishOpt {
+    /// Run the publish logic without sending anything to the registry server
+    #[structopt(long = "dry-run")]
+    dry_run: bool,
+}
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -38,7 +47,7 @@ fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
     out
 }
 
-pub fn publish() -> Result<(), failure::Error> {
+pub fn publish(publish_opts: PublishOpt) -> Result<(), failure::Error> {
     let mut builder = Builder::new(Vec::new());
     let cwd = env::current_dir()?;
 
@@ -152,19 +161,27 @@ pub fn publish() -> Result<(), failure::Error> {
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
-    let _response: publish_package_mutation::ResponseData =
-        execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
-            |e| {
-                #[cfg(feature = "telemetry")]
-                sentry::integrations::failure::capture_error(&e);
-                e
-            },
-        )?;
+    if !publish_opts.dry_run {
+        let _response: publish_package_mutation::ResponseData =
+            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
+                |e| {
+                    #[cfg(feature = "telemetry")]
+                    sentry::integrations::failure::capture_error(&e);
+                    e
+                },
+            )?;
+    }
 
     println!(
         "Successfully published package `{}@{}`",
         package.name, package.version
     );
+
+    if publish_opts.dry_run {
+        info!(
+            "Publish succeeded, but package was not published because it was run in dry-run mode"
+        );
+    }
     Ok(())
 }
 
