@@ -4,6 +4,7 @@ use graphql_client::*;
 
 use crate::config::Config;
 use crate::dataflow;
+use crate::util;
 use std::borrow::Cow;
 use std::env;
 use std::path::Path;
@@ -15,6 +16,9 @@ pub struct InstallOpt {
     /// Install the package(s) globally
     #[structopt(short = "g", long = "global")]
     global: bool,
+    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
+    #[structopt(long = "force-yes")]
+    force_yes: bool,
 }
 
 #[derive(Debug, Fail)]
@@ -60,6 +64,12 @@ mod package_args {
 
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let current_directory = env::current_dir()?;
+    let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
+    debug_assert!(
+        _value.is_some(),
+        "this function should only be called once!"
+    );
+
     match (options.global, options.packages.is_empty()) {
         (global_flag::GLOBAL_INSTALL, package_args::NO_PACKAGES) => {
             // install all global packages - unacceptable use case
