@@ -118,7 +118,7 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 #[derive(Debug, Default)]
-/// A type that can only be set once
+/// A wrapper type that ensures that the inner type is only set once
 pub struct SetOnce<T: Default> {
     set: bool,
     value: T,
@@ -148,7 +148,7 @@ impl<T: Default> SetOnce<T> {
 
 lazy_static! {
     /// global variable that determines the behavior of prompts
-    static ref WAPM_FORCE_YES_TO_PROMPTS: Mutex<SetOnce<bool>> = Mutex::new(SetOnce::new());
+    pub static ref WAPM_FORCE_YES_TO_PROMPTS: Mutex<SetOnce<bool>> = Mutex::new(SetOnce::new());
 }
 
 /// If true, prompts should not ask for user input
