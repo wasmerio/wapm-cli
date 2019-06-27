@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 ### Added
+- `--dry-run` flag to `wapm publish` which runs the publish logic without sending anything to the registry
+- validation of the manifest on publish, all commands must reference valid modules
 - wapm will now suggest a package to install that contains the desired command if the command is not found
+
+### Changed
+- Lockfile version 3 with package root directory added
 
 ## [0.3.1] - 2019-06-19
 ### Added

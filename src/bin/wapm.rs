@@ -25,7 +25,7 @@ enum Command {
 
     #[structopt(name = "publish")]
     /// Publish a package
-    Publish,
+    Publish(commands::PublishOpt),
 
     #[structopt(
         name = "run",
@@ -97,7 +97,7 @@ fn main() {
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
-        Command::Publish => commands::publish(),
+        Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
         Command::Search(search_options) => commands::search(search_options),
         #[cfg(feature = "package")]
