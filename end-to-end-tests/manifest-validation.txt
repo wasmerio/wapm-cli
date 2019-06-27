@@ -1,0 +1,10 @@
+Error: There was an error validating the manifest: missing module test-module in manifest used by command test
+[INFO] Installing mark2/dog2@0.0.13
+New public key encountered: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.13.
+Would you like to trust this key?
+[y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
+[INFO] Signature of package dog2@0.0.13 verified!
+Package installed successfully to wapm_packages!
+Error: There was an error validating the manifest: missing ABI field on module test-module used by command test; an ABI of `wasi` or `emscripten` is required
+Successfully published package `test@0.0.0`
+[INFO] Publish succeeded, but package was not published because it was run in dry-run mode

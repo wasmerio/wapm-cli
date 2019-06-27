@@ -23,7 +23,7 @@ pub use self::keys::{keys, KeyOpt};
 pub use self::list::{list, ListOpt};
 pub use self::login::login;
 pub use self::logout::logout;
-pub use self::publish::publish;
+pub use self::publish::{publish, PublishOpt};
 pub use self::run::{run, RunOpt};
 pub use self::search::{search, SearchOpt};
 pub use self::uninstall::{uninstall, UninstallOpt};
