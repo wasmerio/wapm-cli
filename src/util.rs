@@ -151,7 +151,7 @@ lazy_static! {
     static ref WAPM_FORCE_YES_TO_PROMPTS: Mutex<SetOnce<bool>> = Mutex::new(SetOnce::new());
 }
 
-/// if true, prompts should not ask for user input
+/// If true, prompts should not ask for user input
 pub fn wapm_should_accept_all_prompts() -> bool {
     let guard = WAPM_FORCE_YES_TO_PROMPTS.lock().unwrap();
     *guard.get()
