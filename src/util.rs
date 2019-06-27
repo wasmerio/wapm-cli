@@ -147,7 +147,7 @@ impl<T: Default> SetOnce<T> {
 }
 
 lazy_static! {
-    /// global variable that determines the behavior of prompts
+    /// Global variable that determines the behavior of prompts
     pub static ref WAPM_FORCE_YES_TO_PROMPTS: Mutex<SetOnce<bool>> = Mutex::new(SetOnce::new());
 }
 
