@@ -114,16 +114,69 @@ pub fn wapm_should_print_color() -> bool {
         .unwrap_or(true)
 }
 
+use lazy_static::lazy_static;
+use std::sync::Mutex;
+
+#[derive(Debug, Default)]
+/// A wrapper type that ensures that the inner type is only set once
+pub struct SetOnce<T: Default> {
+    set: bool,
+    value: T,
+}
+
+impl<T: Default> SetOnce<T> {
+    pub fn new() -> Self {
+        Self {
+            set: false,
+            value: T::default(),
+        }
+    }
+    pub fn set(&mut self, value: T) -> Option<()> {
+        if self.set {
+            return None;
+        }
+
+        self.value = value;
+        self.set = true;
+        Some(())
+    }
+
+    pub fn get(&self) -> &T {
+        &self.value
+    }
+}
+
+lazy_static! {
+    /// Global variable that determines the behavior of prompts
+    pub static ref WAPM_FORCE_YES_TO_PROMPTS: Mutex<SetOnce<bool>> = Mutex::new(SetOnce::new());
+}
+
+/// If true, prompts should not ask for user input
+pub fn wapm_should_accept_all_prompts() -> bool {
+    let guard = WAPM_FORCE_YES_TO_PROMPTS.lock().unwrap();
+    *guard.get()
+}
+
+pub fn set_wapm_should_accept_all_prompts(val: bool) -> Option<()> {
+    let mut guard = WAPM_FORCE_YES_TO_PROMPTS.lock().unwrap();
+    guard.set(val)
+}
+
 /// Asks the user to confirm something. Returns a boolean indicating if the user consented
+/// or if the `WAPM_FORCE_YES_TO_PROMPTS` variable is set
 pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
     use std::io::Write;
 
     print!("{}\n[y/n] ", prompt);
     std::io::stdout().flush()?;
-    let mut input_str = String::new();
-    std::io::stdin().read_line(&mut input_str)?;
-    match input_str.to_lowercase().trim_end() {
-        "yes" | "y" => Ok(true),
-        _ => Ok(false),
+    if wapm_should_accept_all_prompts() {
+        Ok(true)
+    } else {
+        let mut input_str = String::new();
+        std::io::stdin().read_line(&mut input_str)?;
+        match input_str.to_lowercase().trim_end() {
+            "yes" | "y" => Ok(true),
+            _ => Ok(false),
+        }
     }
 }
