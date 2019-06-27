@@ -6,6 +6,47 @@ use crate::dataflow::manifest_packages::ManifestResult;
 use std::env;
 use std::path::{Path, PathBuf};
 
+use crate::graphql::execute_query;
+use graphql_client::*;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/get_package_by_command.graphql",
+    response_derives = "Debug"
+)]
+struct GetPackageByCommandQuery;
+
+#[derive(Debug)]
+pub struct PackageInfoFromCommand {
+    pub command: String,
+    pub version: String,
+    pub namespaced_package_name: String,
+}
+
+impl PackageInfoFromCommand {
+    fn get_response(
+        command_name: String,
+    ) -> Result<get_package_by_command_query::ResponseData, failure::Error> {
+        let q = GetPackageByCommandQuery::build_query(get_package_by_command_query::Variables {
+            command_name,
+        });
+        execute_query(&q)
+    }
+
+    pub fn get(command_name: String) -> Result<Self, failure::Error> {
+        let response = Self::get_response(command_name)?;
+        let response_val = response
+            .get_command
+            .ok_or_else(|| format_err!("Error getting packages for given command from server"))?;
+        Ok(Self {
+            command: response_val.command,
+            version: response_val.package_version.version,
+            namespaced_package_name: response_val.package_version.package.display_name,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Fail)]
 pub enum Error {
     #[fail(

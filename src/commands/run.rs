@@ -43,7 +43,19 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         args: _,
         module_name,
         is_global,
-    } = get_command_from_anywhere(command_name)?;
+    } = match get_command_from_anywhere(command_name) {
+        Err(find_command_result::Error::CommandNotFound(command)) => {
+            let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
+            return Err(format_err!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
+                  &package_info.command,
+                  &package_info.namespaced_package_name,
+                  &package_info.version,
+                  &package_info.namespaced_package_name,
+                  &package_info.version,
+            ));
+        }
+        otherwise => otherwise?,
+    };
 
     // do not run with wasmer options if running a global command
     // this will change in the future.

@@ -1,5 +1,11 @@
 # source: https://registry.wapm.dev/graphql
-# timestamp: Tue Jun 04 2019 15:18:55 GMT-0700 (Pacific Daylight Time)
+# timestamp: Wed Jun 26 2019 15:36:44 GMT-0700 (Pacific Daylight Time)
+
+type Command {
+  command: String!
+  packageVersion: PackageVersion!
+  module: PackageVersionModule!
+}
 
 type Contract implements Node {
   """The ID of the object."""
@@ -127,8 +133,10 @@ type PackageVersion {
   signature: Signature
   file: String!
   fileSize: Int!
+  commands: [Command]
   distribution: PackageDistribution!
   isLastVersion: Boolean!
+  isSigned: Boolean!
 }
 
 type PackageVersionConnection {
@@ -146,6 +154,13 @@ type PackageVersionEdge {
 
   """A cursor for use in pagination"""
   cursor: String!
+}
+
+type PackageVersionModule {
+  name: String!
+  source: String!
+  abi: String
+  publicUrl: String!
 }
 
 """
@@ -219,9 +234,12 @@ type Query {
   getPackage(name: String!): Package
   getPackages(names: [String!]!): [Package]!
   getPackageVersion(name: String!, version: String): PackageVersion
+  getPackageVersions(names: [String!]!): [PackageVersion]
   getContract(name: String!): Contract
   getContracts(names: [String!]!): [Contract]!
   getContractVersion(name: String!, version: String): ContractVersion
+  getCommand(name: String!): Command
+  getCommands(names: [String!]!): [Command]
   search(query: String!, before: String, after: String, first: Int, last: Int): SearchConnection!
   viewer: User
 }
