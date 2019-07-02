@@ -37,6 +37,10 @@ jobs:
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
           rm $WASMER_DIR/wapm.sqlite
+          rm $WASMER_DIR/globals/wapm.lock
+          rm -rf wapm_packages
+          rm wapm.toml
+          rm wapm.lock
           chmod +x end-to-end-tests/install.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/install.sh &> /tmp/install-out.txt
@@ -57,6 +61,10 @@ jobs:
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
           rm $WASMER_DIR/wapm.sqlite
+          rm $WASMER_DIR/globals/wapm.lock
+          rm -rf wapm_packages
+          rm wapm.toml
+          rm wapm.lock
           chmod +x end-to-end-tests/verification.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/verification.sh &> /tmp/verification-out.txt
@@ -77,6 +85,10 @@ jobs:
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
           rm $HOME/.wasmer/wapm.sqlite
+          rm $HOME/.wasmer/globals/wapm.lock
+          rm -rf wapm_packages
+          rm wapm.toml
+          rm wapm.lock
           chmod +x end-to-end-tests/package-fs-mapping.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/package-fs-mapping.sh &> /tmp/package-fs-mapping-out.txt
@@ -100,6 +112,10 @@ jobs:
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
           rm $HOME/.wasmer/wapm.sqlite
+          rm $HOME/.wasmer/globals/wapm.lock
+          rm wapm.lock
+          rm wapm.toml
+          rm -rf wapm_packages
           chmod +x end-to-end-tests/manifest-validation.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/manifest-validation.sh &> /tmp/manifest-validation-out.txt

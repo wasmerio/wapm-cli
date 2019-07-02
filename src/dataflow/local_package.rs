@@ -27,7 +27,14 @@ impl<'a> LocalPackage<'a> {
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .map(|m| LockfileModule::from_local_module(package_name, package_version, &m))
+            .map(|m| {
+                LockfileModule::from_local_module(
+                    &manifest.base_directory_path,
+                    package_name,
+                    package_version,
+                    &m,
+                )
+            })
             .collect();
         let commands = manifest
             .command
