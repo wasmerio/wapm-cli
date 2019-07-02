@@ -6,15 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+
+## [0.3.2] - 2019-07-02
 ### Added
+- `disable-command-rename` field in `package` which prevents the first argument (usually the name of the program) from being edited by wapm (it's edited to provide better feedback when things like the `--help` command run). Programs that rely on the first argument, like python, need renaming disabled.
 - `--force-yes` flag to `wapm install` which accepts all prompts
 - `--dry-run` flag to `wapm publish` which runs the publish logic without sending anything to the registry
 - validation of the manifest on publish, all commands must reference valid modules
 - wapm will now suggest a package to install that contains the desired command if the command is not found
 
 ### Changed
+- Files in the wapm module are now relative to their locations in the manifest. This means that going into the directory of an installed global package lets you run it as if it were local. This improves consistency and usability and allows programs interfacing with packages to be simpler.
 - Renamed Wasm Contracts to Wasm Interfaces
 - Lockfile version 3 with package root directory added
+- Changes to the pkg-fs api
 
 ## [0.3.1] - 2019-06-19
 ### Added
