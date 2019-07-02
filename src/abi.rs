@@ -1,5 +1,5 @@
 use std::fmt;
-use wasm_contract::Contract;
+use wasm_interface::Interface;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
@@ -34,7 +34,7 @@ impl Default for Abi {
 }
 
 impl Abi {
-    pub fn get_contract(&self) -> Option<Contract> {
+    pub fn get_interface(&self) -> Option<Interface> {
         match self {
             Abi::Emscripten => None,
             Abi::Wasi => None,

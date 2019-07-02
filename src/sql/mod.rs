@@ -13,10 +13,10 @@ pub const INSERT_WAPM_PUBLIC_KEY: &str = include_str!("queries/insert_wapm_publi
 pub const INSERT_USER: &str = include_str!("queries/insert_user.sql");
 pub const GET_LATEST_PUBLIC_KEY_FOR_USER: &str =
     include_str!("queries/get_latest_public_key_for_user.sql");
-pub const WASM_CONTRACT_EXISTENCE_CHECK: &str =
-    include_str!("queries/wasm_contract_existence_check.sql");
-pub const INSERT_WASM_CONTRACT: &str = include_str!("queries/insert_contract.sql");
-pub const GET_WASM_CONTRACT: &str = include_str!("queries/get_contract.sql");
+pub const WASM_INTERFACE_EXISTENCE_CHECK: &str =
+    include_str!("queries/wasm_interface_existence_check.sql");
+pub const INSERT_WASM_INTERFACE: &str = include_str!("queries/insert_interface.sql");
+pub const GET_WASM_INTERFACE: &str = include_str!("queries/get_interface.sql");
 
 #[cfg(test)]
 mod test {
@@ -128,18 +128,18 @@ mod test {
         );
 
         conn.execute(
-            INSERT_WASM_CONTRACT,
+            INSERT_WASM_INTERFACE,
             params![
-                "test_contract",
+                "test_interface",
                 "0.0.0",
                 DATE_STR,
-                "this is where the contract data goes!"
+                "this is where the interface data goes!"
             ],
         )
         .unwrap();
 
-        let mut stmt = conn.prepare(WASM_CONTRACT_EXISTENCE_CHECK).unwrap();
-        let result = stmt.exists(params!["test_contract", "0.0.0"]).unwrap();
+        let mut stmt = conn.prepare(WASM_INTERFACE_EXISTENCE_CHECK).unwrap();
+        let result = stmt.exists(params!["test_interface", "0.0.0"]).unwrap();
         assert!(result);
     }
 }

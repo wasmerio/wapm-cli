@@ -17,7 +17,7 @@ use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 pub const RFC3339_FORMAT_STRING: &'static str = "%Y-%m-%dT%H:%M:%S-%f";
 pub const RFC3339_FORMAT_STRING_WITH_TIMEZONE: &'static str = "%Y-%m-%dT%H:%M:%S.%f+%Z";
 /// The current version of the database.  Update this to perform a migration
-pub const CURRENT_DATA_VERSION: i32 = 2;
+pub const CURRENT_DATA_VERSION: i32 = 3;
 
 /// Gets the current time in our standard format
 pub fn get_current_time_in_format() -> Option<String> {
@@ -83,6 +83,12 @@ fn apply_migration(conn: &mut Connection, migration_number: i32) -> Result<(), M
         }
         1 => {
             tx.execute_batch(include_str!("sql/migrations/0001.sql"))
+                .map_err(|e| {
+                    MigrationError::TransactionFailed(migration_number, format!("{}", e))
+                })?;
+        }
+        2 => {
+            tx.execute_batch(include_str!("sql/migrations/0002.sql"))
                 .map_err(|e| {
                     MigrationError::TransactionFailed(migration_number, format!("{}", e))
                 })?;

@@ -38,7 +38,7 @@ pub struct Command {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct ContractId {
+pub struct InterfaceId {
     pub name: String,
     pub version: String,
 }
@@ -51,7 +51,7 @@ pub struct Module {
     pub abi: Abi,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
-    pub contracts: Option<Vec<ContractId>>,
+    pub interfaces: Option<Vec<InterfaceId>>,
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -198,7 +198,7 @@ mod command_tests {
             module = "target.wasm"
             source = "source.wasm"
             description = "description"
-            contracts = [{"name" = "wasi", "version" = "0.0.0-unstable"}]
+            interfaces = [{"name" = "wasi", "version" = "0.0.0-unstable"}]
             [[command]]
             name = "foo"
             module = "test"
@@ -232,7 +232,7 @@ mod dependency_tests {
             [[module]]
             name = "test"
             source = "test.wasm"
-            contracts = []
+            interfaces = []
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
@@ -264,7 +264,7 @@ mod manifest_tests {
     use super::*;
 
     #[test]
-    fn contract_test() {
+    fn interface_test() {
         let manifest_str = r#"
 [package]
 name = "test"
@@ -275,7 +275,7 @@ license = "MIT"
 [[module]]
 name = "mod"
 source = "target/wasm32-wasi/release/mod.wasm"
-contracts = [{name = "wasi", version = "0.0.0-unstable"}]
+interfaces = [{name = "wasi", version = "0.0.0-unstable"}]
 
 [[command]]
 name = "command"
@@ -283,8 +283,8 @@ module = "mod"
 "#;
         let manifest: Manifest = toml::from_str(manifest_str).unwrap();
         assert_eq!(
-            manifest.module.unwrap()[0].contracts,
-            Some(vec![ContractId {
+            manifest.module.unwrap()[0].interfaces,
+            Some(vec![InterfaceId {
                 name: "wasi".to_string(),
                 version: "0.0.0-unstable".to_string()
             }])

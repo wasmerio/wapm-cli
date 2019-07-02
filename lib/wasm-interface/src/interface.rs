@@ -1,17 +1,17 @@
-//! The definition of a WASM contract
+//! The definition of a WASM interface
 
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Contract {
+pub struct Interface {
     /// Things that the module can import
     pub imports: HashMap<(String, String), Import>,
     /// Things that the module must export
     pub exports: HashMap<String, Export>,
 }
 
-impl Contract {
-    pub fn merge(&self, other: Contract) -> Result<Contract, String> {
+impl Interface {
+    pub fn merge(&self, other: Interface) -> Result<Interface, String> {
         let mut base = self.clone();
 
         for (key, val) in other.imports.into_iter() {
@@ -59,7 +59,7 @@ impl Import {
         (ns.to_string(), name.to_string())
     }
 
-    /// Get the key used to look this import up in the Contract's import hashmap
+    /// Get the key used to look this import up in the Interface's import hashmap
     pub fn get_key(&self) -> (String, String) {
         match self {
             Import::Func {
@@ -90,7 +90,7 @@ impl Export {
         name.to_string()
     }
 
-    /// Get the key used to look this export up in the Contract's export hashmap
+    /// Get the key used to look this export up in the Interface's export hashmap
     pub fn get_key(&self) -> String {
         match self {
             Export::Func { name, .. } => Self::format_key(&name),
@@ -129,32 +129,32 @@ mod test {
 
     #[test]
     fn merging_works() {
-        let contract1_src = r#"(assert_import (func "env" "plus_one" (param i32) (result i32)))"#;
-        let contract2_src = r#"(assert_import (func "env" "plus_one" (param i64) (result i64)))"#;
-        let contract3_src = r#"(assert_import (func "env" "times_two" (param i64) (result i64)))"#;
-        let contract4_src =
+        let interface1_src = r#"(assert_import (func "env" "plus_one" (param i32) (result i32)))"#;
+        let interface2_src = r#"(assert_import (func "env" "plus_one" (param i64) (result i64)))"#;
+        let interface3_src = r#"(assert_import (func "env" "times_two" (param i64) (result i64)))"#;
+        let interface4_src =
             r#"(assert_import (func "env" "times_two" (param i64 i64) (result i64)))"#;
-        let contract5_src = r#"(assert_export (func "empty_bank_account" (param) (result)))"#;
-        let contract6_src = r#"(assert_export (func "empty_bank_account" (param) (result i64)))"#;
+        let interface5_src = r#"(assert_export (func "empty_bank_account" (param) (result)))"#;
+        let interface6_src = r#"(assert_export (func "empty_bank_account" (param) (result i64)))"#;
 
-        let contract1 = parser::parse_contract(contract1_src).unwrap();
-        let contract2 = parser::parse_contract(contract2_src).unwrap();
-        let contract3 = parser::parse_contract(contract3_src).unwrap();
-        let contract4 = parser::parse_contract(contract4_src).unwrap();
-        let contract5 = parser::parse_contract(contract5_src).unwrap();
-        let contract6 = parser::parse_contract(contract6_src).unwrap();
+        let interface1 = parser::parse_interface(interface1_src).unwrap();
+        let interface2 = parser::parse_interface(interface2_src).unwrap();
+        let interface3 = parser::parse_interface(interface3_src).unwrap();
+        let interface4 = parser::parse_interface(interface4_src).unwrap();
+        let interface5 = parser::parse_interface(interface5_src).unwrap();
+        let interface6 = parser::parse_interface(interface6_src).unwrap();
 
-        assert!(contract1.merge(contract2.clone()).is_err());
-        assert!(contract2.merge(contract1.clone()).is_err());
-        assert!(contract1.merge(contract3.clone()).is_ok());
-        assert!(contract2.merge(contract3.clone()).is_ok());
-        assert!(contract3.merge(contract2.clone()).is_ok());
+        assert!(interface1.merge(interface2.clone()).is_err());
+        assert!(interface2.merge(interface1.clone()).is_err());
+        assert!(interface1.merge(interface3.clone()).is_ok());
+        assert!(interface2.merge(interface3.clone()).is_ok());
+        assert!(interface3.merge(interface2.clone()).is_ok());
         assert!(
-            contract1.merge(contract1.clone()).is_ok(),
+            interface1.merge(interface1.clone()).is_ok(),
             "exact matches are accepted"
         );
-        assert!(contract3.merge(contract4.clone()).is_err());
-        assert!(contract5.merge(contract5.clone()).is_ok());
-        assert!(contract5.merge(contract6.clone()).is_err());
+        assert!(interface3.merge(interface4.clone()).is_err());
+        assert!(interface5.merge(interface5.clone()).is_ok());
+        assert!(interface5.merge(interface6.clone()).is_err());
     }
 }
