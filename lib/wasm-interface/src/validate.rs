@@ -4,7 +4,7 @@
 //! are correct, as well as that all exports that the interface expects are exported
 //! by the module and that their types are correct.
 
-use crate::{Interface, Export, Import, WasmType};
+use crate::{Export, Import, Interface, WasmType};
 use std::collections::HashMap;
 use wasmparser::{ExternalKind, FuncType, GlobalType, ImportSectionEntryType};
 

@@ -1,6 +1,6 @@
-use crate::interfaces;
 use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
+use crate::interfaces;
 use std::{fs, io::Read, path::PathBuf};
 use wasm_interface::{validate, Interface};
 
@@ -42,8 +42,11 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
             let mut conn = database::open_db()?;
             let mut interface: Interface = Default::default();
             for interface_id in module.interfaces.unwrap_or_default().into_iter() {
-                if !interfaces::interface_exists(&mut conn, &interface_id.name, &interface_id.version)?
-                {
+                if !interfaces::interface_exists(
+                    &mut conn,
+                    &interface_id.name,
+                    &interface_id.version,
+                )? {
                     // download interface and store it if we don't have it locally
                     let interface_data_from_server = InterfaceFromServer::get(
                         interface_id.name.clone(),
