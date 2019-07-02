@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 ### Added
+- Renamed Wasm Contracts to Wasm Interfaces
 - `--force-yes` flag to `wapm install` which accepts all prompts
 - `--dry-run` flag to `wapm publish` which runs the publish logic without sending anything to the registry
 - validation of the manifest on publish, all commands must reference valid modules

@@ -17,7 +17,7 @@ extern crate toml;
 mod abi;
 pub mod commands;
 mod config;
-mod contracts;
+mod interfaces;
 pub mod data;
 mod database;
 mod dataflow;

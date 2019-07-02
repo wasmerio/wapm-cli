@@ -1,8 +1,8 @@
-//! Parsers to get a wasm contract from text
+//! Parsers to get a wasm interface from text
 //!
 //! The grammar of the text format is:
-//! contract = contract-entry+
-//! contract-entry = import-assertion | export-assertion
+//! interface = interface-entry+
+//! interface-entry = import-assertion | export-assertion
 //!
 //! import-assertion = "(" "assert_import" import-entry+ ")"
 //! import-entry = import-fn | import-global
@@ -42,21 +42,21 @@ use nom::{
     IResult,
 };
 
-use crate::contract::*;
+use crate::interface::*;
 
 /// Some example input:
 /// (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
 /// (assert_export (func "name" (param f64 i32) (result f64 i32)))
 /// (assert_import (global "ns" "name" (type f64)))
 
-pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
+pub fn parse_interface(mut input: &str) -> Result<Interface, String> {
     let mut import_found = true;
     let mut export_found = true;
-    let mut contract = Contract::default();
+    let mut interface = Interface::default();
     while import_found || export_found {
         if let Result::Ok((inp, out)) = preceded(space_comments, parse_imports)(input) {
             for entry in out.into_iter() {
-                if let Some(dup) = contract.imports.insert(entry.get_key(), entry) {
+                if let Some(dup) = interface.imports.insert(entry.get_key(), entry) {
                     return Err(format!("Duplicate import found {:?}", dup));
                 }
             }
@@ -68,7 +68,7 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
 
         if let Result::Ok((inp, out)) = preceded(space_comments, parse_exports)(input) {
             for entry in out.into_iter() {
-                if let Some(dup) = contract.exports.insert(entry.get_key(), entry) {
+                if let Some(dup) = interface.exports.insert(entry.get_key(), entry) {
                     return Err(format!("Duplicate export found {:?}", dup));
                 }
             }
@@ -81,7 +81,7 @@ pub fn parse_contract(mut input: &str) -> Result<Contract, String> {
     if !input.is_empty() {
         Err(format!("Could not parse remaining input: {}", input))
     } else {
-        Ok(contract)
+        Ok(interface)
     }
 }
 
@@ -428,7 +428,7 @@ i32 )
 
     #[test]
     fn top_level_test() {
-        let parse_res = parse_contract(
+        let parse_res = parse_interface(
             " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
  (assert_export (func \"name2\" (param) (result i32)))
  (assert_import (global \"env\" \"length\" (type f64)))",
@@ -463,7 +463,7 @@ i32 )
             .collect::<HashMap<String, Export>>();
         assert_eq!(
             parse_res,
-            Contract {
+            Interface {
                 imports: import_map,
                 exports: export_map,
             }
@@ -472,7 +472,7 @@ i32 )
 
     #[test]
     fn duplicates_not_allowed() {
-        let parse_res = parse_contract(
+        let parse_res = parse_interface(
             " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
 ; test comment
   ;; hello
@@ -499,7 +499,7 @@ i32 )
 
     #[test]
     fn test_param_elision() {
-        let parse_res = parse_contract(
+        let parse_res = parse_interface(
             " (assert_import (func \"ns\" \"name\" (result f64 i32)))
 (assert_export (func \"name\"))",
         )
@@ -526,7 +526,7 @@ i32 )
             .collect::<HashMap<String, Export>>();
         assert_eq!(
             parse_res,
-            Contract {
+            Interface {
                 imports: import_map,
                 exports: export_map,
             }
@@ -535,10 +535,10 @@ i32 )
 
     #[test]
     fn typo_gets_caught() {
-        let contract_src = r#"
+        let interface_src = r#"
 (assert_import (func "env" "do_panic" (params i32 i64)))
 (assert_import (global "length" (type i32)))"#;
-        let result = parse_contract(contract_src);
+        let result = parse_interface(interface_src);
         assert!(result.is_err());
     }
 }

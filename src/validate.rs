@@ -1,8 +1,8 @@
-use crate::contracts;
+use crate::interfaces;
 use crate::database;
-use crate::dataflow::{contracts::ContractFromServer, manifest_packages::ManifestResult};
+use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
 use std::{fs, io::Read, path::PathBuf};
-use wasm_contract::{validate, Contract};
+use wasm_interface::{validate, Interface};
 
 pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     // validate as dir
@@ -31,8 +31,8 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                 }
             })?;
 
-            // hack, short circuit if no contract for now
-            if module.contracts.is_none() {
+            // hack, short circuit if no interface for now
+            if module.interfaces.is_none() {
                 return validate_wasm_and_report_errors_old(
                     &wasm_buffer[..],
                     source_path_string.clone(),
@@ -40,32 +40,32 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
             }
 
             let mut conn = database::open_db()?;
-            let mut contract: Contract = Default::default();
-            for contract_id in module.contracts.unwrap_or_default().into_iter() {
-                if !contracts::contract_exists(&mut conn, &contract_id.name, &contract_id.version)?
+            let mut interface: Interface = Default::default();
+            for interface_id in module.interfaces.unwrap_or_default().into_iter() {
+                if !interfaces::interface_exists(&mut conn, &interface_id.name, &interface_id.version)?
                 {
-                    // download contract and store it if we don't have it locally
-                    let contract_data_from_server = ContractFromServer::get(
-                        contract_id.name.clone(),
-                        contract_id.version.clone(),
+                    // download interface and store it if we don't have it locally
+                    let interface_data_from_server = InterfaceFromServer::get(
+                        interface_id.name.clone(),
+                        interface_id.version.clone(),
                     )?;
-                    contracts::import_contract(
+                    interfaces::import_interface(
                         &mut conn,
-                        &contract_id.name,
-                        &contract_id.version,
-                        &contract_data_from_server.content,
+                        &interface_id.name,
+                        &interface_id.version,
+                        &interface_data_from_server.content,
                     )?;
                 }
-                let sub_contract = contracts::load_contract_from_db(
+                let sub_interface = interfaces::load_interface_from_db(
                     &mut conn,
-                    &contract_id.name,
-                    &contract_id.version,
+                    &interface_id.name,
+                    &interface_id.version,
                 )?;
-                contract = contract.merge(sub_contract).map_err(|e| {
-                    format_err!("Failed to merge contract {}: {}", &contract_id.name, e)
+                interface = interface.merge(sub_interface).map_err(|e| {
+                    format_err!("Failed to merge interface {}: {}", &interface_id.name, e)
                 })?;
             }
-            validate::validate_wasm_and_report_errors(&wasm_buffer, &contract).map_err(|e| {
+            validate::validate_wasm_and_report_errors(&wasm_buffer, &interface).map_err(|e| {
                 ValidationError::InvalidWasm {
                     file: source_path_string,
                     error: format!("{:?}", e),

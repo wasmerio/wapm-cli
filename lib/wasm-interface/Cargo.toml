@@ -1,10 +1,10 @@
 [package]
-name = "wasm-contract"
+name = "wasm-interface"
 version = "0.0.0"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
 repository = "https://github.com/wasmerio/wapm-cli"
-description = "wasm Contract definition and parser"
+description = "WASM Interface definition and parser"
 license = "MIT"
 
 [dependencies]
