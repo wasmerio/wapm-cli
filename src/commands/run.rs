@@ -130,7 +130,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         wasi_preopened_dir_flags,
         &run_dir,
         source_path_buf,
-        if disable_command_rename { None } else { Some(format!("wapm run {}", command_name) )},
+        if disable_command_rename {
+            None
+        } else {
+            Some(format!("wapm run {}", command_name))
+        },
     )?;
     debug!("Running command with args: {:?}", command_vec);
     let mut child = Command::new(DEFAULT_RUNTIME)
