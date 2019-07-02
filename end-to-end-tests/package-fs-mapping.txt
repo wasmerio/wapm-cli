@@ -11,5 +11,4 @@ Global package installed successfully!
 Package installed successfully to wapm_packages!
 "data/gl.txt"
 [INFO] Package "mark2/dog2" is uninstalled.
-[INFO] Interpreting unqualified global package name "test" as "_/test"
 "wapm_file/wapm.rs"
