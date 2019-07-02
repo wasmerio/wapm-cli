@@ -105,8 +105,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         .map(|entry| OsString::from(format!("--dir={}", entry)))
         .collect();
 
+    let mut disable_command_rename = false;
+
     match ManifestResult::find_in_directory(&manifest_dir) {
         ManifestResult::Manifest(manifest) => {
+            disable_command_rename = manifest.package.disable_command_rename;
             if let Some(ref fs) = manifest.fs {
                 // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
                 for (guest_path, host_path) in fs.iter() {
@@ -127,7 +130,11 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         wasi_preopened_dir_flags,
         &run_dir,
         source_path_buf,
-        Some(format!("wapm run {}", command_name)),
+        if disable_command_rename {
+            None
+        } else {
+            Some(format!("wapm run {}", command_name))
+        },
     )?;
     debug!("Running command with args: {:?}", command_vec);
     let mut child = Command::new(DEFAULT_RUNTIME)
