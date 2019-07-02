@@ -8,7 +8,7 @@ pub fn interface_exists(
     interface_name: &str,
     version: &str,
 ) -> Result<bool, failure::Error> {
-    let mut stmt = conn.prepare(sql::WASM_CONTRACT_EXISTENCE_CHECK)?;
+    let mut stmt = conn.prepare(sql::WASM_INTERFACE_EXISTENCE_CHECK)?;
     Ok(stmt.exists(params![interface_name, version])?)
 }
 
@@ -17,7 +17,7 @@ pub fn load_interface_from_db(
     interface_name: &str,
     version: &str,
 ) -> Result<wasm_interface::Interface, failure::Error> {
-    let mut stmt = conn.prepare(sql::GET_WASM_CONTRACT)?;
+    let mut stmt = conn.prepare(sql::GET_WASM_INTERFACE)?;
     let interface_string: String =
         stmt.query_row(params![interface_name, version], |row| Ok(row.get(0)?))?;
 
@@ -39,7 +39,7 @@ pub fn import_interface(
 ) -> Result<(), failure::Error> {
     // fail if we already have this interface
     {
-        let mut key_check = conn.prepare(sql::WASM_CONTRACT_EXISTENCE_CHECK)?;
+        let mut key_check = conn.prepare(sql::WASM_INTERFACE_EXISTENCE_CHECK)?;
         let result = key_check.exists(params![interface_name, version])?;
 
         if result {
@@ -56,7 +56,7 @@ pub fn import_interface(
 
     debug!("Adding interface {:?} {:?}", interface_name, version);
     tx.execute(
-        sql::INSERT_WASM_CONTRACT,
+        sql::INSERT_WASM_INTERFACE,
         params![interface_name, version, time_string, content],
     )?;
 
