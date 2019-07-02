@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - wapm will now suggest a package to install that contains the desired command if the command is not found
 
 ### Changed
-- files in the wapm module are now relative to their locations in the manifest. This means that going into the directory of an installed global package lets you run it as if it were local. This improves consistency and usability and allows programs interfacing with packages to be simpler.
+- Files in the wapm module are now relative to their locations in the manifest. This means that going into the directory of an installed global package lets you run it as if it were local. This improves consistency and usability and allows programs interfacing with packages to be simpler.
+- Renamed Wasm Contracts to Wasm Interfaces
 - Lockfile version 3 with package root directory added
 - Changes to the pkg-fs api
 

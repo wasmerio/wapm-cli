@@ -1,18 +1,16 @@
-# Wasm Contract
+# Wasm Interface
 
-This is an experimental crate for validating the imports and exports of a wasm module.
+This is an experimental crate for validating the imports and exports of a WebAssembly module.
 
-This serves a slightly different purpose than the proposed WebIDL for Wasm standard, but may be replaced by it in the future if things change.
-
-For the time being, Wasm Contract provides:
+For the time being, Wasm Interface provides:
 
 - a convenient text format for specifying the requirements of Wasm modules
-- a convenient way to compose contracts safely (it ensures no conflicts (duplicates are allowed but they must agree))
+- a convenient way to compose interfaces safely (it ensures no conflicts (duplicates are allowed but they must agree))
 - validation that the modules meet the requirements
 
 ## Syntax example
 
-Here's the contract for the current version of [WASI](https://github.com/WebAssembly/WASI):
+Here's the interface for the current version of [WASI](https://github.com/WebAssembly/WASI):
 
 ```lisp
 (assert_import
@@ -72,16 +70,18 @@ Notes:
 
 ## Semantics
 
-All imports used by the module must be specified in the contract.
+All imports used by the module must be specified in the interface.
 
-All exports in the contract must be exported by the module.
+All exports in the interface must be exported by the module.
 
-Thus the module may have additional exports than the contract or fewer imports than the contract specifies and be considered valid.
+Thus the module may have additional exports than the interface or fewer imports than the interface specifies and be considered valid.
 
 
 ## Misc
 
-Due to an issue with nested closures in Rust, `wasm-contract` can't both compile on stable and have good error reporting. This is being fixed and `wasm-contract` will be updated to have better error handling.
+Wasm Interface serves a slightly different purpose than the proposed WebIDL for Wasm standard, but may be replaced by it in the future if things change.
+
+Due to an issue with nested closures in Rust, `wasm-interface` can't both compile on stable and have good error reporting. This is being fixed and `wasm-interface` will be updated to have better error handling.
 
 See the `parser.rs` file for a comment containing the grammar in a BNF style.
 

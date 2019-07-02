@@ -39,7 +39,7 @@ toml = "0.4.10"
 toml-query = "0.8.0"
 rpassword = "3.0.0"
 walrus = "0.5"
-wasm-contract = { path = "lib/wasm-contract" }
+wasm-interface = { path = "lib/wasm-interface" }
 wasmparser = "0.30.0"
 whoami = "0.5"
 zstd = "0.4"
@@ -50,7 +50,7 @@ tempdir = "0.3"
 [workspace]
 members = [
    ".",
-   "lib/wasm-contract"
+   "lib/wasm-interface"
 ]
 
 [features]
