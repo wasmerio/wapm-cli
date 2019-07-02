@@ -47,7 +47,10 @@ impl ManifestResult {
             Err(_) => return ManifestResult::NoManifest,
         };
         match toml::from_str::<Manifest>(&source) {
-            Ok(m) => ManifestResult::Manifest(m),
+            Ok(mut m) => {
+                m.base_directory_path = directory.to_owned();
+                ManifestResult::Manifest(m)
+            }
             Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string())),
         }
     }

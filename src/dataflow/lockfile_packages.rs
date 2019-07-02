@@ -102,6 +102,7 @@ impl<'a> LockfilePackages<'a> {
                     .iter()
                     .map(|module| {
                         LockfileModule::from_module(
+                            &manifest.base_directory_path,
                             k.name.as_ref(),
                             &k.version,
                             module,
