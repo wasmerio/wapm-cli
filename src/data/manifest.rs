@@ -24,6 +24,8 @@ pub struct Package {
     pub homepage: Option<String>,
     #[serde(rename = "wasmer-extra-flags")]
     pub wasmer_extra_flags: Option<String>,
+    #[serde(rename = "disable-command-rename", default)]
+    pub disable_command_rename: bool,
 }
 
 /// Describes a command for a wapm module
