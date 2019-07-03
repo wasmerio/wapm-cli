@@ -1,10 +1,10 @@
 [INFO] Installing mark2/dog2@0.0.0
-New public key encountered: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog2@0.0.0.
+New public key encountered for user mark2: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog2@0.0.0.
 Would you like to trust this key?
 [y/n] Error: Failed to install packages. Could not install package(s). Install aborted: User did not trust key from registry for package dog2@0.0.0
 No keys found
 [INFO] Installing mark2/dog@0.0.4
-New public key encountered: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog@0.0.4.
+New public key encountered for user mark2: 3F6D278A36843FFE RWT+P4Q2iidtP7bkcLP4fBTYc9YPpuTKNVIquvPPnsFXrGdecaMKpQ+t while installing dog@0.0.4.
 Would you like to trust this key?
 [y/n] [INFO] Importing key "3F6D278A36843FFE" for user "mark2"
 [INFO] Signature of package dog@0.0.4 verified!
@@ -16,4 +16,14 @@ Package installed successfully to wapm_packages!
 Package installed successfully to wapm_packages!
 [INFO] Installing mark2/dog2@0.0.0
 [INFO] Signature of package dog2@0.0.0 verified!
+Package installed successfully to wapm_packages!
+[INFO] Installing _/dog3@0.0.0
+New public key encountered for user mark2: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog3@0.0.0.
+Would you like to trust this key?
+[y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
+[INFO] Signature of package dog3@0.0.0 verified!
+Package installed successfully to wapm_packages!
+[INFO] Package "dog3" is uninstalled.
+[INFO] Installing _/dog3@0.0.0
+[INFO] Signature of package dog3@0.0.0 verified!
 Package installed successfully to wapm_packages!

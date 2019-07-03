@@ -54,6 +54,7 @@ jobs:
           rm wapm.toml
           rm -rf wapm_packages
           rm /tmp/install-out.txt
+          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
         displayName: 'Regression test: Install, Uninstall, Run, and List'
       - script: |
@@ -78,6 +79,7 @@ jobs:
           rm wapm.toml
           rm -rf wapm_packages
           rm /tmp/verification-out.txt
+          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
         displayName: 'Regression test: verification and public key management'
       - script: |
@@ -105,6 +107,7 @@ jobs:
           rm -rf wapm_packages
           rm /tmp/package-fs-mapping-out.txt
           rm $HOME/.wasmer/wapm.sqlite
+          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
         displayName: 'Regression test: pkg_fs works globally and when installed locally'
       - script: |
@@ -130,6 +133,7 @@ jobs:
           rm -rf wapm_packages
           rm /tmp/manifest-validation-out.txt
           rm $HOME/.wasmer/wapm.sqlite
+          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
         displayName: 'Regression test: manifest validation rejects invalid manifests'
   - job: Windows
