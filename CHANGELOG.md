@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.3.3] - 2019-07-02
+### Changed
+- use the author the registry sends over to look for a saved public key to validate the package/new public keys with with
+
 ## [0.3.2] - 2019-07-02
 ### Added
 - `disable-command-rename` field in `package` which prevents the first argument (usually the name of the program) from being edited by wapm (it's edited to provide better feedback when things like the `--help` command run). Programs that rely on the first argument, like python, need renaming disabled.
