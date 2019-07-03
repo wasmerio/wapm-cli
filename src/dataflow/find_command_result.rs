@@ -92,6 +92,7 @@ impl FindCommandResult {
         match lockfile.get_command(command_name.as_ref()) {
             Err(e) => FindCommandResult::Error(e),
             Ok(lockfile_command) => {
+                debug!("Command found in lockfile: {:?}", &lockfile_command);
                 if lockfile_command.package_name == manifest.package.name {
                     // this is a local module command
                     let found_module = manifest.module.as_ref().and_then(|modules| {
@@ -113,6 +114,10 @@ impl FindCommandResult {
                         ),
                     }
                 } else {
+                    debug!(
+                        "Command's package name({}) and manifest's package name({}) are different",
+                        lockfile_command.package_name, manifest.package.name
+                    );
                     match lockfile.get_module(
                         &lockfile_command.package_name,
                         &lockfile_command.package_version,
