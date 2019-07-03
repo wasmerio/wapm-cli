@@ -11,3 +11,7 @@ wapm keys list -a | wc -l
 wapm uninstall mark2/dog
 wapm install mark2/dog@0.0.4
 wapm install mark2/dog2@0.0.0
+rm $HOME/.wasmer/wapm.sqlite &> /dev/null 
+wapm install dog3@0.0.0 --force-yes
+wapm uninstall dog3
+wapm install dog3@0.0.0 --force-yes
