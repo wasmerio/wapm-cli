@@ -1,5 +1,5 @@
 [INFO] Installing mark2/dog2@0.0.13
-New public key encountered: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.13.
+New public key encountered for user mark2: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog2@0.0.13.
 Would you like to trust this key?
 [y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
 [INFO] Signature of package dog2@0.0.13 verified!

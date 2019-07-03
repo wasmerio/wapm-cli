@@ -174,12 +174,17 @@ impl<'a> Install<'a> for RegistryInstaller {
         let mut keys_db = database::open_db().map_err(|e| {
             Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
         })?;
-        let latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
+        // get the latest key for the given namespace first. If the server claims that the owner
+        // is someone else, then we'll search the local database for a key from that user
+        // this is required for how globally namespaced packages work and also allows transfer
+        // of ownership
+        let mut latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
             .map_err(|e| {
                 Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
             })?;
-        let mut import_public_key = |pk_id, pkv, associated_user| {
-            keys::import_public_key(&mut keys_db, pk_id, pkv, associated_user).map_err(|e| {
+
+        let import_public_key = |mut_db_handle, pk_id, pkv, associated_user| {
+            keys::import_public_key(mut_db_handle, pk_id, pkv, associated_user).map_err(|e| {
                 Error::KeyManagementError(
                     fully_qualified_package_name.clone(),
                     format!("could not add public key: {}", e),
@@ -191,18 +196,30 @@ impl<'a> Install<'a> for RegistryInstaller {
         let mut key_to_verify_package_with = None;
         let mut signature_to_use = None;
 
-        match (signature, latest_public_key) {
-            // server has key and client has key
-            (
-                Some(keys::WapmPackageSignature {
-                    public_key_id,
-                    public_key,
-                    signature_data,
-                    owner,
-                    ..
-                }),
-                Some(latest_local_key),
-            ) => {
+        if let Some(keys::WapmPackageSignature {
+            public_key_id,
+            public_key,
+            signature_data,
+            owner,
+            ..
+        }) = signature
+        {
+            // Cases 1-X:
+            // get key for owner as identified by the server
+            latest_public_key = if owner != namespace {
+                keys::get_latest_public_key_for_user(&keys_db, &owner).map_err(|e| {
+                    Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
+                })?
+            } else {
+                latest_public_key
+            };
+            debug!(
+                "Latest public key for user {} during install: {:?}",
+                &namespace, latest_public_key
+            );
+
+            if let Some(latest_local_key) = latest_public_key {
+                // Case 1-1: server has key and client has key
                 // verify or prompt and store
                 if public_key_id == latest_local_key.public_key_id
                     && public_key == latest_local_key.public_key_value
@@ -224,7 +241,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                         )).expect("Could not read input from user");
 
                     if user_trusts_new_key {
-                        import_public_key(&public_key_id, &public_key, owner)?;
+                        import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
                         key_to_verify_package_with = Some((public_key_id, public_key));
                         signature_to_use = Some(signature_data);
                     } else {
@@ -234,27 +251,17 @@ impl<'a> Install<'a> for RegistryInstaller {
                         )));
                     }
                 }
-            }
-            // server has key and client does not have key
-            (
-                Some(keys::WapmPackageSignature {
-                    public_key_id,
-                    public_key,
-                    signature_data,
-                    owner,
-                    ..
-                }),
-                None,
-            ) => {
+            } else {
+                // Case 1-0: server has key and client does not have key
                 // prompt and store
                 let user_trusts_new_key = util::prompt_user_for_yes(&format!(
-                    "New public key encountered: {} {} while installing {}.
+                    "New public key encountered for user {}: {} {} while installing {}.
 Would you like to trust this key?",
-                    &public_key_id, &public_key, &fully_qualified_package_name
+                    &owner, &public_key_id, &public_key, &fully_qualified_package_name
                 ))
                 .expect("Could not read input from user");
                 if user_trusts_new_key {
-                    import_public_key(&public_key_id, &public_key, owner)?;
+                    import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
                     key_to_verify_package_with = Some((public_key_id, public_key));
                     signature_to_use = Some(signature_data);
                 } else {
@@ -264,8 +271,11 @@ Would you like to trust this key?",
                     )));
                 }
             }
-            // server does not have key and client has key
-            (None, Some(latest_local_key)) => {
+        } else {
+            // Cases 0-X:
+            // server does not have key
+            if let Some(latest_local_key) = latest_public_key {
+                // Case 0-1: server does not have key and client has key
                 // server error or scary things happening
                 warn!(
                     "The server does not have a public key for {} for the package {} and the package is not signed but a public key for {} is known locally ({}).\nThis could mean that the wapm registry has been compromised, that the package was created before the publisher started signing their packages, or that the publisher decided not to sign this package.",
@@ -285,9 +295,8 @@ Would you like to trust this key?",
                         &fully_qualified_package_name
                     )));
                 }
-            }
-            // server does not have key and client does not have key
-            (None, None) => {
+            } else {
+                // Case 0-0: server does not have key and client does not have key
                 // silently proceed to insecure install for now
                 insecure_install = true;
             }

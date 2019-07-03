@@ -8,8 +8,8 @@ description = "WASM Interface definition and parser"
 license = "MIT"
 
 [dependencies]
-nom = "5.0.0-beta2"
-wasmparser = { version = "0.30", optional = true }
+nom = "5.0.0"
+wasmparser = { version = "0.32", optional = true }
 
 [dev-dependencies]
 wabt = "0.7"
