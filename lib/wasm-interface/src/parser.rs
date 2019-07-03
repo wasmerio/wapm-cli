@@ -78,6 +78,10 @@ pub fn parse_interface(mut input: &str) -> Result<Interface, String> {
             export_found = false;
         }
     }
+    // catch trailing comments and spaces
+    if let Ok((inp, _)) = space_comments(input) {
+        input = inp;
+    }
     if !input.is_empty() {
         Err(format!("Could not parse remaining input: {}", input))
     } else {
@@ -173,7 +177,7 @@ fn global_import(input: &str) -> IResult<&str, Import> {
         "global import inner",
         preceded(
             tag("global"),
-            map(
+            cut(map(
                 tuple((
                     preceded(space_comments, identifier),
                     preceded(space_comments, identifier),
@@ -184,7 +188,7 @@ fn global_import(input: &str) -> IResult<&str, Import> {
                     name: name.to_string(),
                     var_type,
                 },
-            ),
+            )),
         ),
     );
     s_exp(global_import_inner)(input)
@@ -495,13 +499,18 @@ i32 )
         assert_eq!(parse_res, ("", ()));
         let parse_res = space_comments("abc").unwrap();
         assert_eq!(parse_res, ("abc", ()));
+        let parse_res = space_comments("\n ; hello\n ").unwrap();
+        assert_eq!(parse_res, ("", ()));
+        let parse_res = space_comments("\n ; hello\n ; abc\n\n ; hello\n").unwrap();
+        assert_eq!(parse_res, ("", ()));
     }
 
     #[test]
     fn test_param_elision() {
         let parse_res = parse_interface(
             " (assert_import (func \"ns\" \"name\" (result f64 i32)))
-(assert_export (func \"name\"))",
+(assert_export (func \"name\"))
+",
         )
         .unwrap();
 
@@ -540,5 +549,20 @@ i32 )
 (assert_import (global "length" (type i32)))"#;
         let result = parse_interface(interface_src);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_trailing_spaces_on_interface() {
+        let parse_res = parse_interface(
+            r#" (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
+; test comment
+  ;; hello
+ (assert_import (global "ns" "length" (type f64))
+)
+
+"#,
+        );
+
+        assert!(parse_res.is_ok());
     }
 }
