@@ -19,9 +19,11 @@ Package installed successfully to wapm_packages!
 Package installed successfully to wapm_packages!
 [INFO] Installing _/dog3@0.0.0
 New public key encountered for user mark2: BB702CB61EC2F2F6 RWT28sIetixwu5p3VkrhG8kyV60RxwQ1ycfHjep8UroIdP8DF4JLmGvt while installing dog3@0.0.0.
+Would you like to trust this key?
 [y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
 [INFO] Signature of package dog3@0.0.0 verified!
 Package installed successfully to wapm_packages!
+[INFO] Package "dog3" is uninstalled.
 [INFO] Installing _/dog3@0.0.0
 [INFO] Signature of package dog3@0.0.0 verified!
 Package installed successfully to wapm_packages!

@@ -173,6 +173,7 @@ impl FindCommandResult {
             (_, LockfileResult::LockfileError(e)) => return FindCommandResult::Error(e.into()),
             (ManifestResult::NoManifest, LockfileResult::NoLockfile) => {} // continue
             (ManifestResult::NoManifest, LockfileResult::Lockfile(l)) => {
+                debug!("Looking for local command in the lockfile");
                 return Self::find_command_in_lockfile(command_name, l);
             }
             // the edge case of a manifest, but no lockfile would an invalid state. This function
@@ -183,6 +184,7 @@ impl FindCommandResult {
                 panic!("Manifest exists, but lockfile not found!")
             }
             (ManifestResult::Manifest(m), LockfileResult::Lockfile(l)) => {
+                debug!("Looking for local command in the manifest and lockfile");
                 return Self::find_command_in_manifest_and_lockfile(command_name, m, l);
             }
         };
