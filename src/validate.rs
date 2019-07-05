@@ -41,31 +41,29 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
 
             let mut conn = database::open_db()?;
             let mut interface: Interface = Default::default();
-            for interface_id in module.interfaces.unwrap_or_default().into_iter() {
-                if !interfaces::interface_exists(
-                    &mut conn,
-                    &interface_id.name,
-                    &interface_id.version,
-                )? {
+            for (interface_name, interface_version) in
+                module.interfaces.unwrap_or_default().into_iter()
+            {
+                if !interfaces::interface_exists(&mut conn, &interface_name, &interface_version)? {
                     // download interface and store it if we don't have it locally
                     let interface_data_from_server = InterfaceFromServer::get(
-                        interface_id.name.clone(),
-                        interface_id.version.clone(),
+                        interface_name.clone(),
+                        interface_version.clone(),
                     )?;
                     interfaces::import_interface(
                         &mut conn,
-                        &interface_id.name,
-                        &interface_id.version,
+                        &interface_name,
+                        &interface_version,
                         &interface_data_from_server.content,
                     )?;
                 }
                 let sub_interface = interfaces::load_interface_from_db(
                     &mut conn,
-                    &interface_id.name,
-                    &interface_id.version,
+                    &interface_name,
+                    &interface_version,
                 )?;
                 interface = interface.merge(sub_interface).map_err(|e| {
-                    format_err!("Failed to merge interface {}: {}", &interface_id.name, e)
+                    format_err!("Failed to merge interface {}: {}", &interface_name, e)
                 })?;
             }
             validate::validate_wasm_and_report_errors(&wasm_buffer, &interface).map_err(|e| {
