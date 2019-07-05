@@ -37,12 +37,6 @@ pub struct Command {
     pub package: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct InterfaceId {
-    pub name: String,
-    pub version: String,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
@@ -51,7 +45,7 @@ pub struct Module {
     pub abi: Abi,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
-    pub interfaces: Option<Vec<InterfaceId>>,
+    pub interfaces: Option<HashMap<String, String>>,
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -198,7 +192,7 @@ mod command_tests {
             module = "target.wasm"
             source = "source.wasm"
             description = "description"
-            interfaces = [{"name" = "wasi", "version" = "0.0.0-unstable"}]
+            interfaces = {"wasi" = "0.0.0-unstable"}
             [[command]]
             name = "foo"
             module = "test"
@@ -232,7 +226,7 @@ mod dependency_tests {
             [[module]]
             name = "test"
             source = "test.wasm"
-            interfaces = []
+            interfaces = {}
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
@@ -275,7 +269,7 @@ license = "MIT"
 [[module]]
 name = "mod"
 source = "target/wasm32-wasi/release/mod.wasm"
-interfaces = [{name = "wasi", version = "0.0.0-unstable"}]
+interfaces = {"wasi" = "0.0.0-unstable"}
 
 [[command]]
 name = "command"
@@ -283,11 +277,12 @@ module = "mod"
 "#;
         let manifest: Manifest = toml::from_str(manifest_str).unwrap();
         assert_eq!(
-            manifest.module.unwrap()[0].interfaces,
-            Some(vec![InterfaceId {
-                name: "wasi".to_string(),
-                version: "0.0.0-unstable".to_string()
-            }])
+            manifest.module.unwrap()[0]
+                .interfaces
+                .as_ref()
+                .unwrap()
+                .get("wasi"),
+            Some(&"0.0.0-unstable".to_string())
         )
     }
 }

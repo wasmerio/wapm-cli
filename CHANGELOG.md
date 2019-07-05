@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **[Unreleased]**
 ## [0.3.4] - 2019-07-05
 ### Added
+- Improved Wasm Interface manifest format
 - fixes and improvements for Wasm Interface
 
 ## [0.3.3] - 2019-07-02
