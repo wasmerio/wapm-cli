@@ -20,6 +20,7 @@ pub fn validate_wasm_and_report_errors(
     let mut export_globals: HashMap<String, u32> = HashMap::new();
     let mut type_defs: Vec<FuncType> = vec![];
     let mut global_types: Vec<GlobalType> = vec![];
+    let mut fn_sigs: Vec<u32> = vec![];
 
     let mut parser = wasmparser::ValidatingParser::new(wasm, None);
     loop {
@@ -39,6 +40,7 @@ pub fn validate_wasm_and_report_errors(
             } => match ty {
                 ImportSectionEntryType::Function(idx) => {
                     import_fns.insert(Import::format_key(module, field), *idx);
+                    fn_sigs.push(*idx);
                 }
                 ImportSectionEntryType::Global(GlobalType { content_type, .. }) => {
                     let global_type =
@@ -92,12 +94,15 @@ pub fn validate_wasm_and_report_errors(
             wasmparser::ParserState::TypeSectionEntry(ft) => {
                 type_defs.push(ft.clone());
             }
+            wasmparser::ParserState::FunctionSectionEntry(n) => {
+                fn_sigs.push(*n);
+            }
             _ => {}
         }
     }
 
     validate_imports(&import_fns, &type_defs, interface, &mut errors);
-    validate_export_fns(&export_fns, &type_defs, interface, &mut errors);
+    validate_export_fns(&export_fns, &type_defs, &fn_sigs, interface, &mut errors);
     validate_export_globals(&export_globals, &global_types, interface, &mut errors);
 
     if errors.is_empty() {
@@ -120,7 +125,10 @@ fn validate_imports(
             let type_sig = if let Some(v) = type_defs.get(*val as usize) {
                 v
             } else {
-                errors.push(format!("Invalid type reference {}", val));
+                errors.push(format!(
+                    "Use of undeclared function reference \"{}\" in import function \"{}\" \"{}\"",
+                    val, key.0, key.1
+                ));
                 continue;
             };
             if let Import::Func { params, result, .. } = interface_def {
@@ -140,8 +148,8 @@ fn validate_imports(
                             }
                             if t != params[i] {
                                 errors.push(format!(
-                                    "Type mismatch in params in func \"{}\" \"{}\"",
-                                    &key.0, &key.1
+                                    "Type mismatch in params in imported func \"{}\" \"{}\": argument {}, expected {} found {}",
+                                    &key.0, &key.1, i + 1, params[i], t
                                 ));
                             }
                         }
@@ -167,8 +175,8 @@ fn validate_imports(
 
                             if t != result[i] {
                                 errors.push(format!(
-                                    "Type mismatch in returns in func \"{}\" \"{}\"",
-                                    &key.0, &key.1
+                                    "Type mismatch in returns in func \"{}\" \"{}\", return {}, expected {} found {}",
+                                    &key.0, &key.1, i + 1, params[i], t
                                 ));
                             }
                         }
@@ -192,15 +200,29 @@ fn validate_imports(
 fn validate_export_fns(
     export_fns: &HashMap<String, u32>,
     type_defs: &Vec<FuncType>,
+    fn_sigs: &Vec<u32>,
     interface: &Interface,
     errors: &mut Vec<String>,
 ) {
-    for (key, val) in export_fns.iter() {
+    'export_loop: for (key, val) in export_fns.iter() {
         if let Some(interface_def) = interface.exports.get(key) {
-            let type_sig = if let Some(v) = type_defs.get(*val as usize) {
-                v
+            let type_sig = if let Some(type_idx) = fn_sigs.get(*val as usize) {
+                if let Some(v) = type_defs.get(*type_idx as usize) {
+                    v
+                } else {
+                    errors.push(format!(
+                        "Export \"{}\" refers to type \"{}\" but only {} types were found",
+                        &key,
+                        type_idx,
+                        fn_sigs.len()
+                    ));
+                    continue;
+                }
             } else {
-                errors.push(format!("Invalid type reference {}", val));
+                errors.push(format!(
+                    "Use of undeclared function reference \"{}\" in export \"{}\"",
+                    val, &key
+                ));
                 continue;
             };
             if let Export::Func { params, result, .. } = interface_def {
@@ -215,15 +237,18 @@ fn validate_export_fns(
                     match param {
                         Ok(t) => {
                             if params.get(i).is_none() {
-                                errors.push(format!("Found {} args but the interface only expects {} for exported function \"{}\"", i, params.len(), &key));
-                                continue;
+                                errors.push(format!("Found {} args but the interface only expects {} for exported function \"{}\"", type_sig.params.len(), params.len(), &key));
+                                continue 'export_loop;
                             }
                             if t != params[i] {
-                                errors
-                                    .push(format!("Type mismatch in params in func \"{}\"", &key));
+                                errors.push(format!(
+                                    "Type mismatch in params in exported func \"{}\": in argument {}, expected {} found {}",
+                                    &key, i + 1, params[i], t
+                                ));
                             }
                         }
-                        Err(e) => errors.push(format!("Invalid type in func \"{}\": {}", &key, e)),
+                        Err(e) => errors
+                            .push(format!("Invalid type in exported func \"{}\": {}", &key, e)),
                     }
                 }
                 for (i, ret) in type_sig
@@ -237,15 +262,18 @@ fn validate_export_fns(
                         Ok(t) => {
                             if result.get(i).is_none() {
                                 errors.push(format!("Found {} returns but the interface only expects {} for exported function \"{}\"", i, params.len(), &key));
-                                continue;
+                                continue 'export_loop;
                             }
 
                             if t != result[i] {
-                                errors
-                                    .push(format!("Type mismatch in returns in func \"{}\"", &key));
+                                errors.push(format!(
+                                    "Type mismatch in returns in exported func \"{}\": in return {}, expected {} found {}",
+                                    &key, i + 1, result[i], t
+                                ));
                             }
                         }
-                        Err(e) => errors.push(format!("Invalid type in func \"{}\": {}", &key, e)),
+                        Err(e) => errors
+                            .push(format!("Invalid type in exported func \"{}\": {}", &key, e)),
                     }
                 }
             }
