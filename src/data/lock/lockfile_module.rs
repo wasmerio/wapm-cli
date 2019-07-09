@@ -16,6 +16,8 @@ pub struct LockfileModuleV2 {
     pub entry: String,
 }
 
+/// The latest Lockfile module struct.
+/// It contains data relating to the Wasm module itself
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
     pub name: String,
@@ -28,6 +30,8 @@ pub struct LockfileModule {
     pub entry: String,
     /// The root is where the manifest lives
     pub root: String,
+    /// The hash of the wasm module cached here for faster startup time
+    pub prehashed_module_key: Option<String>,
 }
 
 impl LockfileModule {
@@ -66,6 +70,7 @@ impl LockfileModule {
             abi: module.abi.clone(),
             entry,
             root: pkg_root,
+            prehashed_module_key: module.get_hashed_module_key(),
         };
         lockfile_module
     }
@@ -87,6 +92,7 @@ impl LockfileModule {
             abi: module.abi.clone(),
             entry: module.source.to_string_lossy().to_string(),
             root,
+            prehashed_module_key: module.get_hashed_module_key(),
         }
     }
 }

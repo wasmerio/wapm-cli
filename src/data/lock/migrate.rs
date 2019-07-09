@@ -83,6 +83,7 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
                         entry.pop();
                         entry.to_string_lossy().to_string()
                     },
+                    prehashed_module_key: None,
                 };
                 name_map.insert(k3, module);
             }
