@@ -180,3 +180,23 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
         }
     }
 }
+
+/// set up a global proxy if it exists
+pub fn maybe_set_up_proxy() -> Result<Option<reqwest::Proxy>, failure::Error> {
+    let proxy_str = if let Ok(proxy_url) = std::env::var("WAPM_PROXY_URL") {
+        proxy_url
+    } else {
+        let maybe_proxy_url = crate::config::Config::from_file()
+            .ok()
+            .and_then(|config| config.proxy.url);
+        if let Some(proxy_url) = maybe_proxy_url {
+            proxy_url
+        } else {
+            return Ok(None);
+        }
+    };
+
+    let proxy = reqwest::Proxy::all(&proxy_str)
+        .map_err(|e| format_err!("Could not connect to proxy: {}", e.to_string()))?;
+    Ok(Some(proxy))
+}

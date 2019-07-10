@@ -1,3 +1,4 @@
+use crate::util;
 use failure;
 use graphql_client::{QueryBody, Response};
 use reqwest::header::USER_AGENT;
@@ -25,7 +26,16 @@ where
     V: serde::Serialize,
     F: FnOnce(reqwest::multipart::Form) -> reqwest::multipart::Form,
 {
-    let client = Client::new();
+    let client = {
+        let builder = Client::builder();
+
+        let builder = if let Some(proxy) = util::maybe_set_up_proxy()? {
+            builder.proxy(proxy)
+        } else {
+            builder
+        };
+        builder.build()?
+    };
     let config = Config::from_file()?;
 
     let registry_url = &config.registry.get_graphql_url();
