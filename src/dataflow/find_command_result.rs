@@ -110,8 +110,8 @@ impl FindCommandResult {
                             manifest_dir: manifest.base_directory_path,
                             args: lockfile_command.main_args.clone(),
                             module_name: module.name.clone(),
-                            prehashed_cache_key: lockfile
-                                .get_prehashed_cache_key_from_command(&lockfile_command),
+                            // don't use prehashed cache key for local modules
+                            prehashed_cache_key: None,
                         },
                         None => FindCommandResult::Error(
                             Error::CommandFoundButCorrespondingModuleIsMissing(

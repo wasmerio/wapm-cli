@@ -48,13 +48,6 @@ pub struct Module {
     pub interfaces: Option<HashMap<String, String>>,
 }
 
-impl Module {
-    /// this function hashes the Wasm module to generate a key
-    pub fn get_hashed_module_key(&self) -> Option<String> {
-        None
-    }
-}
-
 /// The manifest represents the file used to describe a Wasm package.
 ///
 /// The `module` field represents the wasm file to be published.
