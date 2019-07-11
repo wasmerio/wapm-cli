@@ -183,11 +183,12 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
 
 /// this function hashes the Wasm module to generate a key
 pub fn get_hashed_module_key(path: &Path) -> Option<String> {
+    debug!("Creating hash of wasm module at {:?}", path);
     let bytes = match std::fs::read(path) {
         Ok(bytes) => bytes,
         Err(e) => {
             error!(
-                "Could not read wasm module at {}: {}",
+                "Could not read wasm module at {} when attempting to generate hash: {}",
                 path.to_string_lossy().to_string(),
                 e.to_string()
             );
