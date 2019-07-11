@@ -1,6 +1,5 @@
-use log::debug;
 use structopt::{clap::AppSettings, StructOpt};
-use wapm_cli::{commands, logging, util};
+use wapm_cli::{commands, logging};
 
 #[derive(StructOpt, Debug)]
 enum Command {

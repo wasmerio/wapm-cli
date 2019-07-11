@@ -5,6 +5,7 @@ use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
 use crate::keys;
+use crate::proxy;
 use crate::util::{
     self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
@@ -154,7 +155,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
         let client = {
             let builder = ClientBuilder::new().gzip(false);
-            let builder = if let Some(proxy) = util::maybe_set_up_proxy()
+            let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()
                 .map_err(|e| Error::IoConnectionError(format!("{}", e)))?
             {
                 builder.proxy(proxy)

@@ -1,4 +1,4 @@
-use crate::util;
+use crate::proxy;
 use failure;
 use graphql_client::{QueryBody, Response};
 use reqwest::header::USER_AGENT;
@@ -29,7 +29,7 @@ where
     let client = {
         let builder = Client::builder();
 
-        let builder = if let Some(proxy) = util::maybe_set_up_proxy()? {
+        let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()? {
             builder.proxy(proxy)
         } else {
             builder
