@@ -169,7 +169,8 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string];
     let override_command_name_vec = override_command_name
-        .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
+        // TODO: escape these
+        .map(|cn| OsString::from(format!("--command-name=\"{}\"", cn)))
         .unwrap_or_default();
     let prehashed_cache_key_flag = prehashed_cache_key
         .map(|pck| OsString::from(format!("--cache-key=\"{}\"", pck)))
@@ -177,7 +178,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 
     Ok([
         &command_vec[..],
-        &override_command_name_vec[..],
+        &[override_command_name_vec],
         &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
         &[prehashed_cache_key_flag],
