@@ -183,7 +183,7 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
 
 /// set up a global proxy if it exists
 pub fn maybe_set_up_proxy() -> Result<Option<reqwest::Proxy>, failure::Error> {
-    let proxy_str = if let Ok(proxy_url) = std::env::var("WAPM_PROXY_URL") {
+    let proxy_str = if let Ok(proxy_url) = std::env::var("http_proxy") {
         proxy_url
     } else {
         let maybe_proxy_url = crate::config::Config::from_file()
