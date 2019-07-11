@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::data::lock::lockfile::Lockfile;
+use crate::data::lock::lockfile::{Lockfile, LockfileError};
 use crate::data::manifest::Manifest;
 use crate::dataflow::lockfile_packages::LockfileResult;
 use crate::dataflow::manifest_packages::ManifestResult;
@@ -89,6 +89,15 @@ pub enum FindCommandResult {
     Error(failure::Error),
 }
 
+impl From<LockfileError> for FindCommandResult {
+    fn from(error: LockfileError) -> Self {
+        match error {
+            LockfileError::CommandNotFound(c) => FindCommandResult::CommandNotFound(c),
+            _ => FindCommandResult::Error(error.into()),
+        }
+    }
+}
+
 impl FindCommandResult {
     fn find_command_in_manifest_and_lockfile<S: AsRef<str>>(
         command_name: S,
@@ -96,7 +105,7 @@ impl FindCommandResult {
         lockfile: Lockfile,
     ) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
-            Err(e) => FindCommandResult::Error(e),
+            Err(e) => e.into(),
             Ok(lockfile_command) => {
                 debug!("Command found in lockfile: {:?}", &lockfile_command);
                 if lockfile_command.package_name == manifest.package.name {
@@ -258,6 +267,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             ));
         }
     };
+    trace!("Local command not found");
 
     // look in the global directory
     let global_directory = Config::get_globals_directory().map_err(|e| {
@@ -293,6 +303,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             );
         }
     };
+    trace!("Global command not found");
 
     return Err(Error::CommandNotFound(command_name.as_ref().to_string()));
 }

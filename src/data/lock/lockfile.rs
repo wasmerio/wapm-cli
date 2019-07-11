@@ -52,7 +52,7 @@ impl<'a> Lockfile {
             .and_then(|module| module.prehashed_module_key.clone())
     }
 
-    pub fn get_command(&self, command_name: &str) -> Result<&LockfileCommand, failure::Error> {
+    pub fn get_command(&self, command_name: &str) -> Result<&LockfileCommand, LockfileError> {
         self.commands
             .get(command_name)
             .ok_or(LockfileError::CommandNotFound(command_name.to_string()).into())
