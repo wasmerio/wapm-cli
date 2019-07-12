@@ -14,6 +14,8 @@ pub struct Config {
     #[cfg(feature = "telemetry")]
     #[serde(default)]
     pub telemetry: Telemetry,
+    #[serde(default)]
+    pub proxy: Proxy,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -37,6 +39,11 @@ impl Default for Telemetry {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Default)]
+pub struct Proxy {
+    pub url: Option<String>,
+}
+
 impl Default for Config {
     fn default() -> Config {
         Config {
@@ -46,6 +53,7 @@ impl Default for Config {
             },
             #[cfg(feature = "telemetry")]
             telemetry: Telemetry::default(),
+            proxy: Proxy::default(),
         }
     }
 }
@@ -148,6 +156,9 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
         "telemetry.enabled" => {
             config.telemetry.enabled = value;
         }
+        "proxy.url" => {
+            config.proxy.url = if value.is_empty() { None } else { Some(value) };
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
@@ -165,6 +176,13 @@ pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => &config.telemetry.enabled,
+        "proxy.url" => {
+            if let Some(url) = &config.proxy.url {
+                &url
+            } else {
+                "No proxy configured"
+            }
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }

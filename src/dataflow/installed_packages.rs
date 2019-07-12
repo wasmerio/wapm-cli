@@ -5,6 +5,7 @@ use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
 use crate::keys;
+use crate::proxy;
 use crate::util::{
     self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
@@ -55,6 +56,8 @@ pub enum Error {
         _0, _1
     )]
     KeyManagementError(String, String),
+    #[fail(display = "Failed during network connection: {}", _0)]
+    IoConnectionError(String),
     #[fail(display = "Failed to validate package {} with key {}: {}", _0, _1, _2)]
     FailedToValidateSignature(String, String, String),
 }
@@ -150,7 +153,18 @@ impl<'a> Install<'a> for RegistryInstaller {
             fully_qualified_package_display_name(pkg_name, &key.version);
         let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
-        let client = ClientBuilder::new().gzip(false).build().unwrap();
+        let client = {
+            let builder = ClientBuilder::new().gzip(false);
+            let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()
+                .map_err(|e| Error::IoConnectionError(format!("{}", e)))?
+            {
+                builder.proxy(proxy)
+            } else {
+                builder
+            };
+
+            builder.build().unwrap()
+        };
         let user_agent = format!(
             "wapm/{} {} {}",
             VERSION,

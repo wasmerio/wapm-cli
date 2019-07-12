@@ -25,6 +25,7 @@ mod init;
 mod interfaces;
 mod keys;
 pub mod logging;
+mod proxy;
 mod sql;
 pub mod util;
 mod validate;
