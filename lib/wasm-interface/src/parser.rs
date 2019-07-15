@@ -1,18 +1,19 @@
 //! Parsers to get a wasm interface from text
 //!
 //! The grammar of the text format is:
-//! interface = interface-entry+
-//! interface-entry = import-assertion | export-assertion
+//! interface = "(" signature name? interface-entry* ")"
+//! interface-entry = func | global
 //!
-//! import-assertion = "(" "assert_import" import-entry+ ")"
-//! import-entry = import-fn | import-global
-//! import-fn = "(" "func" namespace name param-list? result-list? ")"
-//! import-global = "(" "global" namespace name type-decl ")"
+//! func = import-fn | export-fn
+//! global = import-global | export-global
 //!
-//! export-assertion = "(" "assert_export" export-entry+ ")"
-//! export-entry = export-fn | export-global
-//! export-fn = "(" "func" name param-list? result-list? ")"
-//! export-global = "(" "global" name type-decl ")"
+//! import-fn = "(" "func" import-id param-list? result-list? ")"
+//! import-global = "(" "global" import-id type-decl ")"
+//! import-id = "(" "import" namespace name ")"
+//!
+//! export-fn = "(" "func" export-id param-list? result-list? ")"
+//! export-global = "(" "global" export-id type-decl ")"
+//! export-id = "(" export name ")"
 //!
 //! param-list = "(" param type* ")"
 //! result-list = "(" result type* ")"
@@ -46,10 +47,10 @@ use nom::{
 use crate::interface::*;
 
 /// Some example input:
-/// (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
-/// (assert_export (func "name" (param f64 i32) (result f64 i32)))
-/// (assert_import (global "ns" "name" (type f64)))
-
+/// (signature "example_interface"
+///     (func (import "ns" "name") (param f64 i32) (result f64 i32))
+///     (func (export "name") (param f64 i32) (result f64 i32))
+///     (global (import "ns" "name") (type f64)))
 pub fn parse_interface(mut input: &str) -> Result<Interface, String> {
     let mut interface = Interface::default();
     let interface_inner = preceded(
