@@ -348,8 +348,9 @@ mod validation_tests {
         let wasm = wabt::wat2wasm(WAT).unwrap();
 
         let interface_src = r#"
-(assert_import (func "env" "do_panic" (param i32 i64)))
-(assert_import (global "env" "length" (type i32)))"#;
+(signature 
+(func (import "env" "do_panic") (param i32 i64))
+(global (import "env" "length") (type i32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -358,8 +359,9 @@ mod validation_tests {
 
         // Now set the global import type to mismatch the wasm
         let interface_src = r#"
-(assert_import (func "env" "do_panic" (param i32 i64)))
-(assert_import (global "env" "length" (type i64)))"#;
+(signature 
+(func (import "env" "do_panic") (param i32 i64))
+(global (import "env" "length") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -371,8 +373,9 @@ mod validation_tests {
 
         // Now set the function import type to mismatch the wasm
         let interface_src = r#"
-(assert_import (func "env" "do_panic" (param i64)))
-(assert_import (global "env" "length" (type i32)))"#;
+(signature 
+(func (import "env" "do_panic") (param i64))
+(global (import "env" "length") (type i32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -384,8 +387,9 @@ mod validation_tests {
 
         // Now try with a module that has an import that the interface doesn't have
         let interface_src = r#"
-(assert_import (func "env" "do_panic" (param i64)))
-(assert_import (global "env" "length_plus_plus" (type i32)))"#;
+(signature
+(func (import "env" "do_panic") (param i64))
+(global (import "env" "length_plus_plus") (type i32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -406,8 +410,9 @@ mod validation_tests {
         let wasm = wabt::wat2wasm(WAT).unwrap();
 
         let interface_src = r#"
-(assert_export (func "as-set_local-first" (param i32) (result i32)))
-(assert_export (global "num_tries" (type i64)))"#;
+(signature 
+(func (export "as-set_local-first") (param i32) (result i32))
+(global (export "num_tries") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -416,8 +421,9 @@ mod validation_tests {
 
         // Now set the global export type to mismatch the wasm
         let interface_src = r#"
-(assert_export (func "as-set_local-first" (param i32) (result i32)))
-(assert_export (global "num_tries" (type f32)))"#;
+(signature
+(func (export "as-set_local-first") (param i32) (result i32))
+(global (export "num_tries") (type f32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -429,8 +435,9 @@ mod validation_tests {
 
         // Now set the function export type to mismatch the wasm
         let interface_src = r#"
-(assert_export (func "as-set_local-first" (param i64) (result i64)))
-(assert_export (global "num_tries" (type i64)))"#;
+(signature
+(func (export "as-set_local-first") (param i64) (result i64))
+(global (export "num_tries") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);
@@ -442,8 +449,9 @@ mod validation_tests {
 
         // Now try a interface that requires an export that the module doesn't have
         let interface_src = r#"
-(assert_export (func "as-set_local-first" (param i64) (result i64)))
-(assert_export (global "numb_trees" (type i64)))"#;
+(signature
+(func (export "as-set_local-first") (param i64) (result i64))
+(global (export "numb_trees") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
 
         let result = validate_wasm_and_report_errors(&wasm[..], &interface);

@@ -31,13 +31,14 @@
 //! comments start with a `;` character and go until a newline `\n` character is reached
 //! comments and whitespace are valid between any tokens
 
+use either::Either;
 use nom::{
     branch::*,
     bytes::complete::{escaped, is_not, tag},
     character::complete::{char, multispace0, multispace1, one_of},
     combinator::*,
     error::context,
-    multi::{many0, many1},
+    multi::many0,
     sequence::{delimited, preceded, tuple},
     IResult,
 };
@@ -50,33 +51,34 @@ use crate::interface::*;
 /// (assert_import (global "ns" "name" (type f64)))
 
 pub fn parse_interface(mut input: &str) -> Result<Interface, String> {
-    let mut import_found = true;
-    let mut export_found = true;
     let mut interface = Interface::default();
-    while import_found || export_found {
-        if let Result::Ok((inp, out)) = preceded(space_comments, parse_imports)(input) {
-            for entry in out.into_iter() {
-                if let Some(dup) = interface.imports.insert(entry.get_key(), entry) {
-                    return Err(format!("Duplicate import found {:?}", dup));
-                }
-            }
-            input = inp;
-            import_found = true;
-        } else {
-            import_found = false;
-        }
+    let interface_inner = preceded(
+        tag("signature"),
+        tuple((
+            opt(preceded(space_comments, identifier)),
+            many0(parse_func_or_global),
+        )),
+    );
+    let interface_parser = preceded(space_comments, s_exp(interface_inner));
 
-        if let Result::Ok((inp, out)) = preceded(space_comments, parse_exports)(input) {
-            for entry in out.into_iter() {
-                if let Some(dup) = interface.exports.insert(entry.get_key(), entry) {
-                    return Err(format!("Duplicate export found {:?}", dup));
+    if let Result::Ok((inp, (sig_id, out))) = interface_parser(input) {
+        interface.name = sig_id.map(|s_id| s_id.to_string());
+
+        for entry in out.into_iter() {
+            match entry {
+                Either::Left(import) => {
+                    if let Some(dup) = interface.imports.insert(import.get_key(), import) {
+                        return Err(format!("Duplicate import found {:?}", dup));
+                    }
+                }
+                Either::Right(export) => {
+                    if let Some(dup) = interface.exports.insert(export.get_key(), export) {
+                        return Err(format!("Duplicate export found {:?}", dup));
+                    }
                 }
             }
-            input = inp;
-            export_found = true;
-        } else {
-            export_found = false;
         }
+        input = inp;
     }
     // catch trailing comments and spaces
     if let Ok((inp, _)) = space_comments(input) {
@@ -119,28 +121,6 @@ fn space_comments<'a>(mut input: &'a str) -> IResult<&'a str, ()> {
     Ok((input, ()))
 }
 
-fn parse_imports(input: &str) -> IResult<&str, Vec<Import>> {
-    let parse_import_inner = context(
-        "assert_import",
-        preceded(
-            tag("assert_import"),
-            many1(preceded(space_comments, alt((func_import, global_import)))),
-        ),
-    );
-    s_exp(parse_import_inner)(input)
-}
-
-fn parse_exports(input: &str) -> IResult<&str, Vec<Export>> {
-    let parse_export_inner = context(
-        "assert_export",
-        preceded(
-            tag("assert_export"),
-            many1(preceded(space_comments, alt((func_export, global_export)))),
-        ),
-    );
-    s_exp(parse_export_inner)(input)
-}
-
 /// A quoted identifier, must be valid UTF8
 fn identifier(input: &str) -> IResult<&str, &str> {
     let name_inner = escaped(is_not("\"\\"), '\\', one_of("\"n\\"));
@@ -169,76 +149,54 @@ where
     )
 }
 
-/// (global "name" (type f64))
-fn global_import(input: &str) -> IResult<&str, Import> {
-    let global_type_inner = preceded(tag("type"), preceded(space_comments, wasm_type));
-    let type_s_exp = s_exp(global_type_inner);
-    let global_import_inner = context(
-        "global import inner",
-        preceded(
-            tag("global"),
-            cut(map(
-                tuple((
-                    preceded(space_comments, identifier),
-                    preceded(space_comments, identifier),
-                    preceded(space_comments, type_s_exp),
-                )),
-                |(ns, name, var_type)| Import::Global {
-                    namespace: ns.to_string(),
-                    name: name.to_string(),
-                    var_type,
-                },
-            )),
-        ),
-    );
-    s_exp(global_import_inner)(input)
+fn parse_func_or_global(input: &str) -> IResult<&str, Either<Import, Export>> {
+    preceded(space_comments, alt((func, global)))(input)
 }
 
-/// (global "name" (type f64))
-fn global_export(input: &str) -> IResult<&str, Export> {
-    let global_type_inner = preceded(tag("type"), preceded(space_comments, wasm_type));
-    let type_s_exp = s_exp(global_type_inner);
-    let global_export_inner = context(
-        "global export inner",
-        preceded(
-            tag("global"),
-            map(
-                tuple((
-                    preceded(space_comments, identifier),
-                    preceded(space_comments, type_s_exp),
-                )),
-                |(name, var_type)| Export::Global {
-                    name: name.to_string(),
-                    var_type,
-                },
-            ),
-        ),
-    );
-    s_exp(global_export_inner)(input)
-}
-
-/// (func "ns" "name" (param f64 i32) (result f64 i32))
-fn func_import(input: &str) -> IResult<&str, Import> {
+/// (func (import "ns" "name") (param f64 i32) (result f64 i32))
+/// (func (export "name") (param f64 i32) (result f64 i32))
+fn func(input: &str) -> IResult<&str, Either<Import, Export>> {
     let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
     let param_list = opt(s_exp(param_list_inner));
     let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
     let result_list = opt(s_exp(result_list_inner));
+    let import_id_inner = preceded(
+        tag("import"),
+        tuple((
+            preceded(space_comments, identifier),
+            preceded(space_comments, identifier),
+        )),
+    );
+    let export_id_inner = preceded(tag("export"), preceded(space_comments, identifier));
+    let func_id_inner = alt((
+        map(import_id_inner, |(ns, name)| {
+            Either::Left((ns.to_string(), name.to_string()))
+        }),
+        map(export_id_inner, |name| Either::Right(name.to_string())),
+    ));
+    let func_id = s_exp(func_id_inner);
     let func_import_inner = context(
         "func import inner",
         preceded(
             tag("func"),
             map(
                 tuple((
-                    preceded(space_comments, identifier),
-                    preceded(space_comments, identifier),
+                    preceded(space_comments, func_id),
                     preceded(space_comments, param_list),
                     preceded(space_comments, result_list),
                 )),
-                |(ns, name, pl, rl)| Import::Func {
-                    namespace: ns.to_string(),
-                    name: name.to_string(),
-                    params: pl.unwrap_or_default(),
-                    result: rl.unwrap_or_default(),
+                |(func_id, pl, rl)| match func_id {
+                    Either::Left((ns, name)) => Either::Left(Import::Func {
+                        namespace: ns.to_string(),
+                        name: name.to_string(),
+                        params: pl.unwrap_or_default(),
+                        result: rl.unwrap_or_default(),
+                    }),
+                    Either::Right(name) => Either::Right(Export::Func {
+                        name,
+                        params: pl.unwrap_or_default(),
+                        result: rl.unwrap_or_default(),
+                    }),
                 },
             ),
         ),
@@ -246,31 +204,63 @@ fn func_import(input: &str) -> IResult<&str, Import> {
     s_exp(func_import_inner)(input)
 }
 
-/// (func "name" (param f64 i32) (result f64 i32))
-fn func_export(input: &str) -> IResult<&str, Export> {
-    let param_list_inner = preceded(tag("param"), many0(preceded(space_comments, wasm_type)));
-    let param_list = opt(s_exp(param_list_inner));
-    let result_list_inner = preceded(tag("result"), many0(preceded(space_comments, wasm_type)));
-    let result_list = opt(s_exp(result_list_inner));
-    let func_export_inner = context(
-        "func export inner",
+/// (global (import "ns" "name") (type f64))
+/// (global (export "name") (type f64))
+fn global(input: &str) -> IResult<&str, Either<Import, Export>> {
+    let global_type_inner = preceded(tag("type"), preceded(space_comments, wasm_type));
+    let type_s_exp = s_exp(global_type_inner);
+    let export_inner = preceded(tag("export"), preceded(space_comments, identifier));
+    let import_inner = preceded(
+        tag("import"),
+        tuple((
+            preceded(space_comments, identifier),
+            preceded(space_comments, identifier),
+        )),
+    );
+    let global_id_inner = alt((
+        map(import_inner, |(ns, name)| {
+            Either::Left(Import::Global {
+                namespace: ns.to_string(),
+                name: name.to_string(),
+                // placeholder type, overwritten in `global_inner`
+                var_type: WasmType::I32,
+            })
+        }),
+        map(export_inner, |name| {
+            Either::Right(Export::Global {
+                name: name.to_string(),
+                // placeholder type, overwritten in `global_inner`
+                var_type: WasmType::I32,
+            })
+        }),
+    ));
+    let global_id = s_exp(global_id_inner);
+    let global_inner = context(
+        "global inner",
         preceded(
-            tag("func"),
+            tag("global"),
             map(
                 tuple((
-                    preceded(space_comments, identifier),
-                    preceded(space_comments, param_list),
-                    preceded(space_comments, result_list),
+                    preceded(space_comments, global_id),
+                    preceded(space_comments, type_s_exp),
                 )),
-                |(name, pl, rl)| Export::Func {
-                    name: name.to_string(),
-                    params: pl.unwrap_or_default(),
-                    result: rl.unwrap_or_default(),
+                |(import_or_export, var_type)| match import_or_export {
+                    Either::Left(Import::Global {
+                        namespace, name, ..
+                    }) => Either::Left(Import::Global {
+                        namespace,
+                        name,
+                        var_type,
+                    }),
+                    Either::Right(Export::Global { name, .. }) => {
+                        Either::Right(Export::Global { name, var_type })
+                    }
+                    _ => unreachable!("Invalid value interonally in parse global function"),
                 },
             ),
         ),
     );
-    s_exp(func_export_inner)(input)
+    s_exp(global_inner)(input)
 }
 
 #[cfg(test)]
@@ -302,7 +292,10 @@ mod test {
 
     #[test]
     fn parse_global_import() {
-        let parse_res = global_import(r#"(global (import "env" "length") (type i32))"#).unwrap();
+        let parse_res = global(r#"(global (import "env" "length") (type i32))"#)
+            .ok()
+            .and_then(|(a, b)| Some((a, b.left()?)))
+            .unwrap();
         assert_eq!(
             parse_res,
             (
@@ -318,7 +311,10 @@ mod test {
 
     #[test]
     fn parse_global_export() {
-        let parse_res = global_export(r#"(global (export "length") (type i32))"#).unwrap();
+        let parse_res = global(r#"(global (export "length") (type i32))"#)
+            .ok()
+            .and_then(|(a, b)| Some((a, b.right()?)))
+            .unwrap();
         assert_eq!(
             parse_res,
             (
@@ -333,8 +329,10 @@ mod test {
 
     #[test]
     fn parse_func_import() {
-        let parse_res =
-            func_import(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32))"#).unwrap();
+        let parse_res = func(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32))"#)
+            .ok()
+            .and_then(|(a, b)| Some((a, b.left()?)))
+            .unwrap();
         assert_eq!(
             parse_res,
             (
@@ -351,8 +349,10 @@ mod test {
 
     #[test]
     fn parse_func_export() {
-        let parse_res =
-            func_export(r#"(func (export "name") (param f64 i32) (result f64 i32))"#).unwrap();
+        let parse_res = func(r#"(func (export "name") (param f64 i32) (result f64 i32))"#)
+            .ok()
+            .and_then(|(a, b)| Some((a, b.right()?)))
+            .unwrap();
         assert_eq!(
             parse_res,
             (
@@ -364,13 +364,38 @@ mod test {
                 }
             )
         );
+
+        let parse_res = func(r#"(func (export "name"))"#)
+            .ok()
+            .and_then(|(a, b)| Some((a, b.right()?)))
+            .unwrap();
+        assert_eq!(
+            parse_res,
+            (
+                "",
+                Export::Func {
+                    name: "name".to_string(),
+                    params: vec![],
+                    result: vec![],
+                }
+            )
+        )
     }
 
     #[test]
     fn parse_imports_test() {
+        let parse_imports = |in_str| {
+            many0(parse_func_or_global)(in_str)
+                .map(|(a, b)| {
+                    (
+                        a,
+                        b.into_iter().filter_map(|x| x.left()).collect::<Vec<_>>(),
+                    )
+                })
+                .unwrap()
+        };
         let parse_res =
-            parse_imports(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32)))"#)
-                .unwrap();
+            parse_imports(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32))"#);
         assert_eq!(
             parse_res,
             (
@@ -385,24 +410,22 @@ mod test {
         );
 
         let parse_res = parse_imports(
-            r#"(func (import "ns" "name")  
-                                               (param f64 i32) (result f64 i32))
-    ( global ( import "env" "length" ) ( type 
-;; i32 is the best type
-i32 )
-)
-                                          (func (import "ns" "name2") (param f32
-                                                                      i64)
-                               ;; The return value comes next
-                                                                (
-                                                                 result
-                                                                 f64
-                                                                 i32
-                                                                 )
-                                          ) 
-"#,
-        )
-        .unwrap();
+            r#"(func (import "ns" "name")
+                                                   (param f64 i32) (result f64 i32))
+        ( global ( import "env" "length" ) ( type
+    ;; i32 is the best type
+    i32 )
+    )
+                                              (func (import "ns" "name2") (param f32
+                                                                          i64)
+                                   ;; The return value comes next
+                                                                    (
+                                                                     result
+                                                                     f64
+                                                                     i32
+                                                                     )
+                                              )"#,
+        );
         assert_eq!(
             parse_res,
             (
@@ -433,7 +456,7 @@ i32 )
     #[test]
     fn top_level_test() {
         let parse_res = parse_interface(
-            r#" (signature "sig_name" 
+            r#" (signature 
  (func (import "ns" "name") (param f64 i32) (result f64 i32))
  (func (export "name2") (param) (result i32))
  (global (import "env" "length") (type f64)))"#,
@@ -469,6 +492,7 @@ i32 )
         assert_eq!(
             parse_res,
             Interface {
+                name: None,
                 imports: import_map,
                 exports: export_map,
             }
@@ -537,6 +561,7 @@ i32 )
         assert_eq!(
             parse_res,
             Interface {
+                name: Some("interface_name".to_string()),
                 imports: import_map,
                 exports: export_map,
             }
