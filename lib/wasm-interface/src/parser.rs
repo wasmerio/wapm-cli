@@ -302,7 +302,7 @@ mod test {
 
     #[test]
     fn parse_global_import() {
-        let parse_res = global_import("(global \"env\" \"length\" (type i32))").unwrap();
+        let parse_res = global_import(r#"(global (import "env" "length") (type i32))"#).unwrap();
         assert_eq!(
             parse_res,
             (
@@ -318,7 +318,7 @@ mod test {
 
     #[test]
     fn parse_global_export() {
-        let parse_res = global_export("(global \"length\" (type i32))").unwrap();
+        let parse_res = global_export(r#"(global (export "length") (type i32))"#).unwrap();
         assert_eq!(
             parse_res,
             (
@@ -334,7 +334,7 @@ mod test {
     #[test]
     fn parse_func_import() {
         let parse_res =
-            func_import("(func \"ns\" \"name\" (param f64 i32) (result f64 i32))").unwrap();
+            func_import(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32))"#).unwrap();
         assert_eq!(
             parse_res,
             (
@@ -351,7 +351,8 @@ mod test {
 
     #[test]
     fn parse_func_export() {
-        let parse_res = func_export("(func \"name\" (param f64 i32) (result f64 i32))").unwrap();
+        let parse_res =
+            func_export(r#"(func (export "name") (param f64 i32) (result f64 i32))"#).unwrap();
         assert_eq!(
             parse_res,
             (
@@ -367,10 +368,9 @@ mod test {
 
     #[test]
     fn parse_imports_test() {
-        let parse_res = parse_imports(
-            "(assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))",
-        )
-        .unwrap();
+        let parse_res =
+            parse_imports(r#"(func (import "ns" "name") (param f64 i32) (result f64 i32)))"#)
+                .unwrap();
         assert_eq!(
             parse_res,
             (
@@ -385,13 +385,13 @@ mod test {
         );
 
         let parse_res = parse_imports(
-            "(assert_import (func \"ns\" \"name\"  
+            r#"(func (import "ns" "name")  
                                                (param f64 i32) (result f64 i32))
-    ( global \"env\" \"length\" ( type 
+    ( global ( import "env" "length" ) ( type 
 ;; i32 is the best type
 i32 )
 )
-                                          (func \"ns\" \"name2\" (param f32
+                                          (func (import "ns" "name2") (param f32
                                                                       i64)
                                ;; The return value comes next
                                                                 (
@@ -400,7 +400,7 @@ i32 )
                                                                  i32
                                                                  )
                                           ) 
-)",
+"#,
         )
         .unwrap();
         assert_eq!(
@@ -433,9 +433,10 @@ i32 )
     #[test]
     fn top_level_test() {
         let parse_res = parse_interface(
-            " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
- (assert_export (func \"name2\" (param) (result i32)))
- (assert_import (global \"env\" \"length\" (type f64)))",
+            r#" (signature "sig_name" 
+ (func (import "ns" "name") (param f64 i32) (result f64 i32))
+ (func (export "name2") (param) (result i32))
+ (global (import "env" "length") (type f64)))"#,
         )
         .unwrap();
 
@@ -477,13 +478,13 @@ i32 )
     #[test]
     fn duplicates_not_allowed() {
         let parse_res = parse_interface(
-            " (assert_import (func \"ns\" \"name\" (param f64 i32) (result f64 i32)))
+            r#" (signature "sig_name" (func (import "ns" "name") (param f64 i32) (result f64 i32))
 ; test comment
   ;; hello
- (assert_import (func \"ns\" \"name\" (param) (result i32)))
- (assert_import (global \"length\" (type f64)))
+ (func (import "ns" "name") (param) (result i32))
+ (global (export "length") (type f64)))
 
-",
+"#,
         );
 
         assert!(parse_res.is_err());
@@ -508,9 +509,9 @@ i32 )
     #[test]
     fn test_param_elision() {
         let parse_res = parse_interface(
-            " (assert_import (func \"ns\" \"name\" (result f64 i32)))
-(assert_export (func \"name\"))
-",
+            r#" (signature "interface_name" (func (import "ns" "name") (result f64 i32))
+(func (export "name")))
+"#,
         )
         .unwrap();
 
@@ -545,8 +546,9 @@ i32 )
     #[test]
     fn typo_gets_caught() {
         let interface_src = r#"
-(assert_import (func "env" "do_panic" (params i32 i64)))
-(assert_import (global "length" (type i32)))"#;
+(signature "interface_id"
+(func (import "env" "do_panic") (params i32 i64))
+(global (import "length") (type i32)))"#;
         let result = parse_interface(interface_src);
         assert!(result.is_err());
     }
@@ -554,10 +556,10 @@ i32 )
     #[test]
     fn parse_trailing_spaces_on_interface() {
         let parse_res = parse_interface(
-            r#" (assert_import (func "ns" "name" (param f64 i32) (result f64 i32)))
+            r#" (signature "really_good_interface" (func (import "ns" "name") (param f64 i32) (result f64 i32))
 ; test comment
   ;; hello
- (assert_import (global "ns" "length" (type f64))
+ (global (import "ns" "length") (type f64))
 )
 
 "#,
