@@ -1,7 +1,7 @@
 //! Parsers to get a wasm interface from text
 //!
 //! The grammar of the text format is:
-//! interface = "(" signature name? interface-entry* ")"
+//! interface = "(" interface name? interface-entry* ")"
 //! interface-entry = func | global
 //!
 //! func = import-fn | export-fn
@@ -47,14 +47,14 @@ use nom::{
 use crate::interface::*;
 
 /// Some example input:
-/// (signature "example_interface"
+/// (interface "example_interface"
 ///     (func (import "ns" "name") (param f64 i32) (result f64 i32))
 ///     (func (export "name") (param f64 i32) (result f64 i32))
 ///     (global (import "ns" "name") (type f64)))
 pub fn parse_interface(mut input: &str) -> Result<Interface, String> {
     let mut interface = Interface::default();
     let interface_inner = preceded(
-        tag("signature"),
+        tag("interface"),
         tuple((
             opt(preceded(space_comments, identifier)),
             many0(parse_func_or_global),
@@ -457,7 +457,7 @@ mod test {
     #[test]
     fn top_level_test() {
         let parse_res = parse_interface(
-            r#" (signature 
+            r#" (interface 
  (func (import "ns" "name") (param f64 i32) (result f64 i32))
  (func (export "name2") (param) (result i32))
  (global (import "env" "length") (type f64)))"#,
@@ -503,7 +503,7 @@ mod test {
     #[test]
     fn duplicates_not_allowed() {
         let parse_res = parse_interface(
-            r#" (signature "sig_name" (func (import "ns" "name") (param f64 i32) (result f64 i32))
+            r#" (interface "sig_name" (func (import "ns" "name") (param f64 i32) (result f64 i32))
 ; test comment
   ;; hello
  (func (import "ns" "name") (param) (result i32))
@@ -534,7 +534,7 @@ mod test {
     #[test]
     fn test_param_elision() {
         let parse_res = parse_interface(
-            r#" (signature "interface_name" (func (import "ns" "name") (result f64 i32))
+            r#" (interface "interface_name" (func (import "ns" "name") (result f64 i32))
 (func (export "name")))
 "#,
         )
@@ -572,7 +572,7 @@ mod test {
     #[test]
     fn typo_gets_caught() {
         let interface_src = r#"
-(signature "interface_id"
+(interface "interface_id"
 (func (import "env" "do_panic") (params i32 i64))
 (global (import "length") (type i32)))"#;
         let result = parse_interface(interface_src);
@@ -582,7 +582,7 @@ mod test {
     #[test]
     fn parse_trailing_spaces_on_interface() {
         let parse_res = parse_interface(
-            r#" (signature "really_good_interface" (func (import "ns" "name") (param f64 i32) (result f64 i32))
+            r#" (interface "really_good_interface" (func (import "ns" "name") (param f64 i32) (result f64 i32))
 ; test comment
   ;; hello
  (global (import "ns" "length") (type f64))

@@ -132,16 +132,16 @@ mod test {
     #[test]
     fn merging_works() {
         let interface1_src =
-            r#"(signature (func (import "env" "plus_one") (param i32) (result i32)))"#;
+            r#"(interface (func (import "env" "plus_one") (param i32) (result i32)))"#;
         let interface2_src =
-            r#"(signature (func (import "env" "plus_one") (param i64) (result i64)))"#;
+            r#"(interface (func (import "env" "plus_one") (param i64) (result i64)))"#;
         let interface3_src =
-            r#"(signature (func (import "env" "times_two") (param i64) (result i64)))"#;
+            r#"(interface (func (import "env" "times_two") (param i64) (result i64)))"#;
         let interface4_src =
-            r#"(signature (func (import "env" "times_two") (param i64 i64) (result i64)))"#;
-        let interface5_src = r#"(signature (func (export "empty_bank_account") (param) (result)))"#;
+            r#"(interface (func (import "env" "times_two") (param i64 i64) (result i64)))"#;
+        let interface5_src = r#"(interface (func (export "empty_bank_account") (param) (result)))"#;
         let interface6_src =
-            r#"(signature (func (export "empty_bank_account") (param) (result i64)))"#;
+            r#"(interface (func (export "empty_bank_account") (param) (result i64)))"#;
 
         let interface1 = parser::parse_interface(interface1_src).unwrap();
         let interface2 = parser::parse_interface(interface2_src).unwrap();

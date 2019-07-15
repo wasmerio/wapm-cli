@@ -13,7 +13,7 @@ For the time being, Wasm Interface provides:
 Here's the interface for the current version of [WASI](https://github.com/WebAssembly/WASI):
 
 ```lisp
-(signature "wasi_unstable"
+(interface "wasi_unstable"
   ;; Here's a bunch of function imports!
   (func (import "wasi_unstable" "args_get") (param i32 i32) (result i32))
   (func (import "wasi_unstable" "args_sizes_get") (param i32 i32) (result i32))
