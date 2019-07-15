@@ -1,3 +1,4 @@
+#![type_length_limit = "5795522"]
 //! Definition and parsing of wasm interfaces
 //!
 //! wasm interfaces ensure wasm modules conform to a specific shape

@@ -1,6 +1,6 @@
 [package]
 name = "wasm-interface"
-version = "0.0.2"
+version = "0.1.0"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
 repository = "https://github.com/wasmerio/wapm-cli"
@@ -8,6 +8,7 @@ description = "WASM Interface definition and parser"
 license = "MIT"
 
 [dependencies]
+either = "1.5"
 nom = "5.0.0"
 wasmparser = { version = "0.32", optional = true }
 

@@ -2476,7 +2476,7 @@ dependencies = [
  "toml-query 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "walrus 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "wasm-interface 0.0.2",
+ "wasm-interface 0.1.0",
  "wasmparser 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "whoami 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "zstd 0.4.24+zstd.1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2484,8 +2484,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-interface"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
+ "either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wabt 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasmparser 0.32.1 (registry+https://github.com/rust-lang/crates.io-index)",
