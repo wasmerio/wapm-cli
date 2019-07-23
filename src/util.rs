@@ -182,6 +182,24 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
     }
 }
 
+/// this function hashes the Wasm module to generate a key
+pub fn get_hashed_module_key(path: &Path) -> Option<String> {
+    debug!("Creating hash of wasm module at {:?}", path);
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            error!(
+                "Could not read wasm module at {} when attempting to generate hash: {}",
+                path.to_string_lossy().to_string(),
+                e.to_string()
+            );
+            return None;
+        }
+    };
+    let hash = wasmer_runtime_core::cache::WasmHash::generate(&bytes[..]);
+    Some(hash.encode())
+}
+
 #[cfg(feature = "update-notifications")]
 pub fn get_latest_runtime_version() -> Option<String> {
     use std::process::Command;

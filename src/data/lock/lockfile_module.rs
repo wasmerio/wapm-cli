@@ -1,5 +1,6 @@
 use crate::abi::Abi;
 use crate::data::manifest::Module;
+use crate::util;
 use semver::Version;
 use std::path::{Path, PathBuf};
 
@@ -16,6 +17,8 @@ pub struct LockfileModuleV2 {
     pub entry: String,
 }
 
+/// The latest Lockfile module struct.
+/// It contains data relating to the Wasm module itself
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct LockfileModule {
     pub name: String,
@@ -28,6 +31,8 @@ pub struct LockfileModule {
     pub entry: String,
     /// The root is where the manifest lives
     pub root: String,
+    /// The hash of the wasm module cached here for faster startup time
+    pub prehashed_module_key: Option<String>,
 }
 
 impl LockfileModule {
@@ -64,6 +69,7 @@ impl LockfileModule {
             source: format!("registry+{}", module.name),
             resolved: download_url.to_string(),
             abi: module.abi.clone(),
+            prehashed_module_key: util::get_hashed_module_key(&Path::new(&entry)),
             entry,
             root: pkg_root,
         };
@@ -78,6 +84,9 @@ impl LockfileModule {
     ) -> Self {
         let root = manifest_base_dir_path.to_string_lossy().to_string();
 
+        let mut wasm_module_full_path = PathBuf::from(manifest_base_dir_path);
+        wasm_module_full_path.push(&module.source);
+
         LockfileModule {
             name: module.name.clone(),
             package_version: version.to_string(),
@@ -87,6 +96,7 @@ impl LockfileModule {
             abi: module.abi.clone(),
             entry: module.source.to_string_lossy().to_string(),
             root,
+            prehashed_module_key: util::get_hashed_module_key(&wasm_module_full_path),
         }
     }
 }

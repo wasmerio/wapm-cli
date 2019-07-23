@@ -79,7 +79,13 @@ pub enum Error {
 #[derive(Debug)]
 pub enum FindCommandResult {
     CommandNotFound(String),
-    CommandFound(PathBuf, PathBuf, Option<String>, String), // source, root, args, module name
+    CommandFound {
+        source: PathBuf,
+        manifest_dir: PathBuf,
+        args: Option<String>,
+        module_name: String,
+        prehashed_cache_key: Option<String>,
+    },
     Error(failure::Error),
 }
 
@@ -108,12 +114,14 @@ impl FindCommandResult {
                         modules.iter().find(|m| m.name == lockfile_command.module)
                     });
                     match found_module {
-                        Some(module) => FindCommandResult::CommandFound(
-                            module.source.clone(),
-                            manifest.base_directory_path,
-                            lockfile_command.main_args.clone(),
-                            module.name.clone(),
-                        ),
+                        Some(module) => FindCommandResult::CommandFound {
+                            source: module.source.clone(),
+                            manifest_dir: manifest.base_directory_path,
+                            args: lockfile_command.main_args.clone(),
+                            module_name: module.name.clone(),
+                            // don't use prehashed cache key for local modules
+                            prehashed_cache_key: None,
+                        },
                         None => FindCommandResult::Error(
                             Error::CommandFoundButCorrespondingModuleIsMissing(
                                 command_name.as_ref().to_string(),
@@ -123,6 +131,7 @@ impl FindCommandResult {
                         ),
                     }
                 } else {
+                    // this is a module being run as a dependency in a local context
                     debug!(
                         "Command's package name({}) and manifest's package name({}) are different",
                         lockfile_command.package_name, manifest.package.name
@@ -135,12 +144,14 @@ impl FindCommandResult {
                         Ok(lockfile_module) => {
                             let path = PathBuf::from(&lockfile_module.entry);
                             let root = PathBuf::from(&lockfile_module.root);
-                            FindCommandResult::CommandFound(
-                                path,
-                                root,
-                                lockfile_command.main_args.clone(),
-                                lockfile_module.name.clone(),
-                            )
+                            FindCommandResult::CommandFound {
+                                source: path,
+                                manifest_dir: root,
+                                args: lockfile_command.main_args.clone(),
+                                module_name: lockfile_module.name.clone(),
+                                prehashed_cache_key: lockfile
+                                    .get_prehashed_cache_key_from_command(&lockfile_command),
+                            }
                         }
                         Err(e) => FindCommandResult::Error(e),
                     }
@@ -160,12 +171,14 @@ impl FindCommandResult {
                     Ok(lockfile_module) => {
                         let path = PathBuf::from(&lockfile_module.entry);
                         let root = PathBuf::from(&lockfile_module.root);
-                        FindCommandResult::CommandFound(
-                            path,
-                            root,
-                            lockfile_command.main_args.clone(),
-                            lockfile_module.name.clone(),
-                        )
+                        FindCommandResult::CommandFound {
+                            source: path,
+                            manifest_dir: root,
+                            args: lockfile_command.main_args.clone(),
+                            module_name: lockfile_module.name.clone(),
+                            prehashed_cache_key: lockfile
+                                .get_prehashed_cache_key_from_command(&lockfile_command),
+                        }
                     }
                     Err(_e) => {
                         FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
@@ -213,7 +226,10 @@ pub struct Command {
     pub manifest_dir: PathBuf,
     pub args: Option<String>,
     pub module_name: String,
+    /// whether the command was found in the global context
     pub is_global: bool,
+    /// the prehashed module key
+    pub prehashed_cache_key: Option<String>,
 }
 
 /// Get a command from anywhere, where anywhere is the set of packages in the local lockfile and the global lockfile.
@@ -226,13 +242,20 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     match local_command_result {
         FindCommandResult::CommandNotFound(_cmd) => {} // continue
-        FindCommandResult::CommandFound(path, root, args, module_name) => {
+        FindCommandResult::CommandFound {
+            source,
+            manifest_dir,
+            args,
+            module_name,
+            prehashed_cache_key,
+        } => {
             return Ok(Command {
-                source: path,
-                manifest_dir: root,
+                source,
+                manifest_dir,
                 args,
                 module_name,
                 is_global: false,
+                prehashed_cache_key,
             });
         }
         FindCommandResult::Error(e) => {
@@ -242,6 +265,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             ));
         }
     };
+    trace!("Local command not found");
 
     // look in the global directory
     let global_directory = Config::get_globals_directory().map_err(|e| {
@@ -252,13 +276,20 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     match global_command_result {
         FindCommandResult::CommandNotFound(_) => {} // continue
-        FindCommandResult::CommandFound(path, root, args, module_name) => {
+        FindCommandResult::CommandFound {
+            source,
+            manifest_dir,
+            args,
+            module_name,
+            prehashed_cache_key,
+        } => {
             return Ok(Command {
-                source: path,
-                manifest_dir: root,
+                source,
+                manifest_dir,
                 args,
                 module_name,
                 is_global: true,
+                prehashed_cache_key,
             });
         }
         FindCommandResult::Error(e) => {
@@ -270,6 +301,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             );
         }
     };
+    trace!("Global command not found");
 
     return Err(Error::CommandNotFound(command_name.as_ref().to_string()));
 }

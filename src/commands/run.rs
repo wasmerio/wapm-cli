@@ -42,6 +42,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         args: _,
         module_name,
         is_global,
+        prehashed_cache_key,
     } = match get_command_from_anywhere(command_name) {
         Err(find_command_result::Error::CommandNotFound(command)) => {
             let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
@@ -134,6 +135,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         } else {
             Some(format!("wapm run {}", command_name))
         },
+        prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
     let mut child = Command::new(DEFAULT_RUNTIME)
@@ -158,6 +160,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     directory: P,
     wasm_file_path: P2,
     override_command_name: Option<String>,
+    prehashed_cache_key: Option<String>,
 ) -> Result<Vec<OsString>, failure::Error> {
     let mut path = PathBuf::new();
     path.push(directory);
@@ -165,14 +168,26 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let path_string = path.into_os_string();
     let command_vec = vec![OsString::from("run"), path_string];
     let override_command_name_vec = override_command_name
-        .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
+        .map(|cn| {
+            vec![
+                OsString::from("--command-name"),
+                OsString::from(format!("\"{}\"", cn)),
+            ]
+        })
+        .unwrap_or_default();
+    let prehashed_cache_key_flag = prehashed_cache_key
+        .map(|pck| vec![OsString::from(format!("--cache-key=\"{}\"", pck))])
         .unwrap_or_default();
 
+    // NOTE:
+    // for optional types, use an empty vec here:
+    // an empty OsString may pass empty args to the child program which can cause issues
     Ok([
         &command_vec[..],
         &override_command_name_vec[..],
         &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
+        &prehashed_cache_key_flag[..],
         &[OsString::from("--")],
         &args[..],
     ]

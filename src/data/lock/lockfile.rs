@@ -40,6 +40,18 @@ impl<'a> Lockfile {
         Ok(())
     }
 
+    /// Looks up the prehashed cache key based on data in the Command
+    pub fn get_prehashed_cache_key_from_command(
+        &self,
+        command: &LockfileCommand,
+    ) -> Option<String> {
+        self.modules
+            .get(&command.package_name)
+            .and_then(|version_map| version_map.get(&command.package_version))
+            .and_then(|module_map| module_map.get(&command.module))
+            .and_then(|module| module.prehashed_module_key.clone())
+    }
+
     pub fn get_command(&self, command_name: &str) -> Result<&LockfileCommand, LockfileError> {
         self.commands
             .get(command_name)

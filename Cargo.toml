@@ -42,6 +42,7 @@ toml-query = "0.8.0"
 url = "1.7"
 walrus = "0.5"
 wasm-interface = { path = "lib/wasm-interface" }
+wasmer-runtime-core = "0.5.5"
 wasmparser = "0.30.0"
 whoami = "0.5"
 zstd = "0.4"
