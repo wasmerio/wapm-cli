@@ -198,6 +198,7 @@ pub fn get_hashed_module_key(path: &Path) -> Option<String> {
     };
     let hash = wasmer_runtime_core::cache::WasmHash::generate(&bytes[..]);
     Some(hash.encode())
+}
 
 #[cfg(feature = "update-notifications")]
 pub fn get_latest_runtime_version() -> Option<String> {
