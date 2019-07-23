@@ -131,6 +131,7 @@ impl FindCommandResult {
                         ),
                     }
                 } else {
+                    // this is a module being run as a dependency in a local context
                     debug!(
                         "Command's package name({}) and manifest's package name({}) are different",
                         lockfile_command.package_name, manifest.package.name
@@ -148,9 +149,6 @@ impl FindCommandResult {
                                 manifest_dir: root,
                                 args: lockfile_command.main_args.clone(),
                                 module_name: lockfile_module.name.clone(),
-                                // REVIEW: make sure this makes sense to call here
-                                // it wasn't obvious to me what this branch is handling
-                                // TODO: write a comment explaining what this else block is
                                 prehashed_cache_key: lockfile
                                     .get_prehashed_cache_key_from_command(&lockfile_command),
                             }
