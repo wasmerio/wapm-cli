@@ -3,7 +3,7 @@ trigger:
 
 resources:
   containers:
-    - container: rust135
+    - container: rust-latest
       image: wasmer/rust-and-cmake:latest
 jobs:
   - job: LinuxContainer
@@ -11,8 +11,8 @@ jobs:
       vmImage: 'ubuntu-16.04'
     strategy:
       matrix:
-        rust135:
-          containerResource: rust135
+        rust-latest:
+          containerResource: rust-latest
     container: $[ variables['containerResource'] ]
     steps:
       - script: |
