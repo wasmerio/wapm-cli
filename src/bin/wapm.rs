@@ -1,3 +1,4 @@
+#[cfg(feature = "update-notifications")]
 use log::debug;
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.3.6] - 2019-07-23
+### Added
+- Hash of Wasm modules to lockfile for faster startup times
+- Update notification and check that runs daily
+
 ## [0.3.5] - 2019-07-16
 ### Added
 - Proxy support using standard env vars (`ALL_PROXY`, `HTTPS_PROXY`, `http_proxy`) and add override in config, for example: `wapm config set proxy.url "https://username:password@example.com"`

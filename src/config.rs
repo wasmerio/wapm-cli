@@ -1,3 +1,4 @@
+#[cfg(feature = "update-notifications")]
 use crate::constants::*;
 use std::env;
 use std::fs::File;

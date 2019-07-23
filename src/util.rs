@@ -1,3 +1,4 @@
+#[cfg(feature = "update-notifications")]
 use crate::constants;
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
