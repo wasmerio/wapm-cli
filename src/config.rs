@@ -1,3 +1,4 @@
+use crate::constants::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -7,6 +8,8 @@ pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
+#[cfg(feature = "update-notifications")]
+pub static GLOBAL_LAST_UPDATED_TIMESTAMP_FILE: &str = ".last_time_checked_for_update.txt";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
@@ -74,6 +77,37 @@ impl Config {
                 folder
             },
         )
+    }
+
+    #[cfg(feature = "update-notifications")]
+    pub fn get_last_update_checked_time() -> Option<time::Tm> {
+        let mut path = Self::get_folder().ok()?;
+        path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
+
+        if !path.exists() {
+            // create a file with the current time if it doesn't exist
+            // this is done here rather than after making a request to ensure
+            // our failure case is as silent as possible.  It's better to fail
+            // early, than to spawn a thread and make a network request on
+            // every run of wapm
+            let mut f = std::fs::File::create(&path).ok()?;
+            let now = time::now();
+            f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+            None
+        } else {
+            let time_as_str = std::fs::read_to_string(&path).ok()?;
+            time::strptime(&time_as_str, RFC3339_FORMAT_STRING).ok()
+        }
+    }
+
+    #[cfg(feature = "update-notifications")]
+    pub fn set_last_update_checked_time() -> Option<()> {
+        let mut path = Self::get_folder().ok()?;
+        path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
+        let mut f = std::fs::OpenOptions::new().write(true).open(path).ok()?;
+        let now = time::now();
+        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+        Some(())
     }
 
     fn get_file_location() -> Result<PathBuf, GlobalConfigError> {
