@@ -12,10 +12,9 @@
 //! Prefer additive changes over destructive ones
 
 use crate::config::Config;
+use crate::constants::*;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 
-pub const RFC3339_FORMAT_STRING: &'static str = "%Y-%m-%dT%H:%M:%S-%f";
-pub const RFC3339_FORMAT_STRING_WITH_TIMEZONE: &'static str = "%Y-%m-%dT%H:%M:%S.%f+%Z";
 /// The current version of the database.  Update this to perform a migration
 pub const CURRENT_DATA_VERSION: i32 = 3;
 

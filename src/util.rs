@@ -1,3 +1,4 @@
+use crate::constants;
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
@@ -179,4 +180,20 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
             _ => Ok(false),
         }
     }
+}
+
+#[cfg(feature = "update-notifications")]
+pub fn get_latest_runtime_version() -> Option<String> {
+    use std::process::Command;
+
+    let output = Command::new(constants::DEFAULT_RUNTIME)
+        .arg("-V")
+        .output()
+        .ok()?;
+    let stdout_str = std::str::from_utf8(&output.stdout).ok()?;
+    let mut whitespace_iter = stdout_str.split_whitespace();
+    let _first = whitespace_iter.next();
+    debug_assert_eq!(_first, Some(constants::DEFAULT_RUNTIME));
+
+    whitespace_iter.next().map(|v| v.to_string())
 }

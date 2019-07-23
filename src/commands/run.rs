@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::constants::DEFAULT_RUNTIME;
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::dataflow;
 use crate::dataflow::find_command_result;
@@ -9,8 +10,6 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
-
-const DEFAULT_RUNTIME: &str = "wasmer";
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {

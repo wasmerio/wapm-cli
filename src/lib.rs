@@ -17,6 +17,7 @@ extern crate toml;
 mod abi;
 pub mod commands;
 mod config;
+mod constants;
 pub mod data;
 mod database;
 mod dataflow;
@@ -27,5 +28,7 @@ mod keys;
 pub mod logging;
 mod proxy;
 mod sql;
+#[cfg(feature = "update-notifications")]
+pub mod update_notifier;
 pub mod util;
 mod validate;
