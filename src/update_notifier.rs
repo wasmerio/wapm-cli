@@ -72,7 +72,7 @@ pub fn check() -> Option<QueryResult> {
 
     let installed_wasmer_version = util::get_latest_runtime_version()?;
 
-    if true || installed_wasmer_version != version_tag {
+    if installed_wasmer_version != version_tag {
         Some(QueryResult {
             old_version: installed_wasmer_version,
             new_version: version_tag.to_string(),
