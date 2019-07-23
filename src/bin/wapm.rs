@@ -1,4 +1,7 @@
+use log::debug;
 use structopt::{clap::AppSettings, StructOpt};
+#[cfg(feature = "update-notifications")]
+use wapm_cli::update_notifier;
 use wapm_cli::{commands, logging};
 
 #[derive(StructOpt, Debug)]
@@ -78,6 +81,9 @@ fn main() {
         eprintln!("Error: {}", e);
     }
 
+    #[cfg(feature = "update-notifications")]
+    let maybe_thread = update_notifier::run_async_check();
+
     #[cfg(feature = "telemetry")]
     let _guard = {
         let telemetry_is_enabled = wapm_cli::util::telemetry_is_enabled();
@@ -91,6 +97,16 @@ fn main() {
     };
 
     let args = Command::from_args();
+
+    #[cfg(feature = "update-notifications")]
+    {
+        if let Some(thread) = maybe_thread {
+            if let Err(e) = thread.join() {
+                debug!("Error joining async thread: {:?}", e);
+            }
+        }
+    }
+
     let result = match args {
         Command::WhoAmI => commands::whoami(),
         Command::Login => commands::login(),

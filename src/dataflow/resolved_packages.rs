@@ -1,4 +1,4 @@
-use crate::database;
+use crate::constants::*;
 use crate::dataflow::added_packages::AddedPackages;
 use crate::dataflow::{PackageKey, WapmPackageKey, WapmPackageRange};
 use crate::graphql::{execute_query, DateTime};
@@ -130,7 +130,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
                             date_created: {
                                 time::strptime(
                                     &gq_sig.created_at,
-                                    database::RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                                    RFC3339_FORMAT_STRING_WITH_TIMEZONE,
                                 )
                                 .unwrap_or_else(|err| {
                                     panic!("Failed to parse time string: {}", err)

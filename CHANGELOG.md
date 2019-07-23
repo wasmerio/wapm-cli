@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+
+## [0.3.5] - 2019-07-16
+### Added
+- Proxy support using standard env vars (`ALL_PROXY`, `HTTPS_PROXY`, `http_proxy`) and add override in config, for example: `wapm config set proxy.url "https://username:password@example.com"`
+- Updated Wasm interface syntax
+
 ## [0.3.4] - 2019-07-05
 ### Added
 - Improved Wasm Interface manifest format
