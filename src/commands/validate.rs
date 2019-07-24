@@ -34,9 +34,11 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
 
         let mut gz = GzDecoder::new(&compressed_archive_data[..]);
         let mut archive_data = Vec::new();
-        gz.read_to_end(&mut archive_data).unwrap();
+        gz.read_to_end(&mut archive_data)
+            .map_err(|e| format_err!("Failed to read archive data: {}", e.to_string()))?;
 
-        let temp_out_dir = tempdir::TempDir::new("temp").unwrap();
+        let temp_out_dir = tempdir::TempDir::new("temp")
+            .map_err(|e| format_err!("Could not create temporary directory: {}", e.to_string()))?;
         let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());
         // TODO: consider doing this entirely in memory with multiple passes
@@ -51,9 +53,8 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
             let mut ar_path = out_dir.to_path_buf();
             let archive_folder_name = pkg_path
                 .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
+                .and_then(|file_name| file_name.to_str())
+                .ok_or_else(|| format_err!("Failed to get archive folder name"))?
                 .replace(".tar.gz", "");
             ar_path.push(archive_folder_name);
             ar_path
