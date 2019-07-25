@@ -18,6 +18,9 @@ pub struct Config {
     #[cfg(feature = "telemetry")]
     #[serde(default)]
     pub telemetry: Telemetry,
+    #[cfg(feature = "update-notifications")]
+    #[serde(default)]
+    pub update_notifications: UpdateNotifications,
     #[serde(default)]
     pub proxy: Proxy,
 }
@@ -43,6 +46,21 @@ impl Default for Telemetry {
     }
 }
 
+#[cfg(feature = "update-notifications")]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct UpdateNotifications {
+    pub enabled: String,
+}
+
+#[cfg(feature = "update-notifications")]
+impl Default for UpdateNotifications {
+    fn default() -> UpdateNotifications {
+        Self {
+            enabled: "true".to_string(),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Default)]
 pub struct Proxy {
     pub url: Option<String>,
@@ -57,6 +75,8 @@ impl Default for Config {
             },
             #[cfg(feature = "telemetry")]
             telemetry: Telemetry::default(),
+            #[cfg(feature = "update-notifications")]
+            update_notifications: UpdateNotifications::default(),
             proxy: Proxy::default(),
         }
     }
@@ -78,37 +98,6 @@ impl Config {
                 folder
             },
         )
-    }
-
-    #[cfg(feature = "update-notifications")]
-    pub fn get_last_update_checked_time() -> Option<time::Tm> {
-        let mut path = Self::get_folder().ok()?;
-        path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
-
-        if !path.exists() {
-            // create a file with the current time if it doesn't exist
-            // this is done here rather than after making a request to ensure
-            // our failure case is as silent as possible.  It's better to fail
-            // early, than to spawn a thread and make a network request on
-            // every run of wapm
-            let mut f = std::fs::File::create(&path).ok()?;
-            let now = time::now();
-            f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
-            None
-        } else {
-            let time_as_str = std::fs::read_to_string(&path).ok()?;
-            time::strptime(&time_as_str, RFC3339_FORMAT_STRING).ok()
-        }
-    }
-
-    #[cfg(feature = "update-notifications")]
-    pub fn set_last_update_checked_time() -> Option<()> {
-        let mut path = Self::get_folder().ok()?;
-        path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
-        let mut f = std::fs::OpenOptions::new().write(true).open(path).ok()?;
-        let now = time::now();
-        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
-        Some(())
     }
 
     fn get_file_location() -> Result<PathBuf, GlobalConfigError> {
@@ -144,6 +133,69 @@ impl Config {
         file.write_all(config_serialized.as_bytes())?;
         Ok(())
     }
+
+    #[cfg(feature = "update-notifications")]
+    pub fn update_notifications_enabled() -> Option<()> {
+        let config = Self::from_file().ok()?;
+        if config.update_notifications.enabled == "true" {
+            Some(())
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(feature = "update-notifications")]
+/// return values:
+/// None means the file didn't exist and we tried to create it or there was an IO error
+/// Some(time, None) -> this is the first run (there was no "last version seen")
+/// Some(time, Some(last_version)) -> this is a subsequent run
+pub fn get_last_update_checked_time() -> Option<(time::Tm, Option<String>)> {
+    let mut path = Config::get_folder().ok()?;
+    path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
+
+    if !path.exists() {
+        // create a file with the current time if it doesn't exist
+        // this is done here rather than after making a request to ensure
+        // our failure case is as silent as possible.  It's better to fail
+        // early, than to spawn a thread and make a network request on
+        // every run of wapm
+        let mut f = std::fs::File::create(&path).ok()?;
+        let now = time::now();
+        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+        None
+    } else {
+        let base_str = std::fs::read_to_string(&path).ok()?;
+        let mut lines = base_str.lines();
+        let time_as_str = lines.next()?;
+        let last_version_seen = lines.next();
+        time::strptime(time_as_str, RFC3339_FORMAT_STRING)
+            .ok()
+            .map(|v| (v, last_version_seen.map(|lvs| lvs.to_string())))
+    }
+}
+
+#[cfg(feature = "update-notifications")]
+/// Sets the last update checked var and the last seen version var
+pub fn set_last_update_checked_time(last_seen_version: Option<&str>) -> Option<()> {
+    let mut path = Config::get_folder().ok()?;
+    path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
+    let mut f = std::fs::OpenOptions::new()
+        .truncate(true)
+        .write(true)
+        .open(path)
+        .ok()?;
+    let now = time::now();
+    if let Some(lsv) = last_seen_version {
+        f.write(format!("{}\n{}", now.rfc3339(), lsv).as_bytes())
+            .ok()?;
+    } else {
+        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+    }
+
+    f.flush().ok()?;
+
+    Some(())
 }
 
 impl Registry {
@@ -191,6 +243,10 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
         "telemetry.enabled" => {
             config.telemetry.enabled = value;
         }
+        #[cfg(feature = "update-notifications")]
+        "update-notifications.enabled" => {
+            config.update_notifications.enabled = value;
+        }
         "proxy.url" => {
             config.proxy.url = if value.is_empty() { None } else { Some(value) };
         }
@@ -211,6 +267,8 @@ pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => &config.telemetry.enabled,
+        #[cfg(feature = "update-notifications")]
+        "update-notifications.enabled" => &config.update_notifications.enabled,
         "proxy.url" => {
             if let Some(url) = &config.proxy.url {
                 &url
