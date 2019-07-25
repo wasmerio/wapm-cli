@@ -8,11 +8,7 @@ use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, RedirectPolicy, Response,
 };
-use std::{
-    fmt::Write,
-    sync::mpsc::{self, Receiver},
-    thread,
-};
+use std::{fmt::Write, thread};
 
 const GITHUB_RELEASE_PAGE: &str = "https://github.com/wasmerio/wasmer/releases/latest";
 const GITHUB_RELEASE_URL_BASE: &str = "https://github.com/wasmerio/wasmer/releases/tag/";
@@ -22,76 +18,53 @@ struct VersionResponse {
     tag_name: String,
 }
 
-pub fn run_async_check() -> Option<(Receiver<String>, thread::JoinHandle<()>)> {
-    if let Some((last_checked_time, maybe_next_version)) =
-        config::Config::update_notifications_enabled()
-            .and_then(|()| config::get_last_update_checked_time())
-    {
+pub fn run_async_check() -> Option<std::thread::JoinHandle<()>> {
+    if let Some(last_checked_time) = config::Config::get_last_update_checked_time() {
         let now = time::now();
         let time_to_check: time::Duration =
             time::Duration::from_std(std::time::Duration::from_secs(60 * 60 * 24)).unwrap();
         if now - last_checked_time >= time_to_check {
-            let (tx, rx) = mpsc::channel();
-            return Some((
-                rx,
-                thread::spawn(move || {
-                    if let Some(res) = check(maybe_next_version) {
-                        // cache it immediately in case the program ends before we can display it
-                        if let Some(message) = config::set_last_update_checked_time(Some(
-                            &res.new_version,
-                        ))
-                        .and_then(|()| {
-                            format_message(&res.old_version, &res.new_version, &res.release_url)
-                        }) {
-                            // if error, probably bad timing
-                            if let Err(e) = tx.send(message) {
-                                debug!("Error sending message: {}", e);
-                            }
-                            if let None =
-                                // delete the cached value so we recheck next time
-                                config::set_last_update_checked_time(None)
-                            {
-                                error!("Failed to update last update checked time!  This may cause the update message to be displayed on every run")
-                            }
-                        }
-                    }
-                }),
-            ));
+            return Some(thread::spawn(|| {
+                if let Some(message) = config::Config::set_last_update_checked_time()
+                    .and_then(|()| check())
+                    .and_then(|q_res| {
+                        format_message(&q_res.old_version, &q_res.new_version, &q_res.release_url)
+                    })
+                {
+                    print_message(&message);
+                }
+            }));
         }
     }
 
     None
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct QueryResult {
     pub old_version: String,
     pub new_version: String,
     pub release_url: String,
 }
 
-pub fn check(maybe_next_version: Option<String>) -> Option<QueryResult> {
-    let version_tag = if let Some(v_tag) = maybe_next_version {
-        v_tag
-    } else {
-        let builder = Client::builder();
-        let client = match proxy::maybe_set_up_proxy() {
-            Ok(Some(proxy)) => builder.proxy(proxy),
-            Ok(None) => builder, //continue without proxy
-            Err(_) => return None,
-        }
-        .redirect(RedirectPolicy::limited(10))
-        .build()
-        .ok()?;
+pub fn check() -> Option<QueryResult> {
+    let builder = Client::builder();
+    let client = match proxy::maybe_set_up_proxy() {
+        Ok(Some(proxy)) => builder.proxy(proxy),
+        Ok(None) => builder, //continue without proxy
+        Err(_) => return None,
+    }
+    .redirect(RedirectPolicy::limited(10))
+    .build()
+    .ok()?;
 
-        let mut response: Response = client
-            .get(GITHUB_RELEASE_PAGE)
-            .header(ACCEPT, HeaderValue::from_static("application/json"))
-            .send()
-            .ok()?;
-        let response_content: VersionResponse = response.json().ok()?;
-        response_content.tag_name
-    };
+    let mut response: Response = client
+        .get(GITHUB_RELEASE_PAGE)
+        .header(ACCEPT, HeaderValue::from_static("application/json"))
+        .send()
+        .ok()?;
+    let response_content: VersionResponse = response.json().ok()?;
+    let version_tag = response_content.tag_name;
 
     if version_tag.is_empty() {
         return None;

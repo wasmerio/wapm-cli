@@ -83,7 +83,7 @@ fn main() {
     }
 
     #[cfg(feature = "update-notifications")]
-    let maybe_receiver = update_notifier::run_async_check();
+    let maybe_thread = update_notifier::run_async_check();
 
     #[cfg(feature = "telemetry")]
     let _guard = {
@@ -98,6 +98,15 @@ fn main() {
     };
 
     let args = Command::from_args();
+
+    #[cfg(feature = "update-notifications")]
+    {
+        if let Some(thread) = maybe_thread {
+            if let Err(e) = thread.join() {
+                debug!("Error joining async thread: {:?}", e);
+            }
+        }
+    }
 
     let result = match args {
         Command::WhoAmI => commands::whoami(),
@@ -126,26 +135,6 @@ fn main() {
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
         Command::Bin(bin_options) => commands::bin(bin_options),
     };
-
-    // ensure async check finishes before exiting
-    #[cfg(feature = "update-notifications")]
-    {
-        if let Some((recv, thread_handle)) = maybe_receiver {
-            match recv.try_recv() {
-                Ok(message) => {
-                    update_notifier::print_message(&message);
-                    if let Err(e) = thread_handle.join() {
-                        debug!("Failed to join the async update message thread: {:?}", e);
-                    }
-                }
-                Err(e) => debug!(
-                    "Could not receive message from update notification thread: {}",
-                    e.to_string()
-                ),
-            }
-        }
-    }
-
     if let Err(e) = result {
         #[cfg(feature = "telemetry")]
         {

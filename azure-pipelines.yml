@@ -23,7 +23,6 @@ jobs:
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo build --verbose
-          cargo check --features "telemetry update-notifications"
         displayName: 'Build wapm'
       - script: |
           export PATH=$PATH:$HOME/.cargo/bin
