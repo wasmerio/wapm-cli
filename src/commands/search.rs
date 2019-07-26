@@ -53,7 +53,6 @@ pub fn search(options: SearchOpt) -> Result<(), failure::Error> {
         }
     }
     table.printstd();
-    std::io::stdout().flush().unwrap();
 
     Ok(())
 }

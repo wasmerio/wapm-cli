@@ -126,6 +126,11 @@ fn main() {
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
         Command::Bin(bin_options) => commands::bin(bin_options),
     };
+    {
+        use std::io::Write;
+        std::io::stdout().flush().unwrap();
+        std::io::stderr().flush().unwrap();
+    }
 
     // ensure async check finishes before exiting
     #[cfg(feature = "update-notifications")]
