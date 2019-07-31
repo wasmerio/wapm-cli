@@ -202,17 +202,20 @@ pub fn get_hashed_module_key(path: &Path) -> Option<String> {
 }
 
 #[cfg(feature = "update-notifications")]
-pub fn get_latest_runtime_version() -> Option<String> {
+pub fn get_latest_runtime_version() -> Result<String, String> {
     use std::process::Command;
 
     let output = Command::new(constants::DEFAULT_RUNTIME)
         .arg("-V")
         .output()
-        .ok()?;
-    let stdout_str = std::str::from_utf8(&output.stdout).ok()?;
+        .map_err(|err| err.to_string())?;
+    let stdout_str = std::str::from_utf8(&output.stdout).map_err(|err| err.to_string())?;
     let mut whitespace_iter = stdout_str.split_whitespace();
     let _first = whitespace_iter.next();
     debug_assert_eq!(_first, Some(constants::DEFAULT_RUNTIME));
 
-    whitespace_iter.next().map(|v| v.to_string())
+    match whitespace_iter.next() {
+        Some(v) => Ok(v.to_string()),
+        None => Err("Can't find the version of wasmer".to_string()),
+    }
 }

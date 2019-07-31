@@ -84,9 +84,6 @@ fn main() {
         eprintln!("Error: {}", e);
     }
 
-    #[cfg(feature = "update-notifications")]
-    let _un_result = update_notifier::run_async_check_base();
-
     #[cfg(feature = "telemetry")]
     let _guard = {
         let telemetry_is_enabled = wapm_cli::util::telemetry_is_enabled();
@@ -100,6 +97,21 @@ fn main() {
     };
 
     let args = Command::from_args();
+
+    #[cfg(feature = "update-notifications")]
+    // Only show the async check on certain commands
+    let maybe_show_update_notification = match args {
+        Command::Install(_)
+        | Command::Run(_)
+        | Command::Publish(_)
+        | Command::Search(_)
+        | Command::List(_)
+        | Command::Uninstall(_) => {
+            update_notifier::run_async_check_base();
+            true
+        }
+        _ => false,
+    };
 
     let result = match args {
         Command::WhoAmI => commands::whoami(),
@@ -133,11 +145,13 @@ fn main() {
             Ok(())
         }
     };
+
     {
         use std::io::Write;
         std::io::stdout().flush().unwrap();
         std::io::stderr().flush().unwrap();
     }
+    let mut exit_code = 0;
 
     if let Err(e) = result {
         #[cfg(feature = "telemetry")]
@@ -145,6 +159,12 @@ fn main() {
             drop(_guard);
         };
         eprintln!("Error: {}", e);
-        std::process::exit(-1);
+        exit_code = -1;
     }
+
+    if cfg!(feature = "update-notifications") && maybe_show_update_notification {
+        update_notifier::check_sync();
+    }
+
+    std::process::exit(exit_code);
 }

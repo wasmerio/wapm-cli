@@ -1,5 +1,3 @@
-#[cfg(feature = "update-notifications")]
-use crate::constants::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,10 +7,6 @@ pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
-#[cfg(feature = "update-notifications")]
-pub static GLOBAL_LAST_UPDATED_TIMESTAMP_FILE: &str = ".last_time_checked_for_update.txt";
-#[cfg(feature = "update-notifications")]
-pub static BACKGROUND_UPDATE_CHECK_RUNNING: &str = ".background_update_process_running.txt";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
@@ -137,97 +131,12 @@ impl Config {
     }
 
     #[cfg(feature = "update-notifications")]
-    pub fn update_notifications_enabled() -> Option<()> {
-        let config = Self::from_file().ok()?;
-        if config.update_notifications.enabled == "true" {
-            Some(())
-        } else {
-            None
+    pub fn update_notifications_enabled() -> bool {
+        let config = Self::from_file();
+        if config.is_err() {
+            return true;
         }
-    }
-}
-
-#[cfg(feature = "update-notifications")]
-/// return values:
-/// None means the file didn't exist and we tried to create it or there was an IO error
-/// Some(time, None) -> this is the first run (there was no "last version seen")
-/// Some(time, Some(last_version)) -> this is a subsequent run
-pub fn get_last_update_checked_time() -> Option<(time::Tm, Option<String>)> {
-    let mut path = Config::get_folder().ok()?;
-    path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
-
-    if !path.exists() {
-        // create a file with the current time if it doesn't exist
-        // this is done here rather than after making a request to ensure
-        // our failure case is as silent as possible.  It's better to fail
-        // early, than to spawn a thread and make a network request on
-        // every run of wapm
-        let mut f = std::fs::File::create(&path).ok()?;
-        let now = time::now();
-        f.write(format!("{}", time::strftime(RFC3339_FORMAT_STRING, &now).ok()?).as_bytes())
-            .ok()?;
-        None
-    } else {
-        let base_str = std::fs::read_to_string(&path).ok()?;
-        let mut lines = base_str.lines();
-        let time_as_str = lines.next()?;
-        let last_version_seen = lines.next();
-        time::strptime(time_as_str, RFC3339_FORMAT_STRING)
-            .ok()
-            .map(|v| (v, last_version_seen.map(|lvs| lvs.to_string())))
-    }
-}
-
-#[cfg(feature = "update-notifications")]
-/// Sets the last update checked var and the last seen version var
-pub fn set_last_update_checked_time(last_seen_version: Option<&str>) -> Option<()> {
-    let mut path = Config::get_folder().ok()?;
-    path.push(GLOBAL_LAST_UPDATED_TIMESTAMP_FILE);
-    let mut f = std::fs::OpenOptions::new()
-        .truncate(true)
-        .write(true)
-        .open(path)
-        .ok()?;
-    let now = time::now();
-    let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).ok()?;
-    if let Some(lsv) = last_seen_version {
-        f.write(format!("{}\n{}", now_str, lsv).as_bytes()).ok()?;
-    } else {
-        f.write(format!("{}", now_str).as_bytes()).ok()?;
-    }
-
-    f.flush().ok()?;
-
-    Some(())
-}
-
-#[cfg(feature = "update-notifications")]
-/// Atomically check if a file exists and create it if it doesn't
-/// this function is used in the background updater to prevent wapm from
-/// spawning a ton of background processes and acting like a fork bomb
-pub fn lock_background_process() -> Option<()> {
-    let mut path = Config::get_folder().ok()?;
-    path.push(BACKGROUND_UPDATE_CHECK_RUNNING);
-    std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(path)
-        .ok()?;
-    Some(())
-}
-
-#[cfg(feature = "update-notifications")]
-pub fn unlock_background_process() {
-    let mut path = match Config::get_folder() {
-        Ok(folder) => folder,
-        _ => return,
-    };
-    path.push(BACKGROUND_UPDATE_CHECK_RUNNING);
-    if let Err(e) = std::fs::remove_file(&path) {
-        debug!(
-            "File {} was deleted while running background check or unlock was called without lock being called first: {:?}",
-            path.to_string_lossy(), e
-        )
+        config.unwrap().update_notifications.enabled == "true"
     }
 }
 
