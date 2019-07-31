@@ -148,7 +148,6 @@ fn main() {
 
     /// Exit the program, flushing stdout, stderr
     /// and show pending notifications (if any)
-
     {
         use std::io::Write;
         std::io::stdout().flush().unwrap();
@@ -159,7 +158,8 @@ fn main() {
         eprintln!("Error: {}", e);
     }
 
-    #[cfg(feature = "update-notifications")]{
+    #[cfg(feature = "update-notifications")]
+    {
         if maybe_show_update_notification {
             update_notifier::check_sync();
         }
