@@ -1,5 +1,3 @@
-#[cfg(feature = "update-notifications")]
-use log::debug;
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
 use wapm_cli::update_notifier;
@@ -75,15 +73,16 @@ enum Command {
     #[structopt(name = "bin")]
     /// Get the .bin dir path
     Bin(commands::BinOpt),
+
+    #[cfg(feature = "update-notifications")]
+    #[structopt(name = "run-background-update-check")]
+    BackgroundUpdateCheck,
 }
 
 fn main() {
     if let Err(e) = logging::set_up_logging() {
         eprintln!("Error: {}", e);
     }
-
-    #[cfg(feature = "update-notifications")]
-    let maybe_thread = update_notifier::run_async_check();
 
     #[cfg(feature = "telemetry")]
     let _guard = {
@@ -100,13 +99,19 @@ fn main() {
     let args = Command::from_args();
 
     #[cfg(feature = "update-notifications")]
-    {
-        if let Some(thread) = maybe_thread {
-            if let Err(e) = thread.join() {
-                debug!("Error joining async thread: {:?}", e);
-            }
+    // Only show the async check on certain commands
+    let maybe_show_update_notification = match args {
+        Command::Install(_)
+        | Command::Run(_)
+        | Command::Publish(_)
+        | Command::Search(_)
+        | Command::List(_)
+        | Command::Uninstall(_) => {
+            update_notifier::run_async_check_base();
+            true
         }
-    }
+        _ => false,
+    };
 
     let result = match args {
         Command::WhoAmI => commands::whoami(),
@@ -134,13 +139,37 @@ fn main() {
         }
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
         Command::Bin(bin_options) => commands::bin(bin_options),
+        #[cfg(feature = "update-notifications")]
+        Command::BackgroundUpdateCheck => {
+            update_notifier::run_subprocess_check();
+            Ok(())
+        }
     };
-    if let Err(e) = result {
+
+    /// Exit the program, flushing stdout, stderr
+    /// and show pending notifications (if any)
+    {
+        use std::io::Write;
+        std::io::stdout().flush().unwrap();
+        std::io::stderr().flush().unwrap();
+    }
+
+    if let Err(e) = &result {
+        eprintln!("Error: {}", e);
+    }
+
+    #[cfg(feature = "update-notifications")]
+    {
+        if maybe_show_update_notification {
+            update_notifier::check_sync();
+        }
+    }
+
+    if result.is_err() {
         #[cfg(feature = "telemetry")]
         {
             drop(_guard);
         };
-        eprintln!("Error: {}", e);
         std::process::exit(-1);
     }
 }
