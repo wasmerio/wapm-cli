@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.3.7] - 2019-07-31
+### Added
+- Remove unwrap in validate subcommand 
+- Make update notifications async; add config option
+
 ## [0.3.6] - 2019-07-23
 ### Added
 - Hash of Wasm modules to lockfile for faster startup times
