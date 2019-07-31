@@ -132,11 +132,9 @@ impl Config {
 
     #[cfg(feature = "update-notifications")]
     pub fn update_notifications_enabled() -> bool {
-        let config = Self::from_file();
-        if config.is_err() {
-            return true;
-        }
-        config.unwrap().update_notifications.enabled == "true"
+        Self::from_file()
+            .map(|c| c.update_notifications.enabled == "true")
+            .unwrap_or(true)
     }
 }
 

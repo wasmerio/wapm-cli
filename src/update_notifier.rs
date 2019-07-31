@@ -27,7 +27,7 @@ struct VersionResponse {
     tag_name: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Default)]
 pub struct WapmUpdate {
     /// The data related to the last check on the Github Registry
     pub last_check: Option<WapmLastCheck>,
@@ -36,12 +36,6 @@ pub struct WapmUpdate {
 }
 
 impl WapmUpdate {
-    fn default() -> Self {
-        Self {
-            last_check: None,
-            last_notified: None,
-        }
-    }
     fn load() -> Result<Self, String> {
         let path = get_wapm_update_file_path();
         let json_file = File::open(path).map_err(|err| err.to_string())?;
@@ -50,7 +44,7 @@ impl WapmUpdate {
         Ok(wasm_update)
     }
     fn load_or_default() -> Self {
-        Self::load().unwrap_or_else(|_e| Self::default())
+        Self::load().unwrap_or_default()
     }
     fn save(&self) -> Result<(), String> {
         let path = get_wapm_update_file_path();
@@ -137,8 +131,10 @@ pub fn run_async_check_base() {
         }
 
         let current_wapm = std::env::current_exe().expect("Can't get current wapm executable");
+        let current_dir = std::env::current_dir().expect("Can't get current wapm dir");
         std::process::Command::new(current_wapm)
             .arg("run-background-update-check")
+            .current_dir(current_dir)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()
@@ -170,7 +166,7 @@ pub fn run_subprocess_check() {
             wapm_update.save().expect("Save to file failed");
         }
         Err(e) => {
-            println!("Background check failed: {}", e);
+            error!("Background check failed: {}", e);
         }
     }
     try_unlock_background_process()
@@ -178,7 +174,6 @@ pub fn run_subprocess_check() {
 
 pub fn get_latest_tag() -> Result<String, String> {
     let builder = Client::builder();
-    println!("get_latest_tag 0");
     let client = match proxy::maybe_set_up_proxy() {
         Ok(Some(proxy)) => builder.proxy(proxy),
         Ok(None) => builder, //continue without proxy
@@ -187,7 +182,6 @@ pub fn get_latest_tag() -> Result<String, String> {
     .redirect(RedirectPolicy::limited(10))
     .build()
     .map_err(|err| err.to_string())?;
-    println!("get_latest_tag 1");
 
     let mut response: Response = client
         .get(GITHUB_RELEASE_PAGE)
@@ -195,9 +189,7 @@ pub fn get_latest_tag() -> Result<String, String> {
         .send()
         .map_err(|err| err.to_string())?;
 
-    println!("get_latest_tag 2");
     let response_content: VersionResponse = response.json().map_err(|err| err.to_string())?;
-    println!("get_latest_tag 3");
     Ok(response_content.tag_name)
 }
 

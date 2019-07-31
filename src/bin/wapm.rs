@@ -146,25 +146,28 @@ fn main() {
         }
     };
 
+    /// Exit the program, flushing stdout, stderr
+    /// and show pending notifications (if any)
+
     {
         use std::io::Write;
         std::io::stdout().flush().unwrap();
         std::io::stderr().flush().unwrap();
     }
-    let mut exit_code = 0;
 
     if let Err(e) = result {
-        #[cfg(feature = "telemetry")]
-        {
-            drop(_guard);
-        };
         eprintln!("Error: {}", e);
-        exit_code = -1;
     }
 
     if cfg!(feature = "update-notifications") && maybe_show_update_notification {
         update_notifier::check_sync();
     }
 
-    std::process::exit(exit_code);
+    if result.is_err() {
+        #[cfg(feature = "telemetry")]
+        {
+            drop(_guard);
+        };
+        std::process::exit(-1);
+    }
 }
