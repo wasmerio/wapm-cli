@@ -155,12 +155,14 @@ fn main() {
         std::io::stderr().flush().unwrap();
     }
 
-    if let Err(e) = result {
+    if let Err(e) = &result {
         eprintln!("Error: {}", e);
     }
 
-    if cfg!(feature = "update-notifications") && maybe_show_update_notification {
-        update_notifier::check_sync();
+    #[cfg(feature = "update-notifications")]{
+        if maybe_show_update_notification {
+            update_notifier::check_sync();
+        }
     }
 
     if result.is_err() {
