@@ -1,5 +1,3 @@
-#[cfg(feature = "update-notifications")]
-use log::debug;
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
 use wapm_cli::update_notifier;
@@ -75,6 +73,10 @@ enum Command {
     #[structopt(name = "bin")]
     /// Get the .bin dir path
     Bin(commands::BinOpt),
+
+    #[cfg(feature = "update-notifications")]
+    #[structopt(name = "run-background-update-check")]
+    BackgroundUpdateCheck,
 }
 
 fn main() {
@@ -83,7 +85,7 @@ fn main() {
     }
 
     #[cfg(feature = "update-notifications")]
-    let maybe_receiver = update_notifier::run_async_check();
+    let _un_result = update_notifier::run_async_check_base();
 
     #[cfg(feature = "telemetry")]
     let _guard = {
@@ -125,30 +127,16 @@ fn main() {
         }
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
         Command::Bin(bin_options) => commands::bin(bin_options),
+        #[cfg(feature = "update-notifications")]
+        Command::BackgroundUpdateCheck => {
+            update_notifier::run_subprocess_check();
+            Ok(())
+        }
     };
     {
         use std::io::Write;
         std::io::stdout().flush().unwrap();
         std::io::stderr().flush().unwrap();
-    }
-
-    // ensure async check finishes before exiting
-    #[cfg(feature = "update-notifications")]
-    {
-        if let Some((recv, thread_handle)) = maybe_receiver {
-            match recv.try_recv() {
-                Ok(message) => {
-                    update_notifier::print_message(&message);
-                    if let Err(e) = thread_handle.join() {
-                        debug!("Failed to join the async update message thread: {:?}", e);
-                    }
-                }
-                Err(e) => debug!(
-                    "Could not receive message from update notification thread: {}",
-                    e.to_string()
-                ),
-            }
-        }
     }
 
     if let Err(e) = result {

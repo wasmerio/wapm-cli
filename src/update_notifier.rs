@@ -8,11 +8,7 @@ use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, RedirectPolicy, Response,
 };
-use std::{
-    fmt::Write,
-    sync::mpsc::{self, Receiver},
-    thread,
-};
+use std::fmt::Write;
 
 const GITHUB_RELEASE_PAGE: &str = "https://github.com/wasmerio/wasmer/releases/latest";
 const GITHUB_RELEASE_URL_BASE: &str = "https://github.com/wasmerio/wasmer/releases/tag/";
@@ -22,45 +18,50 @@ struct VersionResponse {
     tag_name: String,
 }
 
-pub fn run_async_check() -> Option<(Receiver<String>, thread::JoinHandle<()>)> {
+/// this is the base call, it will spawn another process
+pub fn run_async_check_base() -> Option<()> {
     if let Some((last_checked_time, maybe_next_version)) =
         config::Config::update_notifications_enabled()
             .and_then(|()| config::get_last_update_checked_time())
     {
-        let now = time::now();
-        let time_to_check: time::Duration =
-            time::Duration::from_std(std::time::Duration::from_secs(60 * 60 * 24)).unwrap();
-        if now - last_checked_time >= time_to_check {
-            let (tx, rx) = mpsc::channel();
-            return Some((
-                rx,
-                thread::spawn(move || {
-                    if let Some(res) = check(maybe_next_version) {
-                        // cache it immediately in case the program ends before we can display it
-                        if let Some(message) = config::set_last_update_checked_time(Some(
-                            &res.new_version,
-                        ))
-                        .and_then(|()| {
-                            format_message(&res.old_version, &res.new_version, &res.release_url)
-                        }) {
-                            // if error, probably bad timing
-                            if let Err(e) = tx.send(message) {
-                                debug!("Error sending message: {}", e);
-                            }
-                            if let None =
-                                // delete the cached value so we recheck next time
-                                config::set_last_update_checked_time(None)
-                            {
-                                error!("Failed to update last update checked time!  This may cause the update message to be displayed on every run")
-                            }
-                        }
-                    }
-                }),
-            ));
+        // if we have it cached, then call check to pull it out of the cache and print it
+        if let Some(message) = maybe_next_version
+            .and_then(|next_version| check(Some(next_version)))
+            .and_then(|res| format_message(&res.old_version, &res.new_version, &res.release_url))
+        {
+            print_message(&message);
+            // clear the cache
+            config::set_last_update_checked_time(None);
+        } else {
+            // otherwise, if it's time to check again, spawn a background process to update the cache
+            let now = time::now();
+            let time_to_check: time::Duration =
+                time::Duration::from_std(std::time::Duration::from_secs(60 * 60 * 24)).unwrap();
+            if now - last_checked_time >= time_to_check {
+                config::lock_background_process()?;
+                // lock and check for lock
+                std::process::Command::new("wapm")
+                    .arg("run-background-update-check")
+                    .spawn()
+                    .ok()?;
+            }
         }
     }
 
     None
+}
+
+/// this is the check run by the process spawned by `run_async_check_base`
+pub fn run_subprocess_check() {
+    if let None = run_subprocess_check_inner() {
+        debug!("Background check failed");
+    }
+    config::unlock_background_process();
+}
+
+fn run_subprocess_check_inner() -> Option<()> {
+    check(None).and_then(|res| config::set_last_update_checked_time(Some(&res.new_version)))?;
+    Some(())
 }
 
 #[derive(Debug, Serialize, Deserialize)]

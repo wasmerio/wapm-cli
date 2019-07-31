@@ -11,6 +11,8 @@ pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 #[cfg(feature = "update-notifications")]
 pub static GLOBAL_LAST_UPDATED_TIMESTAMP_FILE: &str = ".last_time_checked_for_update.txt";
+#[cfg(feature = "update-notifications")]
+pub static BACKGROUND_UPDATE_CHECK_RUNNING: &str = ".background_update_process_running.txt";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
@@ -162,7 +164,8 @@ pub fn get_last_update_checked_time() -> Option<(time::Tm, Option<String>)> {
         // every run of wapm
         let mut f = std::fs::File::create(&path).ok()?;
         let now = time::now();
-        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+        f.write(format!("{}", time::strftime(RFC3339_FORMAT_STRING, &now).ok()?).as_bytes())
+            .ok()?;
         None
     } else {
         let base_str = std::fs::read_to_string(&path).ok()?;
@@ -186,16 +189,46 @@ pub fn set_last_update_checked_time(last_seen_version: Option<&str>) -> Option<(
         .open(path)
         .ok()?;
     let now = time::now();
+    let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).ok()?;
     if let Some(lsv) = last_seen_version {
-        f.write(format!("{}\n{}", now.rfc3339(), lsv).as_bytes())
-            .ok()?;
+        f.write(format!("{}\n{}", now_str, lsv).as_bytes()).ok()?;
     } else {
-        f.write(format!("{}", now.rfc3339()).as_bytes()).ok()?;
+        f.write(format!("{}", now_str).as_bytes()).ok()?;
     }
 
     f.flush().ok()?;
 
     Some(())
+}
+
+#[cfg(feature = "update-notifications")]
+/// Atomically check if a file exists and create it if it doesn't
+/// this function is used in the background updater to prevent wapm from
+/// spawning a ton of background processes and acting like a fork bomb
+pub fn lock_background_process() -> Option<()> {
+    let mut path = Config::get_folder().ok()?;
+    path.push(BACKGROUND_UPDATE_CHECK_RUNNING);
+    std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(path)
+        .ok()?;
+    Some(())
+}
+
+#[cfg(feature = "update-notifications")]
+pub fn unlock_background_process() {
+    let mut path = match Config::get_folder() {
+        Ok(folder) => folder,
+        _ => return,
+    };
+    path.push(BACKGROUND_UPDATE_CHECK_RUNNING);
+    if let Err(e) = std::fs::remove_file(&path) {
+        debug!(
+            "File {} was deleted while running background check or unlock was called without lock being called first: {:?}",
+            path.to_string_lossy(), e
+        )
+    }
 }
 
 impl Registry {
