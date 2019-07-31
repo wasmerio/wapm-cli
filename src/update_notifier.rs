@@ -42,6 +42,8 @@ pub fn run_async_check_base() -> Option<()> {
                 // lock and check for lock
                 std::process::Command::new("wapm")
                     .arg("run-background-update-check")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
                     .spawn()
                     .ok()?;
             }
@@ -56,7 +58,11 @@ pub fn run_subprocess_check() {
     if let None = run_subprocess_check_inner() {
         debug!("Background check failed");
     }
-    config::unlock_background_process();
+    unlock_background_process()
+}
+
+pub fn unlock_background_process() {
+    config::unlock_background_process()
 }
 
 fn run_subprocess_check_inner() -> Option<()> {
