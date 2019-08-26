@@ -227,7 +227,7 @@ mod test {
             .iter()
             .collect();
         let actual_command =
-            create_run_command(&args, None, vec![], &dir, wasm_relative_path, None).unwrap();
+            create_run_command(&args, None, vec![], &dir, wasm_relative_path, None, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }
