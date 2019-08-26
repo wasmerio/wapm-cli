@@ -53,8 +53,13 @@ jobs:
 
     # Regression tests
     - script: |
+      cargo build --verbose
+      displayName: 'Regression test: build wapm'
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+
+      - script: |
         curl https://get.wasmer.io -sSfL | sh
-      displayName: 'Pre-regression test set up'
+      displayName: 'Regression test: install wasmer'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
     - script: |
