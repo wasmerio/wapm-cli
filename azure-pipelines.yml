@@ -55,12 +55,12 @@ jobs:
     - bash: |
         cargo build --verbose
       displayName: 'Regression test: build wapm'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
     - bash: |
         curl https://get.wasmer.io -sSfL | sh
       displayName: 'Regression test: install wasmer'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
     - script: |
         export PATH=$PATH:$HOME/.cargo/bin
@@ -87,7 +87,7 @@ jobs:
         if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
         exit $OUT
       displayName: 'Regression test: Install, Uninstall, Run, and List'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
     - script: |
         export PATH=$PATH:$HOME/.cargo/bin
@@ -114,7 +114,7 @@ jobs:
         if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
         exit $OUT
       displayName: 'Regression test: verification and public key management'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
     - script: |
         export PATH=$PATH:$HOME/.cargo/bin
@@ -144,7 +144,7 @@ jobs:
         if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
         exit $OUT
       displayName: 'Regression test: pkg_fs works globally and when installed locally'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
     - script: |
         export PATH=$PATH:$HOME/.cargo/bin
@@ -172,7 +172,7 @@ jobs:
         if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
         exit $OUT
       displayName: 'Regression test: manifest validation rejects invalid manifests'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
 trigger:
   branches:
