@@ -57,8 +57,8 @@ jobs:
       displayName: 'Regression test: build wapm'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
-      - script: |
-        curl https://get.wasmer.io -sSfL | sh
+    - script: |
+      curl https://get.wasmer.io -sSfL | sh
       displayName: 'Regression test: install wasmer'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
