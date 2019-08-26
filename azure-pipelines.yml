@@ -52,13 +52,13 @@ jobs:
       displayName: Check
 
     # Regression tests
-    - script: |
-      cargo build --verbose
+    - bash: |
+        cargo build --verbose
       displayName: 'Regression test: build wapm'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
-    - script: |
-      curl https://get.wasmer.io -sSfL | sh
+    - bash: |
+        curl https://get.wasmer.io -sSfL | sh
       displayName: 'Regression test: install wasmer'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
