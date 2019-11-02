@@ -3,44 +3,61 @@ use crate::constants;
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
+use license_exprs;
 use semver::Version;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-pub static MAX_PACKAGE_NAME_LENGTH: usize = 50;
+pub static MAX_NAME_LENGTH: usize = 50;
 
 #[derive(Debug, Fail)]
-pub enum PackageNameError {
+pub enum NameError {
     #[fail(
-        display = "Package name, \"{}\", is too long, name must be {} characters or fewer",
+        display = "The name \"{}\" is too long. It must be {} characters or fewer",
         _0, _1
     )]
     NameTooLong(String, usize),
     #[fail(
-        display = "Package name, \"{}\", contains invalid characters.  Please use alpha-numeric characters, '-', and '_'",
+        display = "The name \"{}\" contains invalid characters. Please use alpha-numeric characters, '-', and '_'",
         _0
     )]
     InvalidCharacters(String),
 }
 
 /// Checks whether a given package name is acceptable or not
-pub fn validate_package_name(package_name: &str) -> Result<(), PackageNameError> {
-    if package_name.len() > MAX_PACKAGE_NAME_LENGTH {
-        return Err(PackageNameError::NameTooLong(
-            package_name.to_string(),
-            MAX_PACKAGE_NAME_LENGTH,
-        ));
+pub fn validate_name(name: &str) -> Result<String, NameError> {
+    if name.len() > MAX_NAME_LENGTH {
+        return Err(NameError::NameTooLong(name.to_string(), MAX_NAME_LENGTH));
     }
 
     let re = regex::Regex::new("^[-a-zA-Z0-9_]+").unwrap();
 
-    if !re.is_match(package_name) {
-        return Err(PackageNameError::InvalidCharacters(
-            package_name.to_string(),
-        ));
+    if !re.is_match(name) {
+        return Err(NameError::InvalidCharacters(name.to_string()));
     }
 
-    Ok(())
+    Ok(name.to_owned())
+}
+
+#[derive(Debug, Fail)]
+pub enum LicenseError {
+    #[fail(display = "\"{}\" is not a valid SPDX license", _0)]
+    UnknownLicenseId(String),
+    #[fail(display = "License should be a valid SPDX license expression (without \"LicenseRef\")")]
+    InvalidStructure(),
+}
+
+/// Checks whether a given package name is acceptable or not
+pub fn validate_license(license: &str) -> Result<String, LicenseError> {
+    match license_exprs::validate_license_expr(license) {
+        Ok(_) => Ok(license.to_owned()),
+        Err(license_exprs::ParseError::UnknownLicenseId(word)) => {
+            Err(LicenseError::UnknownLicenseId(word.to_owned()))
+        }
+        Err(license_exprs::ParseError::InvalidStructure(_)) => {
+            Err(LicenseError::InvalidStructure())
+        }
+    }
 }
 
 #[derive(GraphQLQuery)]
