@@ -242,7 +242,6 @@ Press ^C at any time to quit."
                 }
             }
             all_modules.push(module);
-            // curr_module = Module {name: "".to_owned(), source: "".to_owned(), abi: None };
         }
         manifest.module = if all_modules.is_empty() {
             None
@@ -254,8 +253,6 @@ Press ^C at any time to quit."
         } else {
             Some(all_commands)
         };
-
-        // my_string.parse::<i32>()
     }
 
     let print_text = if force_yes {
@@ -269,7 +266,6 @@ Press ^C at any time to quit."
         manifest.base_directory_path.to_str().unwrap(),
         manifest.to_string()?
     );
-    // init_manifest(dir.clone(), package_name)?;
 
     if force_yes
         || Confirmation::new()
