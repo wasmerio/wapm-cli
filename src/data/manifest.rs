@@ -144,9 +144,13 @@ impl Manifest {
         Ok(toml::to_string(self)?)
     }
 
+    pub fn manifest_path(&self) -> PathBuf {
+        self.base_directory_path.join(MANIFEST_FILE_NAME)
+    }
+
     pub fn save(&self) -> Result<(), failure::Error> {
         let manifest_string = self.to_string()?;
-        let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
+        let manifest_path = self.manifest_path();
         fs::write(manifest_path, &manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())

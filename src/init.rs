@@ -263,7 +263,7 @@ Press ^C at any time to quit."
     println!(
         "\n{} {}:\n\n{}\n",
         print_text,
-        manifest.base_directory_path.to_str().unwrap(),
+        manifest.manifest_path().to_str().unwrap(),
         manifest.to_string()?
     );
 
