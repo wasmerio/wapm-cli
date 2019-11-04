@@ -13,17 +13,29 @@ pub enum Abi {
     Wasi,
 }
 
+impl Abi {
+    pub fn to_str(&self) -> &str {
+        match self {
+            Abi::Emscripten => "emscripten",
+            Abi::Wasi => "wasi",
+            Abi::None => "generic",
+        }
+    }
+    pub fn is_none(&self) -> bool {
+        return self == &Abi::None;
+    }
+    pub fn from_str(name: &str) -> Self {
+        match name.to_lowercase().as_ref() {
+            "emscripten" => Abi::Emscripten,
+            "wasi" => Abi::Wasi,
+            _ => Abi::None,
+        }
+    }
+}
+
 impl fmt::Display for Abi {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Abi::Emscripten => "emscripten",
-                Abi::Wasi => "wasi",
-                Abi::None => "generic",
-            }
-        )
+        write!(f, "{}", self.to_str())
     }
 }
 

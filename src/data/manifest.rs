@@ -24,7 +24,11 @@ pub struct Package {
     pub homepage: Option<String>,
     #[serde(rename = "wasmer-extra-flags")]
     pub wasmer_extra_flags: Option<String>,
-    #[serde(rename = "disable-command-rename", default)]
+    #[serde(
+        rename = "disable-command-rename",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
     pub disable_command_rename: bool,
 }
 
@@ -41,10 +45,11 @@ pub struct Command {
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
-    #[serde(default = "Abi::default")]
+    #[serde(default = "Abi::default", skip_serializing_if = "Abi::is_none")]
     pub abi: Abi,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub interfaces: Option<HashMap<String, String>>,
 }
 
@@ -60,8 +65,8 @@ pub struct Module {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
     pub package: Package,
-    pub module: Option<Vec<Module>>,
     pub dependencies: Option<HashMap<String, String>>,
+    pub module: Option<Vec<Module>>,
     pub command: Option<Vec<Command>>,
     /// Of the form Guest -> Host path
     pub fs: Option<HashMap<String, PathBuf>>,
@@ -135,9 +140,17 @@ impl Manifest {
         dependencies.remove(&dependency_name);
     }
 
+    pub fn to_string(&self) -> Result<String, failure::Error> {
+        Ok(toml::to_string(self)?)
+    }
+
+    pub fn manifest_path(&self) -> PathBuf {
+        self.base_directory_path.join(MANIFEST_FILE_NAME)
+    }
+
     pub fn save(&self) -> Result<(), failure::Error> {
-        let manifest_string = toml::to_string(self)?;
-        let manifest_path = self.base_directory_path.join(MANIFEST_FILE_NAME);
+        let manifest_string = self.to_string()?;
+        let manifest_path = self.manifest_path();
         fs::write(manifest_path, &manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
@@ -172,6 +185,25 @@ pub enum ValidationError {
     MissingABI(String, String),
     #[fail(display = "missing module {} in manifest used by command {}", _1, _0)]
     MissingModuleForCommand(String, String),
+}
+
+#[cfg(test)]
+mod serialization_tests {
+    use crate::data::manifest::Manifest;
+
+    #[test]
+    fn get_manifest() {
+        let wapm_toml = toml! {
+            [package]
+            name = "test"
+            version = "1.0.0"
+            repository = "test.git"
+            homepage = "test.com"
+            description = "The best package."
+        };
+        let manifest: Manifest = wapm_toml.try_into().unwrap();
+        assert_eq!(false, manifest.package.disable_command_rename);
+    }
 }
 
 #[cfg(test)]
