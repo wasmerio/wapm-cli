@@ -34,18 +34,10 @@ description = ""
 }
 
 pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std::io::Error> {
-    let mut input = Input::<String>::new().with_prompt(prompt);
-    let value = if let Some(v) = default {
-        Input::<String>::new()
-            .with_prompt(prompt)
-            .default(v)
-            .interact()?
-    } else {
-        Input::<String>::new()
-            .with_prompt(prompt)
-            .default(default.unwrap_or_default())
-            .interact()?
-    };
+    let value = Input::<String>::new()
+        .with_prompt(prompt)
+        .default(default.unwrap_or_default())
+        .interact()?;
     if value.is_empty() {
         return Ok(None);
     }
@@ -64,7 +56,7 @@ where
 {
     loop {
         let input = ask(prompt, default.clone())?;
-        let validated = validator(&input.unwrap_or("".to_owned()));
+        let validated = validator(&input.unwrap_or_default());
         match validated {
             Err(e) => {
                 println!("{}", e);
@@ -84,9 +76,6 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
 }
 
 pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
-    if command_names == "" {
-        return Ok(vec![]);
-    }
     command_names
         .split_whitespace()
         .map(util::validate_name)
@@ -112,7 +101,6 @@ pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
                     .file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .to_owned()
                     .to_string(),
                 description: "".to_owned(),
                 version: Version::parse("1.0.0").unwrap(),
@@ -128,7 +116,7 @@ pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
             dependencies: None,
             module: Some(vec![Module {
                 name: "entry".to_owned(),
-                source: "entry.wasm".to_owned().into(),
+                source: "entry.wasm".into(),
                 abi: Abi::default(),
                 interfaces: None,
             }]),
@@ -157,7 +145,7 @@ Press ^C at any time to quit."
             Version::parse,
         )?;
         manifest.package.description =
-            ask("Description", Some(manifest.package.description))?.unwrap_or("".to_owned());
+            ask("Description", Some(manifest.package.description))?.unwrap_or_default();
         manifest.package.repository = ask("Repository", manifest.package.repository)?;
         // author = ask("Author", &author)?;
         manifest.package.license = Some(ask_until_valid(
@@ -168,7 +156,7 @@ Press ^C at any time to quit."
         // Let's reset the modules
         let mut all_modules: Vec<Module> = vec![];
         let mut all_commands: Vec<Command> = vec![];
-        let manifest_modules = manifest.module.unwrap_or(vec![]);
+        let manifest_modules = manifest.module.unwrap_or_default();
         loop {
             let current_index = all_modules.len();
             println!("Enter the data for the Module ({})", current_index + 1);
@@ -187,7 +175,7 @@ Press ^C at any time to quit."
             };
             module.source = ask_until_valid(
                 " - Source (path)",
-                Some(module.source.to_string_lossy().to_owned().to_string()),
+                Some(module.source.to_string_lossy().to_string()),
                 validate_wasm_source,
             )?;
             if module.source.to_string_lossy() == "none" {
@@ -198,7 +186,6 @@ Press ^C at any time to quit."
                 .file_stem()
                 .unwrap()
                 .to_string_lossy()
-                .to_owned()
                 .to_string();
             module.name = ask_until_valid(
                 " - Name",

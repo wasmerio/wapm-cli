@@ -28,7 +28,7 @@ impl Abi {
         match name.to_lowercase().as_ref() {
             "emscripten" => Abi::Emscripten,
             "wasi" => Abi::Wasi,
-            _ | "none" => Abi::None,
+            _ => Abi::None,
         }
     }
 }
