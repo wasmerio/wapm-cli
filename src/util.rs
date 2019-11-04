@@ -54,9 +54,7 @@ pub fn validate_license(license: &str) -> Result<String, LicenseError> {
         Err(license_exprs::ParseError::UnknownLicenseId(word)) => {
             Err(LicenseError::UnknownLicenseId(word.to_owned()))
         }
-        Err(license_exprs::ParseError::InvalidStructure(_)) => {
-            Err(LicenseError::InvalidStructure())
-        }
+        Err(license_exprs::ParseError::InvalidStructure(_)) => Err(LicenseError::InvalidStructure()),
     }
 }
 
