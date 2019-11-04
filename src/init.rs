@@ -43,7 +43,7 @@ pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std:
     } else {
         Input::<String>::new()
             .with_prompt(prompt)
-            .default("".to_owned())
+            .default(default.unwrap_or_default())
             .interact()?
     };
     if value.is_empty() {
@@ -83,11 +83,11 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
     return Err("The module source path must have a .wasm extension".to_owned());
 }
 
-pub fn validate_commands(command_names: &str) -> Result<String, util::NameError> {
+pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
     if command_names == "" {
-        return Ok(command_names.to_owned());
+        return Ok(vec![]);
     }
-    util::validate_name(command_names)
+    command_names.split_whitespace().map(util::validate_name).collect()
 }
 
 pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
@@ -165,22 +165,22 @@ Press ^C at any time to quit."
         // Let's reset the modules
         let mut all_modules: Vec<Module> = vec![];
         let mut all_commands: Vec<Command> = vec![];
+        let manifest_modules = manifest.module.unwrap_or(vec![]);
         loop {
             let current_index = all_modules.len();
             println!("Enter the data for the Module ({})", current_index + 1);
-            let mut module = if current_index == 0 {
-                Module {
-                    name: "entry".to_owned(),
-                    source: PathBuf::from("entry.wasm"),
-                    abi: Abi::default(),
-                    interfaces: None,
+            let mut module = {
+                // We take the data from the current manifest modules
+                if manifest_modules.len() > current_index {
+                    manifest_modules[current_index].clone()
                 }
-            } else {
-                Module {
-                    name: "".to_owned(),
-                    source: PathBuf::from("none"),
-                    abi: Abi::default(),
-                    interfaces: None,
+                else {
+                    Module {
+                        name: "".to_owned(),
+                        source: PathBuf::from("none"),
+                        abi: Abi::default(),
+                        interfaces: None,
+                    }
                 }
             };
             module.source = ask_until_valid(
@@ -203,12 +203,17 @@ Press ^C at any time to quit."
                 Some(default_module_name.clone()),
                 util::validate_name,
             )?;
+            let default_module_abi = match module.abi {
+                Abi::None => 0,
+                Abi::Wasi => 1,
+                Abi::Emscripten => 2,
+            };
             let (abi, interfaces): (Abi, Option<HashMap<String, String>>) = match Select::new()
                 .with_prompt(" - ABI")
                 .item("None")
                 .item("WASI")
                 .item("Emscripten")
-                .default(0)
+                .default(default_module_abi)
                 .interact()?
             {
                 1 => (
@@ -226,19 +231,22 @@ Press ^C at any time to quit."
             module.abi = abi;
             module.interfaces = interfaces;
             // We ask for commands if it has an Abi
-            if module.abi == Abi::Wasi || module.abi == Abi::Emscripten {
-                let commands = ask_until_valid(
+            if !module.abi.is_none() {
+                let module_command_strings = ask_until_valid(
                     " - Commmands (space separated)",
                     Some(default_module_name.clone()),
                     validate_commands,
                 )?;
-                if !commands.is_empty() {
-                    all_commands.push(Command {
-                        name: commands,
-                        module: module.name.clone(),
-                        main_args: None,
-                        package: None,
+                if !module_command_strings.is_empty() {
+                    let module_commands = module_command_strings.into_iter().map(|command_string| {
+                        Command {
+                            name: command_string,
+                            module: module.name.clone(),
+                            main_args: None,
+                            package: None,
+                        }
                     });
+                    all_commands.extend(module_commands);
                 }
             }
             all_modules.push(module);
@@ -260,10 +268,11 @@ Press ^C at any time to quit."
     } else {
         "About to write to"
     };
+
     println!(
         "\n{} {}:\n\n{}\n",
         print_text,
-        manifest.manifest_path().to_str().unwrap(),
+        manifest.manifest_path().canonicalize()?.to_string_lossy(),
         manifest.to_string()?
     );
 

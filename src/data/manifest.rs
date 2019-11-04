@@ -188,6 +188,25 @@ pub enum ValidationError {
 }
 
 #[cfg(test)]
+mod serialization_tests {
+    use crate::data::manifest::Manifest;
+
+    #[test]
+    fn get_manifest() {
+        let wapm_toml = toml! {
+            [package]
+            name = "test"
+            version = "1.0.0"
+            repository = "test.git"
+            homepage = "test.com"
+            description = "The best package."
+        };
+        let manifest: Manifest = wapm_toml.try_into().unwrap();
+        assert_eq!(false, manifest.package.disable_command_rename);
+    }
+}
+
+#[cfg(test)]
 mod command_tests {
     use crate::data::manifest::Manifest;
 

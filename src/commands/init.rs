@@ -4,7 +4,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct InitOpt {
-    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
+    /// Agree to all prompts. Useful for non-interactive uses
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
 }
