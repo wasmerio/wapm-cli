@@ -111,9 +111,9 @@ pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
                     .as_path()
                     .file_name()
                     .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_owned(),
+                    .to_string_lossy()
+                    .to_owned()
+                    .to_string(),
                 description: "".to_owned(),
                 version: Version::parse("1.0.0").unwrap(),
                 repository: None,
@@ -187,19 +187,19 @@ Press ^C at any time to quit."
             };
             module.source = ask_until_valid(
                 " - Source (path)",
-                Some(module.source.to_str().unwrap().to_owned()),
+                Some(module.source.to_string_lossy().to_owned().to_string()),
                 validate_wasm_source,
             )?;
-            if module.source.to_str().unwrap() == "none" {
+            if module.source.to_string_lossy() == "none" {
                 break;
             }
             // Let's try to guess the name based on the file path
             let default_module_name = Path::new(&module.source)
                 .file_stem()
                 .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned();
+                .to_string_lossy()
+                .to_owned()
+                .to_string();
             module.name = ask_until_valid(
                 " - Name",
                 Some(default_module_name.clone()),
