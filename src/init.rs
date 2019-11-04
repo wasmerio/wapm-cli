@@ -87,7 +87,10 @@ pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameE
     if command_names == "" {
         return Ok(vec![]);
     }
-    command_names.split_whitespace().map(util::validate_name).collect()
+    command_names
+        .split_whitespace()
+        .map(util::validate_name)
+        .collect()
 }
 
 pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
@@ -173,8 +176,7 @@ Press ^C at any time to quit."
                 // We take the data from the current manifest modules
                 if manifest_modules.len() > current_index {
                     manifest_modules[current_index].clone()
-                }
-                else {
+                } else {
                     Module {
                         name: "".to_owned(),
                         source: PathBuf::from("none"),
@@ -238,14 +240,15 @@ Press ^C at any time to quit."
                     validate_commands,
                 )?;
                 if !module_command_strings.is_empty() {
-                    let module_commands = module_command_strings.into_iter().map(|command_string| {
-                        Command {
-                            name: command_string,
-                            module: module.name.clone(),
-                            main_args: None,
-                            package: None,
-                        }
-                    });
+                    let module_commands =
+                        module_command_strings
+                            .into_iter()
+                            .map(|command_string| Command {
+                                name: command_string,
+                                module: module.name.clone(),
+                                main_args: None,
+                                package: None,
+                            });
                     all_commands.extend(module_commands);
                 }
             }
