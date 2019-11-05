@@ -2,7 +2,8 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::migrate::{
-    convert_lockfilev2_to_v3, fix_up_v1_package_names, LockfileVersion,
+    convert_lockfile_v2_to_latest, convert_lockfile_v3_to_v4, fix_up_v1_package_names,
+    LockfileVersion,
 };
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
@@ -26,6 +27,10 @@ pub enum LockfileError {
     CommandPackageVersionParseError(Error),
     #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
     InvalidOrMissingVersion,
+    #[fail(
+        display = "Lockfile version is too high, update wapm or delete `wapm.lock` and try again."
+    )]
+    VersionTooHigh,
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -58,14 +63,18 @@ impl LockfileResult {
             Ok(lockfile_version) => match lockfile_version {
                 LockfileVersion::V1(mut lockfile_v1) => {
                     fix_up_v1_package_names(&mut lockfile_v1);
-                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    let lockfile_latest = convert_lockfile_v2_to_latest(lockfile_v1, directory);
+                    LockfileResult::Lockfile(lockfile_latest)
                 }
                 LockfileVersion::V2(lockfile_v2) => {
-                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v2);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    let lockfile_latest = convert_lockfile_v2_to_latest(lockfile_v2, directory);
+                    LockfileResult::Lockfile(lockfile_latest)
                 }
-                LockfileVersion::V3(lockfile_v3) => LockfileResult::Lockfile(lockfile_v3),
+                LockfileVersion::V3(lockfile_v3) => {
+                    let lockfile_v4 = convert_lockfile_v3_to_v4(lockfile_v3, directory);
+                    LockfileResult::Lockfile(lockfile_v4)
+                }
+                LockfileVersion::V4(lockfile_v4) => LockfileResult::Lockfile(lockfile_v4),
             },
             Err(e) => LockfileResult::LockfileError(e),
         }

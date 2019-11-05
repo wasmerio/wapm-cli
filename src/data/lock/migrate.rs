@@ -1,37 +1,67 @@
+//! Code for migrating between Lockfile versions
+//!
+//! Lock file versions are stored as the first line in the lockfile, of the form:
+//! `# Lockfile vN` where `N` is 1 or more digits.
+
 use crate::data::lock::lockfile::{Lockfile, LockfileV2};
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::{LockfileModule, LockfileModuleV2};
 use crate::dataflow::lockfile_packages::LockfileError;
 use crate::dataflow::normalize_global_namespace_package_name;
 
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+/// All the lockfile versions
 pub enum LockfileVersion {
     V1(LockfileV2),
     V2(LockfileV2),
     V3(Lockfile),
+    V4(Lockfile),
+}
+
+lazy_static! {
+    static ref VER_NUM_RE: Regex = Regex::new(r"^# Lockfile v(\d+)$").unwrap();
 }
 
 impl LockfileVersion {
     pub fn from_lockfile_string(raw_string: &str) -> Result<Self, LockfileError> {
-        match raw_string {
-            _ if raw_string.starts_with("# Lockfile v1") => {
-                let lockfile = toml::from_str::<LockfileV2>(&raw_string)
+        let first_line = raw_string
+            .lines()
+            .next()
+            .ok_or(LockfileError::InvalidOrMissingVersion)?;
+        let lockfile_version = (*VER_NUM_RE)
+            .captures_iter(first_line)
+            .map(|captures| captures[1].parse::<usize>())
+            .next()
+            .ok_or(LockfileError::InvalidOrMissingVersion)?
+            .map_err(|_| LockfileError::InvalidOrMissingVersion)?;
+
+        match lockfile_version {
+            1 => {
+                let lockfile_v1 = toml::from_str::<LockfileV2>(raw_string)
                     .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
-                Ok(LockfileVersion::V1(lockfile))
+                Ok(LockfileVersion::V1(lockfile_v1))
             }
-            _ if raw_string.starts_with("# Lockfile v2") => {
-                let lockfile = toml::from_str::<LockfileV2>(&raw_string)
+            2 => {
+                let lockfile_v2 = toml::from_str::<LockfileV2>(raw_string)
                     .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
-                Ok(LockfileVersion::V2(lockfile))
+                Ok(LockfileVersion::V2(lockfile_v2))
             }
-            _ if raw_string.starts_with("# Lockfile v3") => {
-                let lockfile = toml::from_str::<Lockfile>(&raw_string)
+            3 => {
+                let lockfile_v3 = toml::from_str::<Lockfile>(raw_string)
                     .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
-                Ok(LockfileVersion::V3(lockfile))
+                Ok(LockfileVersion::V3(lockfile_v3))
             }
-            _ => Err(LockfileError::InvalidOrMissingVersion),
+            4 => {
+                let lockfile_v4 = toml::from_str::<Lockfile>(raw_string)
+                    .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
+                Ok(LockfileVersion::V4(lockfile_v4))
+            }
+            0 => Err(LockfileError::InvalidOrMissingVersion),
+            _ => Err(LockfileError::VersionTooHigh),
         }
     }
 }
@@ -95,6 +125,36 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
         modules,
         commands: lockfile.commands,
     }
+}
+
+pub fn convert_lockfile_v3_to_v4(mut lockfile: Lockfile, lock_dir: &Path) -> Lockfile {
+    for (_, version_map) in lockfile.modules.iter_mut() {
+        for (_, module_map) in version_map.iter_mut() {
+            for (_, module_data) in module_map.iter_mut() {
+                let root_dir = Path::new(&module_data.root);
+                module_data.root = root_dir
+                    .strip_prefix(lock_dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
+
+                let entry_dir = Path::new(&module_data.entry);
+                module_data.entry = entry_dir
+                    .strip_prefix(lock_dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
+            }
+        }
+    }
+    lockfile
+}
+
+pub fn convert_lockfile_v2_to_latest(lockfile: LockfileV2, lock_dir: &Path) -> Lockfile {
+    let lockfile = convert_lockfilev2_to_v3(lockfile);
+    let lockfile = convert_lockfile_v3_to_v4(lockfile, lock_dir);
+
+    lockfile
 }
 
 #[cfg(test)]
