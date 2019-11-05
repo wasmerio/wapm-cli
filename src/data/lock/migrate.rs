@@ -3,9 +3,9 @@
 //! Lock file versions are stored as the first line in the lockfile, of the form:
 //! `# Lockfile vN` where `N` is 1 or more digits.
 
-use crate::data::lock::lockfile::{Lockfile, LockfileV2};
+use crate::data::lock::lockfile::{LockfileV2, LockfileV3, LockfileV4};
 use crate::data::lock::lockfile_command::LockfileCommand;
-use crate::data::lock::lockfile_module::{LockfileModule, LockfileModuleV2};
+use crate::data::lock::lockfile_module::{LockfileModuleV2, LockfileModuleV3, LockfileModuleV4};
 use crate::dataflow::lockfile_packages::LockfileError;
 use crate::dataflow::normalize_global_namespace_package_name;
 
@@ -18,8 +18,8 @@ use std::path::{Path, PathBuf};
 pub enum LockfileVersion {
     V1(LockfileV2),
     V2(LockfileV2),
-    V3(Lockfile),
-    V4(Lockfile),
+    V3(LockfileV3),
+    V4(LockfileV4),
 }
 
 lazy_static! {
@@ -51,12 +51,12 @@ impl LockfileVersion {
                 Ok(LockfileVersion::V2(lockfile_v2))
             }
             3 => {
-                let lockfile_v3 = toml::from_str::<Lockfile>(raw_string)
+                let lockfile_v3 = toml::from_str::<LockfileV3>(raw_string)
                     .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
                 Ok(LockfileVersion::V3(lockfile_v3))
             }
             4 => {
-                let lockfile_v4 = toml::from_str::<Lockfile>(raw_string)
+                let lockfile_v4 = toml::from_str::<LockfileV4>(raw_string)
                     .map_err(|e| LockfileError::LockfileTomlParseError(e.to_string()))?;
                 Ok(LockfileVersion::V4(lockfile_v4))
             }
@@ -92,14 +92,14 @@ pub fn fix_up_v1_package_names(lockfile: &mut LockfileV2) {
         .collect();
 }
 
-pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
+pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> LockfileV3 {
     let mut modules: BTreeMap<String, _> = Default::default();
     for (k1, version_map) in lockfile.modules.into_iter() {
         let mut ver_map: BTreeMap<semver::Version, BTreeMap<_, _>> = Default::default();
         for (k2, module_map) in version_map.into_iter() {
-            let mut name_map: BTreeMap<String, LockfileModule> = Default::default();
+            let mut name_map: BTreeMap<String, LockfileModuleV3> = Default::default();
             for (k3, module_data) in module_map.into_iter() {
-                let module = LockfileModule {
+                let module = LockfileModuleV3 {
                     name: module_data.name,
                     package_version: module_data.package_version,
                     package_name: module_data.package_name,
@@ -121,46 +121,61 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> Lockfile {
         }
         modules.insert(k1, ver_map);
     }
-    Lockfile {
+    LockfileV3 {
         modules,
         commands: lockfile.commands,
     }
 }
 
-pub fn convert_lockfile_v3_to_v4(mut lockfile: Lockfile, lock_dir: &Path) -> Lockfile {
-    for (_, version_map) in lockfile.modules.iter_mut() {
-        for (_, module_map) in version_map.iter_mut() {
-            for (_, module_data) in module_map.iter_mut() {
-                let root_dir = Path::new(&module_data.root);
-                module_data.root = root_dir
-                    .strip_prefix(lock_dir)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+pub fn convert_lockfilev3_to_v4(lockfile: LockfileV3, directory: &Path) -> LockfileV4 {
+    // TODO: replace string literal with constant
+    let dir_prefix = directory.join("wapm_packages");
 
-                let entry_dir = Path::new(&module_data.entry);
-                module_data.entry = entry_dir
-                    .strip_prefix(lock_dir)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+    let mut modules: BTreeMap<String, _> = Default::default();
+    for (k1, version_map) in lockfile.modules.into_iter() {
+        let mut ver_map: BTreeMap<semver::Version, BTreeMap<_, _>> = Default::default();
+        for (k2, module_map) in version_map.into_iter() {
+            let mut name_map: BTreeMap<String, LockfileModuleV4> = Default::default();
+            for (k3, module_data) in module_map.into_iter() {
+                let package_path = format!(
+                    "{}@{}",
+                    &module_data.package_name, &module_data.package_version
+                );
+                let module = LockfileModuleV4 {
+                    name: module_data.name,
+                    package_version: module_data.package_version,
+                    package_name: module_data.package_name,
+                    resolved: module_data.resolved,
+                    resolved_source: module_data.source,
+                    abi: module_data.abi,
+                    source: {
+                        let full_prefix = dir_prefix.join(&package_path);
+                        let path = Path::new(&module_data.entry);
+                        path.strip_prefix(&full_prefix)
+                            .expect("Corrupt data in Lockfile, please delete it and try again")
+                            .to_string_lossy()
+                            .to_string()
+                    },
+                    package_path,
+                    prehashed_module_key: module_data.prehashed_module_key,
+                };
+                name_map.insert(k3, module);
             }
+            ver_map.insert(k2, name_map);
         }
+        modules.insert(k1, ver_map);
     }
-    lockfile
-}
-
-pub fn convert_lockfile_v2_to_latest(lockfile: LockfileV2, lock_dir: &Path) -> Lockfile {
-    let lockfile = convert_lockfilev2_to_v3(lockfile);
-    let lockfile = convert_lockfile_v3_to_v4(lockfile, lock_dir);
-
-    lockfile
+    LockfileV4 {
+        modules,
+        commands: lockfile.commands,
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::data::lock::lockfile::{Lockfile, LockfileV2};
+    use crate::data::lock::lockfile::{LockfileV2, LockfileV3, LockfileV4};
+    use std::path::Path;
 
     #[test]
     fn test_fix_up_v1_lockfile() {
@@ -247,11 +262,61 @@ mod test {
             is_top_level_dependency = true
         };
 
-        let expected_v3_lockfile: Lockfile = toml::from_str(&v3_lockfile_toml.to_string()).unwrap();
+        let expected_v3_lockfile: LockfileV3 =
+            toml::from_str(&v3_lockfile_toml.to_string()).unwrap();
 
         fix_up_v1_package_names(&mut lockfile_v1);
         let converted_lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
 
         assert_eq!(expected_v3_lockfile, converted_lockfile_v3);
+    }
+
+    #[test]
+    fn upgrade_to_v4() {
+        let directory = Path::new("/home/shiba/project");
+
+        let v3_lockfile_toml = toml! {
+            [modules."_/sqlite"."0.1.1".sqlite]
+            name = "sqlite"
+            package_version = "0.1.1"
+            package_name = "_/sqlite"
+            source = "registry+sqlite"
+            resolved = "https://registry-cdn.wapm.dev/packages/_/sqlite/sqlite-0.1.1.tar.gz"
+            abi = "emscripten"
+            entry = "/home/shiba/project/wapm_packages/_/sqlite@0.1.1/sqlite.wasm"
+            root = "/home/shiba/project/wapm_packages/_/sqlite@0.1.1"
+            [commands.sqlite]
+            name = "sqlite"
+            package_name = "_/sqlite"
+            package_version = "0.1.1"
+            module = "sqlite"
+            is_top_level_dependency = true
+        };
+
+        let v3_lockfile: LockfileV3 = toml::from_str(&v3_lockfile_toml.to_string()).unwrap();
+
+        let v4_lockfile_toml = toml! {
+            [modules."_/sqlite"."0.1.1".sqlite]
+            name = "sqlite"
+            package_version = "0.1.1"
+            package_name = "_/sqlite"
+            package_path = "_/sqlite@0.1.1"
+            resolved = "https://registry-cdn.wapm.dev/packages/_/sqlite/sqlite-0.1.1.tar.gz"
+            resolved_source = "registry+sqlite"
+            abi = "emscripten"
+            source = "sqlite.wasm"
+            [commands.sqlite]
+            name = "sqlite"
+            package_name = "_/sqlite"
+            package_version = "0.1.1"
+            module = "sqlite"
+            is_top_level_dependency = true
+        };
+
+        let v4_lockfile: LockfileV4 = toml::from_str(&v4_lockfile_toml.to_string()).unwrap();
+
+        let v4_lockfile_converted = convert_lockfilev3_to_v4(v3_lockfile, &directory);
+
+        assert_eq!(v4_lockfile, v4_lockfile_converted);
     }
 }

@@ -2,8 +2,7 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::migrate::{
-    convert_lockfile_v2_to_latest, convert_lockfile_v3_to_v4, fix_up_v1_package_names,
-    LockfileVersion,
+    convert_lockfilev2_to_v3, convert_lockfilev3_to_v4, fix_up_v1_package_names, LockfileVersion,
 };
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
@@ -59,24 +58,24 @@ impl LockfileResult {
             Ok(s) => s,
             Err(_) => return LockfileResult::NoLockfile,
         };
-        match LockfileVersion::from_lockfile_string(&source) {
-            Ok(lockfile_version) => match lockfile_version {
+        let mut lockfile_version = match LockfileVersion::from_lockfile_string(&source) {
+            Ok(lv) => lv,
+            Err(e) => return LockfileResult::LockfileError(e),
+        };
+        loop {
+            lockfile_version = match lockfile_version {
                 LockfileVersion::V1(mut lockfile_v1) => {
                     fix_up_v1_package_names(&mut lockfile_v1);
-                    let lockfile_latest = convert_lockfile_v2_to_latest(lockfile_v1, directory);
-                    LockfileResult::Lockfile(lockfile_latest)
+                    LockfileVersion::V2(lockfile_v1)
                 }
                 LockfileVersion::V2(lockfile_v2) => {
-                    let lockfile_latest = convert_lockfile_v2_to_latest(lockfile_v2, directory);
-                    LockfileResult::Lockfile(lockfile_latest)
+                    LockfileVersion::V3(convert_lockfilev2_to_v3(lockfile_v2))
                 }
                 LockfileVersion::V3(lockfile_v3) => {
-                    let lockfile_v4 = convert_lockfile_v3_to_v4(lockfile_v3, directory);
-                    LockfileResult::Lockfile(lockfile_v4)
+                    LockfileVersion::V4(convert_lockfilev3_to_v4(lockfile_v3, directory))
                 }
-                LockfileVersion::V4(lockfile_v4) => LockfileResult::Lockfile(lockfile_v4),
-            },
-            Err(e) => LockfileResult::LockfileError(e),
+                LockfileVersion::V4(lockfile_v4) => return LockfileResult::Lockfile(lockfile_v4),
+            }
         }
     }
 }
@@ -201,7 +200,7 @@ impl<'a> LockfilePackages<'a> {
             .iter()
             .filter_map(|(key, data)| {
                 if data.modules.iter().any(|module| {
-                    let path = directory.as_ref().join(&module.entry);
+                    let path = directory.as_ref().join(&module.source);
                     !path.exists()
                 }) {
                     Some(key.clone())
