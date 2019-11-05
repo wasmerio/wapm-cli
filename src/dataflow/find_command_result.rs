@@ -99,10 +99,11 @@ impl From<LockfileError> for FindCommandResult {
 }
 
 impl FindCommandResult {
-    fn find_command_in_manifest_and_lockfile<S: AsRef<str>>(
+    fn find_command_in_manifest_and_lockfile<P: AsRef<Path>, S: AsRef<str>>(
         command_name: S,
         manifest: Manifest,
         lockfile: Lockfile,
+        directory: P,
     ) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
             Err(e) => e.into(),
@@ -142,11 +143,10 @@ impl FindCommandResult {
                         &lockfile_command.module,
                     ) {
                         Ok(lockfile_module) => {
-                            let path = PathBuf::from(&lockfile_module.entry);
-                            let root = PathBuf::from(&lockfile_module.root);
+                            let path = directory.as_ref().join(&lockfile_module.source);
                             FindCommandResult::CommandFound {
                                 source: path,
-                                manifest_dir: root,
+                                manifest_dir: directory.as_ref().to_path_buf(),
                                 args: lockfile_command.main_args.clone(),
                                 module_name: lockfile_module.name.clone(),
                                 prehashed_cache_key: lockfile
@@ -160,7 +160,7 @@ impl FindCommandResult {
         }
     }
 
-    fn find_command_in_lockfile<S: AsRef<str>>(command_name: S, lockfile: Lockfile) -> Self {
+    fn find_command_in_lockfile<P: AsRef<Path>, S: AsRef<str>>(command_name: S, lockfile: Lockfile, directory: P) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
             Ok(lockfile_command) => {
                 match lockfile.get_module(
@@ -169,11 +169,10 @@ impl FindCommandResult {
                     &lockfile_command.module,
                 ) {
                     Ok(lockfile_module) => {
-                        let path = PathBuf::from(&lockfile_module.entry);
-                        let root = PathBuf::from(&lockfile_module.root);
+                        let path = directory.as_ref().join(&lockfile_module.source);
                         FindCommandResult::CommandFound {
                             source: path,
-                            manifest_dir: root,
+                            manifest_dir: directory.as_ref().to_path_buf(),
                             args: lockfile_command.main_args.clone(),
                             module_name: lockfile_module.name.clone(),
                             prehashed_cache_key: lockfile
@@ -201,7 +200,7 @@ impl FindCommandResult {
             (ManifestResult::NoManifest, LockfileResult::NoLockfile) => {} // continue
             (ManifestResult::NoManifest, LockfileResult::Lockfile(l)) => {
                 debug!("Looking for local command in the lockfile");
-                return Self::find_command_in_lockfile(command_name, l);
+                return Self::find_command_in_lockfile(command_name, l, directory);
             }
             // the edge case of a manifest, but no lockfile would an invalid state. This function
             // should always be run after updating the lockfile with the latest manifest changes.
@@ -212,7 +211,7 @@ impl FindCommandResult {
             }
             (ManifestResult::Manifest(m), LockfileResult::Lockfile(l)) => {
                 debug!("Looking for local command in the manifest and lockfile");
-                return Self::find_command_in_manifest_and_lockfile(command_name, m, l);
+                return Self::find_command_in_manifest_and_lockfile(command_name, m, l, directory);
             }
         };
         FindCommandResult::CommandNotFound(command_name.as_ref().to_string())

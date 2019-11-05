@@ -2,7 +2,7 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::migrate::{
-    convert_lockfilev2_to_v3, fix_up_v1_package_names, LockfileVersion,
+    convert_lockfilev2_to_v3, convert_lockfilev3_to_v4, fix_up_v1_package_names, LockfileVersion,
 };
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
@@ -59,13 +59,19 @@ impl LockfileResult {
                 LockfileVersion::V1(mut lockfile_v1) => {
                     fix_up_v1_package_names(&mut lockfile_v1);
                     let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    let lockfile_v4 = convert_lockfilev3_to_v4(lockfile_v3);
+                    LockfileResult::Lockfile(lockfile_v4)
                 }
                 LockfileVersion::V2(lockfile_v2) => {
                     let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v2);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    let lockfile_v4 = convert_lockfilev3_to_v4(lockfile_v3);
+                    LockfileResult::Lockfile(lockfile_v4)
                 }
-                LockfileVersion::V3(lockfile_v3) => LockfileResult::Lockfile(lockfile_v3),
+                LockfileVersion::V3(lockfile_v3) => {
+                    let lockfile_v4 = convert_lockfilev3_to_v4(lockfile_v3);
+                    LockfileResult::Lockfile(lockfile_v4)
+                }
+                LockfileVersion::V4(lockfile_v4) => LockfileResult::Lockfile(lockfile_v4),
             },
             Err(e) => LockfileResult::LockfileError(e),
         }
@@ -192,7 +198,7 @@ impl<'a> LockfilePackages<'a> {
             .iter()
             .filter_map(|(key, data)| {
                 if data.modules.iter().any(|module| {
-                    let path = directory.as_ref().join(&module.entry);
+                    let path = directory.as_ref().join(&module.source);
                     !path.exists()
                 }) {
                     Some(key.clone())
