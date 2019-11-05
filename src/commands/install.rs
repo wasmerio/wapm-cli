@@ -17,7 +17,7 @@ pub struct InstallOpt {
     #[structopt(short = "g", long = "global")]
     global: bool,
     /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
-    #[structopt(long = "force-yes")]
+    #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
 }
 
