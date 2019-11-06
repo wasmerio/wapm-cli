@@ -76,7 +76,12 @@ enum Command {
 
     #[cfg(feature = "update-notifications")]
     #[structopt(name = "run-background-update-check")]
+    /// Run the background updater explicitly
     BackgroundUpdateCheck,
+
+    #[structopt(name = "add")]
+    /// Add packages to the manifest
+    Add(commands::AddOpt),
 }
 
 fn main() {
@@ -102,6 +107,7 @@ fn main() {
     // Only show the async check on certain commands
     let maybe_show_update_notification = match args {
         Command::Install(_)
+        | Command::Add(_)
         | Command::Run(_)
         | Command::Publish(_)
         | Command::Search(_)
@@ -119,6 +125,7 @@ fn main() {
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
+        Command::Add(add_options) => commands::add(add_options),
         Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
         Command::Search(search_options) => commands::search(search_options),
@@ -146,8 +153,8 @@ fn main() {
         }
     };
 
-    /// Exit the program, flushing stdout, stderr
-    /// and show pending notifications (if any)
+    // Exit the program, flushing stdout, stderr
+    // and show pending notifications (if any)
     {
         use std::io::Write;
         std::io::stdout().flush().unwrap();

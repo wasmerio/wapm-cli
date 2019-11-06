@@ -226,7 +226,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
             .map_err(Error::ResolveError)?;
     let installed_packages =
-        InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_packages)
+        InstalledPackages::install::<RegistryInstaller>(&directory, resolved_packages)
             .map_err(Error::InstallError)?;
     let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
         .map_err(Error::LockfileError)?;
@@ -307,7 +307,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(new_added_packages)
             .map_err(Error::ResolveError)?;
     let installed_manifest_packages =
-        InstalledPackages::install::<RegistryInstaller, _>(&directory, resolved_manifest_packages)
+        InstalledPackages::install::<RegistryInstaller>(&directory, resolved_manifest_packages)
             .map_err(Error::InstallError)?;
     let mut manifest_lockfile_data =
         LockfilePackages::from_installed_packages(&installed_manifest_packages)
