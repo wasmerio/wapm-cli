@@ -188,6 +188,9 @@ jobs:
         ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
         echo "GENERATED OUTPUT:"
         cat /tmp/init-and-add-out.txt
+        echo "ADJUSTING OUTPUT"
+        # removes the absolute path
+        tail -n +3 /tmp/init-and-add-out.txt > /tmp/init-and-add-out.txt
         echo "COMPARING..."
         diff -B end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
         export OUT=$?

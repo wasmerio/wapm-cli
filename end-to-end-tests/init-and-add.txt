@@ -1,4 +1,3 @@
-Wrote to /Users/mark/wapm-cli/wapm.toml:
 
 [package]
 name = "wapm-cli"
