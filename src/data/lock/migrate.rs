@@ -6,9 +6,9 @@
 use crate::data::lock::lockfile::{LockfileV2, LockfileV3, LockfileV4};
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::{LockfileModuleV2, LockfileModuleV3, LockfileModuleV4};
+use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::dataflow::lockfile_packages::LockfileError;
-use crate::dataflow::normalize_global_namespace_package_name
-use crate::data::manifest::{PACKAGES_DIR_NAME};
+use crate::dataflow::normalize_global_namespace_package_name;
 
 use lazy_static::lazy_static;
 use regex::Regex;
