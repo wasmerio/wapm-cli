@@ -194,13 +194,13 @@ impl<'a> LockfilePackages<'a> {
         self.packages.keys().cloned().collect()
     }
 
-    pub fn find_missing_packages<P: AsRef<Path>>(&self, directory: P) -> HashSet<PackageKey<'a>> {
+    pub fn find_missing_packages(&self, directory: &Path) -> HashSet<PackageKey<'a>> {
         let missing_packages: HashSet<PackageKey<'a>> = self
             .packages
             .iter()
             .filter_map(|(key, data)| {
                 if data.modules.iter().any(|module| {
-                    let path = directory.as_ref().join(&module.source);
+                    let path = module.get_canonical_source_path_from_lockfile_dir(directory.into());
                     !path.exists()
                 }) {
                     Some(key.clone())

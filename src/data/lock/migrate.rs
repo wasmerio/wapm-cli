@@ -7,7 +7,8 @@ use crate::data::lock::lockfile::{LockfileV2, LockfileV3, LockfileV4};
 use crate::data::lock::lockfile_command::LockfileCommand;
 use crate::data::lock::lockfile_module::{LockfileModuleV2, LockfileModuleV3, LockfileModuleV4};
 use crate::dataflow::lockfile_packages::LockfileError;
-use crate::dataflow::normalize_global_namespace_package_name;
+use crate::dataflow::normalize_global_namespace_package_name
+use crate::data::manifest::{PACKAGES_DIR_NAME};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -128,8 +129,7 @@ pub fn convert_lockfilev2_to_v3(lockfile: LockfileV2) -> LockfileV3 {
 }
 
 pub fn convert_lockfilev3_to_v4(lockfile: LockfileV3, directory: &Path) -> LockfileV4 {
-    // TODO: replace string literal with constant
-    let dir_prefix = directory.join("wapm_packages");
+    let dir_prefix = directory.join(PACKAGES_DIR_NAME);
 
     let mut modules: BTreeMap<String, _> = Default::default();
     for (k1, version_map) in lockfile.modules.into_iter() {

@@ -1,5 +1,5 @@
 use crate::abi::Abi;
-use crate::data::manifest::Module;
+use crate::data::manifest::{Module, PACKAGES_DIR_NAME};
 use crate::util;
 use semver::Version;
 use std::path::{Path, PathBuf};
@@ -117,5 +117,17 @@ impl LockfileModule {
             source: module.source.to_string_lossy().to_string(),
             prehashed_module_key: util::get_hashed_module_key(&wasm_module_full_path),
         }
+    }
+
+    /// Returns the full, absolute path to the WASM module
+    pub fn get_canonical_source_path_from_lockfile_dir(
+        &self,
+        mut lockfile_dir: PathBuf,
+    ) -> PathBuf {
+        lockfile_dir.push(PACKAGES_DIR_NAME);
+        lockfile_dir.push(&self.package_path);
+        lockfile_dir.push(&self.source);
+
+        lockfile_dir
     }
 }
