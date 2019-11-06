@@ -174,6 +174,33 @@ jobs:
       displayName: 'Regression test: manifest validation rejects invalid manifests'
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
+    - script: |
+        export PATH=$PATH:$HOME/.cargo/bin
+        export PATH=$PATH:$HOME/.wasmer/bin
+        export WAPM_DISABLE_COLOR=true
+        rm $WASMER_DIR/wapm.sqlite
+        rm $WASMER_DIR/globals/wapm.lock
+        rm -rf wapm_packages
+        rm wapm.toml
+        rm wapm.lock
+        chmod +x end-to-end-tests/init-and-add.sh
+        echo "RUNNING SCRIPT..."
+        ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
+        echo "GENERATED OUTPUT:"
+        cat /tmp/init-and-add-out.txt
+        echo "COMPARING..."
+        diff -B end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
+        export OUT=$?
+        if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
+        rm wapm.lock
+        rm wapm.toml
+        rm -rf wapm_packages
+        rm /tmp/init-and-add-out.txt
+        if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
+        exit $OUT
+      displayName: 'Regression test: Init a Manifest and Add some dependencies'
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+
 trigger:
   branches:
     include:
