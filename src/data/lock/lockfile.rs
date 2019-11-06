@@ -1,5 +1,7 @@
 use crate::data::lock::lockfile_command::LockfileCommand;
-use crate::data::lock::lockfile_module::{LockfileModule, LockfileModuleV2, LockfileModuleV3, LockfileModuleV4};
+use crate::data::lock::lockfile_module::{
+    LockfileModule, LockfileModuleV2, LockfileModuleV3, LockfileModuleV4,
+};
 use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use semver::Version;
 use std::collections::BTreeMap;
@@ -28,7 +30,6 @@ pub struct LockfileV3 {
     pub modules: ModuleMapV3, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMapV3, // CommandName -> Command
 }
-
 
 pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModuleV4>>>;
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
