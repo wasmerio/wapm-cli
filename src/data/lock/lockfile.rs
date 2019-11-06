@@ -1,5 +1,7 @@
 use crate::data::lock::lockfile_command::LockfileCommand;
-use crate::data::lock::lockfile_module::{LockfileModule, LockfileModuleV2};
+use crate::data::lock::lockfile_module::{
+    LockfileModule, LockfileModuleV2, LockfileModuleV3, LockfileModuleV4,
+};
 use crate::data::lock::{LOCKFILE_HEADER, LOCKFILE_NAME};
 use semver::Version;
 use std::collections::BTreeMap;
@@ -19,7 +21,17 @@ pub struct LockfileV2 {
     pub commands: CommandMapV2, // CommandName -> Command
 }
 
-pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModule>>>;
+pub type ModuleMapV3 = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModuleV3>>>;
+pub type CommandMapV3 = BTreeMap<String, LockfileCommand>;
+
+/// The latest Lockfile version
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct LockfileV3 {
+    pub modules: ModuleMapV3, // PackageName -> VersionNumber -> ModuleName -> Module
+    pub commands: CommandMapV3, // CommandName -> Command
+}
+
+pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModuleV4>>>;
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
 /// The latest Lockfile version
@@ -28,6 +40,10 @@ pub struct Lockfile {
     pub modules: ModuleMap, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMap, // CommandName -> Command
 }
+
+pub type LockfileV4 = Lockfile;
+pub type ModuleMapV4 = ModuleMap;
+pub type CommandMapV4 = CommandMap;
 
 impl<'a> Lockfile {
     /// Save the lockfile to the directory.

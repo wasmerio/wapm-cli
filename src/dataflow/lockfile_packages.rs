@@ -2,7 +2,7 @@ use crate::data::lock::lockfile::Lockfile;
 use crate::data::lock::lockfile_command::{Error, LockfileCommand};
 use crate::data::lock::lockfile_module::LockfileModule;
 use crate::data::lock::migrate::{
-    convert_lockfilev2_to_v3, fix_up_v1_package_names, LockfileVersion,
+    convert_lockfilev2_to_v3, convert_lockfilev3_to_v4, fix_up_v1_package_names, LockfileVersion,
 };
 use crate::data::lock::LOCKFILE_NAME;
 use crate::dataflow::installed_packages::InstalledPackages;
@@ -26,6 +26,10 @@ pub enum LockfileError {
     CommandPackageVersionParseError(Error),
     #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
     InvalidOrMissingVersion,
+    #[fail(
+        display = "Lockfile version is too high, update wapm or delete `wapm.lock` and try again."
+    )]
+    VersionTooHigh,
 }
 
 /// A ternary for a lockfile: Some, None, Error.
@@ -54,20 +58,24 @@ impl LockfileResult {
             Ok(s) => s,
             Err(_) => return LockfileResult::NoLockfile,
         };
-        match LockfileVersion::from_lockfile_string(&source) {
-            Ok(lockfile_version) => match lockfile_version {
+        let mut lockfile_version = match LockfileVersion::from_lockfile_string(&source) {
+            Ok(lv) => lv,
+            Err(e) => return LockfileResult::LockfileError(e),
+        };
+        loop {
+            lockfile_version = match lockfile_version {
                 LockfileVersion::V1(mut lockfile_v1) => {
                     fix_up_v1_package_names(&mut lockfile_v1);
-                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v1);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    LockfileVersion::V2(lockfile_v1)
                 }
                 LockfileVersion::V2(lockfile_v2) => {
-                    let lockfile_v3 = convert_lockfilev2_to_v3(lockfile_v2);
-                    LockfileResult::Lockfile(lockfile_v3)
+                    LockfileVersion::V3(convert_lockfilev2_to_v3(lockfile_v2))
                 }
-                LockfileVersion::V3(lockfile_v3) => LockfileResult::Lockfile(lockfile_v3),
-            },
-            Err(e) => LockfileResult::LockfileError(e),
+                LockfileVersion::V3(lockfile_v3) => {
+                    LockfileVersion::V4(convert_lockfilev3_to_v4(lockfile_v3, directory))
+                }
+                LockfileVersion::V4(lockfile_v4) => return LockfileResult::Lockfile(lockfile_v4),
+            }
         }
     }
 }
@@ -186,13 +194,13 @@ impl<'a> LockfilePackages<'a> {
         self.packages.keys().cloned().collect()
     }
 
-    pub fn find_missing_packages<P: AsRef<Path>>(&self, directory: P) -> HashSet<PackageKey<'a>> {
+    pub fn find_missing_packages(&self, directory: &Path) -> HashSet<PackageKey<'a>> {
         let missing_packages: HashSet<PackageKey<'a>> = self
             .packages
             .iter()
             .filter_map(|(key, data)| {
                 if data.modules.iter().any(|module| {
-                    let path = directory.as_ref().join(&module.entry);
+                    let path = module.get_canonical_source_path_from_lockfile_dir(directory.into());
                     !path.exists()
                 }) {
                     Some(key.clone())

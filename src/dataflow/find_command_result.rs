@@ -103,6 +103,7 @@ impl FindCommandResult {
         command_name: S,
         manifest: Manifest,
         lockfile: Lockfile,
+        directory: &Path,
     ) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
             Err(e) => e.into(),
@@ -142,11 +143,11 @@ impl FindCommandResult {
                         &lockfile_command.module,
                     ) {
                         Ok(lockfile_module) => {
-                            let path = PathBuf::from(&lockfile_module.entry);
-                            let root = PathBuf::from(&lockfile_module.root);
+                            let path = lockfile_module
+                                .get_canonical_source_path_from_lockfile_dir(directory.into());
                             FindCommandResult::CommandFound {
                                 source: path,
-                                manifest_dir: root,
+                                manifest_dir: PathBuf::from(directory),
                                 args: lockfile_command.main_args.clone(),
                                 module_name: lockfile_module.name.clone(),
                                 prehashed_cache_key: lockfile
@@ -160,7 +161,11 @@ impl FindCommandResult {
         }
     }
 
-    fn find_command_in_lockfile<S: AsRef<str>>(command_name: S, lockfile: Lockfile) -> Self {
+    fn find_command_in_lockfile<S: AsRef<str>>(
+        command_name: S,
+        lockfile: Lockfile,
+        directory: &Path,
+    ) -> Self {
         match lockfile.get_command(command_name.as_ref()) {
             Ok(lockfile_command) => {
                 match lockfile.get_module(
@@ -169,11 +174,11 @@ impl FindCommandResult {
                     &lockfile_command.module,
                 ) {
                     Ok(lockfile_module) => {
-                        let path = PathBuf::from(&lockfile_module.entry);
-                        let root = PathBuf::from(&lockfile_module.root);
+                        let path = lockfile_module
+                            .get_canonical_source_path_from_lockfile_dir(directory.into());
                         FindCommandResult::CommandFound {
                             source: path,
-                            manifest_dir: root,
+                            manifest_dir: PathBuf::from(directory),
                             args: lockfile_command.main_args.clone(),
                             module_name: lockfile_module.name.clone(),
                             prehashed_cache_key: lockfile
@@ -189,10 +194,7 @@ impl FindCommandResult {
         }
     }
 
-    pub fn find_command_in_directory<P: AsRef<Path>, S: AsRef<str>>(
-        directory: P,
-        command_name: S,
-    ) -> Self {
+    pub fn find_command_in_directory<S: AsRef<str>>(directory: &Path, command_name: S) -> Self {
         let manifest_result = ManifestResult::find_in_directory(&directory);
         let lockfile_result = LockfileResult::find_in_directory(&directory);
         match (manifest_result, lockfile_result) {
@@ -201,7 +203,7 @@ impl FindCommandResult {
             (ManifestResult::NoManifest, LockfileResult::NoLockfile) => {} // continue
             (ManifestResult::NoManifest, LockfileResult::Lockfile(l)) => {
                 debug!("Looking for local command in the lockfile");
-                return Self::find_command_in_lockfile(command_name, l);
+                return Self::find_command_in_lockfile(command_name, l, directory);
             }
             // the edge case of a manifest, but no lockfile would an invalid state. This function
             // should always be run after updating the lockfile with the latest manifest changes.
@@ -212,7 +214,7 @@ impl FindCommandResult {
             }
             (ManifestResult::Manifest(m), LockfileResult::Lockfile(l)) => {
                 debug!("Looking for local command in the manifest and lockfile");
-                return Self::find_command_in_manifest_and_lockfile(command_name, m, l);
+                return Self::find_command_in_manifest_and_lockfile(command_name, m, l, directory);
             }
         };
         FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
