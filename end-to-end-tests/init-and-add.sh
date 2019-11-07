@@ -1,6 +1,6 @@
 #!/bin/sh
 
-alias wapm=target/debug/wapm
+alias wapm=`pwd`/target/debug/wapm
 mkdir test-package
 cd test-package
 wapm config set registry.url "https://registry.wapm.dev"
