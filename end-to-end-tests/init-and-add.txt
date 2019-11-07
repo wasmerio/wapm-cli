@@ -1,6 +1,6 @@
 
 [package]
-name = "wapm-cli"
+name = "test-package"
 version = "1.0.0"
 description = ""
 license = "ISC"
@@ -16,7 +16,7 @@ Error: There were problems adding packages
 [INFO] Adding mark2/dog2@0.0.13
 Packages successfully added!
 [package]
-name = "wapm-cli"
+name = "test-package"
 version = "1.0.0"
 description = ""
 license = "ISC"
