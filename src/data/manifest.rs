@@ -135,9 +135,9 @@ impl Manifest {
     }
 
     /// remove dependency by package name
-    pub fn remove_dependency(&mut self, dependency_name: String) {
+    pub fn remove_dependency(&mut self, dependency_name: &str) -> Option<String> {
         let dependencies = self.dependencies.get_or_insert(Default::default());
-        dependencies.remove(&dependency_name);
+        dependencies.remove(dependency_name)
     }
 
     pub fn to_string(&self) -> Result<String, failure::Error> {
