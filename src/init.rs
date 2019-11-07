@@ -17,7 +17,6 @@ use std::{
 
 const WASI_LAST_VERSION: &str = "0.0.0-unstable";
 
-
 pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std::io::Error> {
     let value = Input::<String>::new()
         .with_prompt(prompt)
@@ -90,7 +89,6 @@ pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
                 description: "".to_owned(),
                 version: Version::parse("1.0.0").unwrap(),
                 repository: None,
-                // author: None,
                 license: Some("ISC".to_owned()),
                 license_file: None,
                 homepage: None,
@@ -132,7 +130,6 @@ Press ^C at any time to quit."
         manifest.package.description =
             ask("Description", Some(manifest.package.description))?.unwrap_or_default();
         manifest.package.repository = ask("Repository", manifest.package.repository)?;
-        // author = ask("Author", &author)?;
         manifest.package.license = Some(ask_until_valid(
             "License",
             manifest.package.license,
