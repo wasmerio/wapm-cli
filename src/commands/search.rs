@@ -1,3 +1,6 @@
+//! Code pertaining to the `search` subcommand, which queries the server about
+//! the specified package.
+
 use crate::graphql::execute_query;
 
 use graphql_client::*;
@@ -6,6 +9,7 @@ use prettytable::format;
 use prettytable::Table;
 use structopt::StructOpt;
 
+/// Options for the `search` subcommand
 #[derive(StructOpt, Debug)]
 pub struct SearchOpt {
     #[structopt(parse(from_str))]
@@ -22,6 +26,7 @@ type DateTime = String;
 )]
 struct SearchQuery;
 
+/// Run the search command
 pub fn search(options: SearchOpt) -> Result<(), failure::Error> {
     let query = options.query;
     let q = SearchQuery::build_query(search_query::Variables {
