@@ -17,21 +17,6 @@ use std::{
 
 const WASI_LAST_VERSION: &str = "0.0.0-unstable";
 
-fn construct_template_manifest_from_data(username: Option<String>, package_name: String) -> String {
-    let name_string = if let Some(un) = username {
-        format!("{}/{}", un, package_name)
-    } else {
-        package_name
-    };
-    format!(
-        r#"[package]
-name = "{}"
-version = "0.1.0"
-description = ""
-"#,
-        name_string
-    )
-}
 
 pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std::io::Error> {
     let value = Input::<String>::new()
@@ -307,10 +292,4 @@ pub fn init_gitignore(mut dir: PathBuf) -> Result<(), failure::Error> {
 
     f.write_all(b"\nwapm_packages")?;
     Ok(())
-}
-
-#[derive(Debug, Fail)]
-pub enum InitError {
-    #[fail(display = "Manifest file already exists in {:?}", dir)]
-    ManifestAlreadyExists { dir: PathBuf },
 }
