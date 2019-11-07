@@ -71,8 +71,8 @@ pub struct InstalledPackages<'a> {
 
 impl<'a> InstalledPackages<'a> {
     /// Will install the resolved manifest packages into the specified directory.
-    pub fn install<Installer: Install<'a>, P: AsRef<Path>>(
-        directory: P,
+    pub fn install<Installer: Install<'a>>(
+        directory: &Path,
         resolve_packages: ResolvedPackages<'a>,
     ) -> Result<Self, Error> {
         let packages_result: Result<Vec<(WapmPackageKey, PathBuf, String)>, Error> =
@@ -113,12 +113,12 @@ impl<'a> InstalledPackages<'a> {
 
 /// A trait for injecting an installer for installing wapm packages.
 pub trait Install<'a> {
-    fn install_package<P: AsRef<Path>, S: AsRef<str>>(
-        directory: P,
+    fn install_package(
+        directory: &Path,
         key: WapmPackageKey<'a>,
-        download_url: S,
+        download_url: &str,
         signature: Option<keys::WapmPackageSignature>,
-    ) -> Result<(WapmPackageKey, PathBuf, String), Error>;
+    ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error>;
 }
 
 pub struct RegistryInstaller;
@@ -141,12 +141,12 @@ impl RegistryInstaller {
 
 /// This impl will install packages from a wapm registry.
 impl<'a> Install<'a> for RegistryInstaller {
-    fn install_package<P: AsRef<Path>, S: AsRef<str>>(
-        directory: P,
-        key: WapmPackageKey,
-        download_url: S,
+    fn install_package(
+        directory: &Path,
+        key: WapmPackageKey<'a>,
+        download_url: &str,
         signature: Option<keys::WapmPackageSignature>,
-    ) -> Result<(WapmPackageKey, PathBuf, String), Error> {
+    ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error> {
         let (namespace, pkg_name) = get_package_namespace_and_name(&key.name)
             .map_err(|e| Error::FailedToParsePackageName(key.to_string(), e.to_string()))?;
         let fully_qualified_package_name: String =
@@ -172,7 +172,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             whoami::os().to_lowercase(),
         );
         let mut response = client
-            .get(download_url.as_ref())
+            .get(download_url)
             .header(reqwest::header::USER_AGENT, user_agent)
             .send()
             .map_err(|e| {
@@ -346,7 +346,7 @@ Would you like to trust this key?",
 
         Self::decompress_and_extract_archive(dest, &package_dir, &key)
             .map_err(|e| Error::DecompressionError(key.to_string(), e.to_string()))?;
-        Ok((key, package_dir, download_url.as_ref().to_string()))
+        Ok((key, package_dir, download_url.to_string()))
     }
 }
 

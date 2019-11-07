@@ -113,12 +113,12 @@ pub fn fully_qualified_package_display_name(
     format!("{}@{}", package_name, package_version)
 }
 
-pub fn create_package_dir<P: AsRef<Path>, P2: AsRef<Path>>(
-    project_dir: P,
-    namespace_dir: P2,
+pub fn create_package_dir(
+    project_dir: &Path,
+    namespace_dir: &str,
     fully_qualified_package_name: &str,
 ) -> Result<PathBuf, io::Error> {
-    let mut package_dir = project_dir.as_ref().join(PACKAGES_DIR_NAME);
+    let mut package_dir = project_dir.join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
     fs::create_dir_all(&package_dir)?;

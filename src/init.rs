@@ -53,6 +53,7 @@ where
 }
 
 pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
+    trace!("Validating wasm source: {:?}", source);
     if source == "none" || source.ends_with(".wasm") {
         return Ok(PathBuf::from(source));
     }
@@ -60,6 +61,7 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
 }
 
 pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
+    trace!("Validating command names: {:?}", command_names);
     command_names
         .split_whitespace()
         .map(util::validate_name)
@@ -244,7 +246,7 @@ Press ^C at any time to quit."
     println!(
         "\n{} {}:\n\n{}\n",
         print_text,
-        manifest.manifest_path().canonicalize()?.to_string_lossy(),
+        manifest.manifest_path().to_string_lossy(),
         manifest.to_string()?
     );
 

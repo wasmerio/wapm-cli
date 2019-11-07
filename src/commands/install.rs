@@ -1,3 +1,5 @@
+//! Code pertaining to the `install` subcommand
+
 use crate::graphql::execute_query;
 
 use graphql_client::*;
@@ -10,6 +12,7 @@ use std::env;
 use std::path::Path;
 use structopt::StructOpt;
 
+/// Options for the `install` subcommand
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
     packages: Vec<String>,
@@ -58,10 +61,12 @@ mod global_flag {
 }
 
 mod package_args {
+    /// Command run with no package arguments, it will install packages from the manifest
     pub const NO_PACKAGES: bool = true;
     pub const SOME_PACKAGES: bool = false;
 }
 
+/// Run the install command
 pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
     let current_directory = env::current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);

@@ -1,3 +1,6 @@
+//! List of exported subcommands for use by wapm
+
+mod add;
 mod bin;
 mod completions;
 mod config;
@@ -14,6 +17,7 @@ mod uninstall;
 mod validate;
 mod whoami;
 
+pub use self::add::{add, AddOpt};
 pub use self::bin::{bin, BinOpt};
 pub use self::completions::CompletionOpt;
 pub use self::config::{config, ConfigOpt};
