@@ -17,6 +17,8 @@ Error: There were problems adding packages
 Packages successfully added!
 [INFO] Adding lolcat@0.1.1
 Packages successfully added!
+[INFO] Removing "lolcat"
+Packages successfully removed!
 [package]
 name = "test-package"
 version = "1.0.0"
