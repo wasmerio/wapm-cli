@@ -56,3 +56,10 @@ pub fn remove(options: RemoveOpt) -> Result<(), failure::Error> {
         Ok(())
     }
 }
+
+#[cfg(feature = "integration_tests")]
+impl RemoveOpt {
+    pub fn new(packages: Vec<String>) -> Self {
+        RemoveOpt { packages }
+    }
+}

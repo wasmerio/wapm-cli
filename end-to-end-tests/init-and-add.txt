@@ -19,16 +19,3 @@ Packages successfully added!
 Packages successfully added!
 [INFO] Removing "lolcat"
 Packages successfully removed!
-[package]
-name = "test-package"
-version = "1.0.0"
-description = ""
-license = "ISC"
-
-[dependencies]
-"mark2/python" = "0.0.4"
-"mark2/dog2" = "0.0.13"
-
-[[module]]
-name = "entry"
-source = "entry.wasm"

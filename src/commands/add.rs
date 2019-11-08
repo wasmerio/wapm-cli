@@ -83,3 +83,10 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
         Ok(())
     }
 }
+
+#[cfg(feature = "integration_tests")]
+impl AddOpt {
+    pub fn new(packages: Vec<String>) -> Self {
+        AddOpt { packages }
+    }
+}
