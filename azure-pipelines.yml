@@ -45,6 +45,9 @@ jobs:
         cargo test --verbose -- --test-threads=1
       displayName: Tests
     - bash: |
+        make integration-tests
+      displayName: Integration Tests
+    - bash: |
         cargo test --manifest-path lib/wasm-interface/Cargo.toml
       displayName: Tests (Wasm Interface)
     - bash: |
