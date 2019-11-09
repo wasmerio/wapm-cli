@@ -80,7 +80,7 @@ jobs:
         echo "GENERATED OUTPUT:"
         cat /tmp/install-out.txt
         echo "COMPARING..."
-        diff -B end-to-end-tests/install.txt /tmp/install-out.txt
+        diff -Bba end-to-end-tests/install.txt /tmp/install-out.txt
         export OUT=$?
         if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
         rm wapm.lock
@@ -107,7 +107,7 @@ jobs:
         echo "GENERATED OUTPUT:"
         cat /tmp/verification-out.txt
         echo "COMPARING..."
-        diff -B end-to-end-tests/verification.txt /tmp/verification-out.txt
+        diff -Bba end-to-end-tests/verification.txt /tmp/verification-out.txt
         export OUT=$?
         if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
         rm wapm.lock
@@ -136,7 +136,7 @@ jobs:
     #     echo "COMPARING..."
     #     ## hack to get the current directory in the expected output
     #     #sed -i.bak "s/{{CURRENT_DIR}}/$(pwd | sed 's/\//\\\//g')/g" end-to-end-tests/package-fs-mapping.txt
-    #     diff -B end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
+    #     diff -Bba end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
     #     export OUT=$?
     #     if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
     #     rm wapm.lock
@@ -164,7 +164,7 @@ jobs:
         echo "GENERATED OUTPUT:"
         cat /tmp/manifest-validation-out.txt
         echo "COMPARING..."
-        diff -B end-to-end-tests/manifest-validation.txt /tmp/manifest-validation-out.txt
+        diff -Bba end-to-end-tests/manifest-validation.txt /tmp/manifest-validation-out.txt
         export OUT=$?
         if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
         rm wapm.lock
@@ -197,7 +197,7 @@ jobs:
         cat /tmp/init-and-add-out2.txt
         mv /tmp/init-and-add-out2.txt /tmp/init-and-add-out.txt
         echo "COMPARING..."
-        diff -B end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
+        diff -Bba end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
         export OUT=$?
         if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
         rm wapm.lock
