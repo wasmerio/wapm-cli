@@ -78,6 +78,7 @@ pub struct Manifest {
 
 impl Manifest {
     /// Construct a manifest by searching in the specified directory for a manifest file
+    #[cfg(not(feature = "integration_tests"))]
     pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
         if !path.as_ref().is_dir() {
             return Err(ManifestError::MissingManifest(
@@ -135,9 +136,9 @@ impl Manifest {
     }
 
     /// remove dependency by package name
-    pub fn remove_dependency(&mut self, dependency_name: String) {
+    pub fn remove_dependency(&mut self, dependency_name: &str) -> Option<String> {
         let dependencies = self.dependencies.get_or_insert(Default::default());
-        dependencies.remove(&dependency_name);
+        dependencies.remove(dependency_name)
     }
 
     pub fn to_string(&self) -> Result<String, failure::Error> {
@@ -148,12 +149,42 @@ impl Manifest {
         self.base_directory_path.join(MANIFEST_FILE_NAME)
     }
 
+    /// Write the manifest to permanent storage
+    #[cfg(not(feature = "integration_tests"))]
     pub fn save(&self) -> Result<(), failure::Error> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
         fs::write(manifest_path, &manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
+    }
+
+    /// Mock version of `save`
+    #[cfg(feature = "integration_tests")]
+    pub fn save(&self) -> Result<(), failure::Error> {
+        let manifest_string = self.to_string()?;
+        crate::integration_tests::data::RAW_MANIFEST_DATA.with(|rmd| {
+            *rmd.borrow_mut() = Some(manifest_string);
+        });
+        Ok(())
+    }
+
+    /// Mock version of `find_in_directory`
+    #[cfg(feature = "integration_tests")]
+    pub fn find_in_directory<T: AsRef<Path>>(_path: T) -> Result<Self, ManifestError> {
+        // ignore path for now
+        crate::integration_tests::data::RAW_MANIFEST_DATA.with(|rmd| {
+            if let Some(ref manifest_toml) = *rmd.borrow() {
+                let manifest: Self = toml::from_str(&manifest_toml)
+                    .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
+                manifest.validate()?;
+                Ok(manifest)
+            } else {
+                Err(ManifestError::MissingManifest(
+                    "Integration test manifest not found".to_string(),
+                ))
+            }
+        })
     }
 }
 

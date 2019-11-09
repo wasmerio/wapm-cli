@@ -38,3 +38,15 @@ pub fn config(config_opt: ConfigOpt) -> Result<(), failure::Error> {
         }
     }
 }
+
+/// Extras for testing
+#[cfg(feature = "integration_tests")]
+impl ConfigOpt {
+    pub fn set(key: String, value: String) -> Self {
+        ConfigOpt::Set(ConfigKeyValue { key, value })
+    }
+
+    pub fn get(key: String) -> Self {
+        ConfigOpt::Get(ConfigKey { key })
+    }
+}

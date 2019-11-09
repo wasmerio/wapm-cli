@@ -105,6 +105,8 @@ impl Config {
             .map(|config_folder| config_folder.join(GLOBAL_CONFIG_DATABASE_FILE_NAME))
     }
 
+    /// Load the config from a file
+    #[cfg(not(feature = "integration_tests"))]
     pub fn from_file() -> Result<Self, GlobalConfigError> {
         let path = Self::get_file_location()?;
         match File::open(&path) {
@@ -118,15 +120,40 @@ impl Config {
         }
     }
 
+    /// A mocked version of the standard function for integration tests
+    #[cfg(feature = "integration_tests")]
+    pub fn from_file() -> Result<Self, GlobalConfigError> {
+        crate::integration_tests::data::RAW_CONFIG_DATA.with(|rcd| {
+            if let Some(ref config_toml) = *rcd.borrow() {
+                toml::from_str(&config_toml).map_err(|e| GlobalConfigError::Toml(e))
+            } else {
+                Ok(Self::default())
+            }
+        })
+    }
+
     pub fn get_globals_directory() -> Result<PathBuf, GlobalConfigError> {
         Self::get_folder().map(|p| p.join("globals"))
     }
 
+    /// Save the config to a file
+    #[cfg(not(feature = "integration_tests"))]
     pub fn save(self: &Self) -> Result<(), failure::Error> {
         let path = Self::get_file_location()?;
         let config_serialized = toml::to_string(&self)?;
         let mut file = File::create(path)?;
         file.write_all(config_serialized.as_bytes())?;
+        Ok(())
+    }
+
+    /// A mocked version of the standard function for integration tests
+    #[cfg(feature = "integration_tests")]
+    pub fn save(self: &Self) -> Result<(), failure::Error> {
+        let config_serialized = toml::to_string(&self)?;
+        crate::integration_tests::data::RAW_CONFIG_DATA.with(|rcd| {
+            *rcd.borrow_mut() = Some(config_serialized);
+        });
+
         Ok(())
     }
 

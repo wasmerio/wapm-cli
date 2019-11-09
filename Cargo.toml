@@ -22,6 +22,7 @@ indicatif = "0.11"
 lazy_static = "1.3"
 license-exprs = "1.4.0"
 log = "0.4"
+maplit = { version = "1", optional = true }
 minisign = "0.5.9"
 path-slash = "0.1.1"
 prettytable-rs = "0.8.0"
@@ -63,3 +64,4 @@ telemetry = ["sentry"]
 update-notifications= []
 packagesigning = []
 default = ["packagesigning"]
+integration_tests = ["maplit"]

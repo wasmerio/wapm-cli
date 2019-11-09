@@ -13,3 +13,10 @@ pub fn init(opt: InitOpt) -> Result<(), failure::Error> {
     let current_directory = env::current_dir()?;
     init::init(current_directory, opt.force_yes)
 }
+
+#[cfg(feature = "integration_tests")]
+impl InitOpt {
+    pub fn new(force_yes: bool) -> Self {
+        InitOpt { force_yes }
+    }
+}
