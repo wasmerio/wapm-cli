@@ -11,7 +11,7 @@ use crate::dataflow::removed_packages::RemovedPackages;
 use crate::dataflow::resolved_packages::{RegistryResolver, ResolvedPackages};
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use semver::{Version, VersionReq};
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::Path;
@@ -379,7 +379,7 @@ pub fn update_manifest(
     }
 
     for package_name in removed_packages.packages.iter().cloned() {
-        manifest.remove_dependency(package_name.into());
+        manifest.remove_dependency(package_name.borrow());
     }
 
     manifest

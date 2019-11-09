@@ -15,16 +15,7 @@ Error: There were problems adding packages
 [INFO] Adding mark2/python@0.0.4
 [INFO] Adding mark2/dog2@0.0.13
 Packages successfully added!
-[package]
-name = "test-package"
-version = "1.0.0"
-description = ""
-license = "ISC"
-
-[dependencies]
-"mark2/python" = "0.0.4"
-"mark2/dog2" = "0.0.13"
-
-[[module]]
-name = "entry"
-source = "entry.wasm"
+[INFO] Adding lolcat@0.1.1
+Packages successfully added!
+[INFO] Removing "lolcat"
+Packages successfully removed!

@@ -80,8 +80,12 @@ enum Command {
     BackgroundUpdateCheck,
 
     #[structopt(name = "add")]
-    /// Add packages to the manifest
+    /// Add packages to the manifest without installing
     Add(commands::AddOpt),
+
+    #[structopt(name = "remove")]
+    /// Remove packages from the manifest
+    Remove(commands::RemoveOpt),
 }
 
 fn main() {
@@ -126,6 +130,7 @@ fn main() {
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
         Command::Add(add_options) => commands::add(add_options),
+        Command::Remove(remove_options) => commands::remove(remove_options),
         Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
         Command::Search(search_options) => commands::search(search_options),

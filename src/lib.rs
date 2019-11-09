@@ -14,6 +14,9 @@ extern crate prettytable;
 #[macro_use]
 extern crate toml;
 
+#[cfg(feature = "integration_tests")]
+pub mod integration_tests;
+
 mod abi;
 pub mod commands;
 mod config;

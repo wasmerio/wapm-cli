@@ -1,4 +1,5 @@
-//! Code pertaining to the `add` subcommand
+//! Code pertaining to the `add` subcommand: it adds dependencies to
+//! the manifest without installing
 
 use crate::graphql::execute_query;
 use graphql_client::*;
@@ -28,6 +29,8 @@ enum AddError {
         display = "Could not find a manifest in the current directory, try running `wapm init`"
     )]
     NoManifest,
+    #[fail(display = "No packages listed to add")]
+    ArgumentsRequired,
 }
 
 /// Run the add command
@@ -37,6 +40,10 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
         let cur_dir = std::env::current_dir()?;
         Manifest::find_in_directory(cur_dir).map_err(|_| AddError::NoManifest)?
     };
+
+    if options.packages.is_empty() {
+        return Err(AddError::ArgumentsRequired.into());
+    }
 
     for (package_name, maybe_version) in options.packages.into_iter().map(|package_str| {
         if package_str.contains('@') {
@@ -74,5 +81,12 @@ pub fn add(options: AddOpt) -> Result<(), failure::Error> {
     } else {
         println!("Packages successfully added!");
         Ok(())
+    }
+}
+
+#[cfg(feature = "integration_tests")]
+impl AddOpt {
+    pub fn new(packages: Vec<String>) -> Self {
+        AddOpt { packages }
     }
 }
