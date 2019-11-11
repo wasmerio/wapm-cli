@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.4.0] - 2019-11-11
+### Added
+- `wapm add` and `wapm remove` command to add and remove dependencies from the wapm manifest
+
+### Changed
+- `wapm init` is now interactive: run `wapm init -y` to accept all defaults
+- `wapm.lock` now uses relative paths; it can safely be shared and used on different systems
+
 ## [0.3.7] - 2019-07-31
 ### Added
 - Remove unwrap in validate subcommand 
