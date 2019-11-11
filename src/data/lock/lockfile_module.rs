@@ -65,7 +65,6 @@ impl LockfileModule {
         // build the entry path
         // this is path like /wapm_packages/_/lua@0.1.3/path/to/module/lua.wasm
         let path = PathBuf::from(manifest_base_dir_path);
-        let pkg_root = path.clone().to_string_lossy().to_string();
 
         let source = {
             let mut new_style = path.clone();
