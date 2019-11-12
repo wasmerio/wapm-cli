@@ -91,9 +91,16 @@ impl WapmUpdate {
                 let new_version = last_check.version.to_owned();
                 let old_version = util::get_latest_runtime_version()?;
 
-                // If we are in the same version
-                if old_version == new_version {
-                    return Ok(());
+                if let Some(b) = util::compare_versions(&old_version, &new_version) {
+                    if b {
+                        return Ok(());
+                    }
+                } else {
+                    // fall back to direct comparison
+                    // If we are in the same version
+                    if old_version == new_version {
+                        return Ok(());
+                    }
                 }
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);

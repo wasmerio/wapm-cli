@@ -42,7 +42,7 @@ jobs:
     - template: .azure/install-sccache.yml
     - template: .azure/install-cmake.yml
     - bash: |
-        cargo test --verbose -- --test-threads=1
+        cargo test --verbose --features "update-notifications" -- --test-threads=1
       displayName: Tests
     - bash: |
         make integration-tests
