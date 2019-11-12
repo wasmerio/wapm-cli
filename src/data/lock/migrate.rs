@@ -150,7 +150,9 @@ pub fn convert_lockfilev3_to_v4(lockfile: LockfileV3, directory: &Path) -> Lockf
                     abi: module_data.abi,
                     source: {
                         let full_prefix = dir_prefix.join(&package_path);
-                        let path = Path::new(&module_data.entry);
+                        // Somtimes .entry will be absolute and other times relative
+                        // We make it absolute to make it easier to work with and avoid errors
+                        let path = directory.join(&module_data.entry);
                         path.strip_prefix(&full_prefix)
                             .expect("Corrupt data in Lockfile, please delete it and try again")
                             .to_string_lossy()
