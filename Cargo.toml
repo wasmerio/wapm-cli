@@ -8,7 +8,7 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [dependencies]
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 colored = "1.8"
 dirs = "1"
 dotenv = "0.13.0"
