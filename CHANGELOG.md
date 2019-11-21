@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.4.1] - 2019-11-20
+### Changed
+- The automatic updater will now attempt to parse the version numbers to intelligently suggest upgrades.  Falls back to the old logic if version parsing fails.
+
 ## [0.4.0] - 2019-11-11
 ### Added
 - `wapm add` and `wapm remove` command to add and remove dependencies from the wapm manifest
