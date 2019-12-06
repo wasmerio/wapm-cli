@@ -1,15 +1,10 @@
 [INFO] Installing mark2/binary-name-matters@0.0.0
-[WARN] The server does not have a public key for mark2 for the package binary-name-matters@0.0.0 and the package is not signed but a public key for mark2 is known locally (BB702CB61EC2F2F6).
-This could mean that the wapm registry has been compromised, that the package was created before the publisher started signing their packages, or that the publisher decided not to sign this package.
-Would you like to proceed with an unverified installation?
-[y/n] Global package installed successfully!
+Global package installed successfully!
 Success: command name correct
 Success: fs found
 [INFO] Package "mark2/binary-name-matters" is uninstalled.
 [INFO] Installing mark2/binary-name-matters@0.0.0
-[WARN] The server does not have a public key for mark2 for the package binary-name-matters@0.0.0 and the package is not signed but a public key for mark2 is known locally (BB702CB61EC2F2F6).
-Would you like to proceed with an unverified installation?
-[y/n] Package installed successfully!
+Package installed successfully!
 Success: command name correct
-Success: fs found
+ERROR: fs not found
 [INFO] Package "mark2/binary-name-matters" is uninstalled.
