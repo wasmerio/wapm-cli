@@ -132,13 +132,18 @@ impl LockfileModule {
 
     /// Returns the Manifest path from the lockfile
     ///
-    /// This method does extra logic to detect if the lockfile is global and adjusts accordingly
+    /// This method does extra logic to detect if the lockfile is global and adjusts accordingly.
+    ///
+    /// The `local_dep` flag should be passed when its known that the manifest we want to access
+    /// is not in the current directory and that we need to add `wapm_packages/...` to it.
     pub fn get_canonical_manifest_path_from_lockfile_dir(
         &self,
         mut lockfile_dir: PathBuf,
+        local_dep: bool,
     ) -> PathBuf {
         if crate::config::Config::get_globals_directory().expect("Could not get globals direcotry")
             == lockfile_dir
+            || local_dep
         {
             lockfile_dir.push(PACKAGES_DIR_NAME);
             lockfile_dir.push(&self.package_path);

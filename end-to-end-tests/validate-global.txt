@@ -6,5 +6,5 @@ Success: fs found
 [INFO] Installing mark2/binary-name-matters@0.0.0
 Package installed successfully to wapm_packages!
 Success: command name correct
-ERROR: fs not found
+Success: fs found
 [INFO] Package "mark2/binary-name-matters" is uninstalled.
