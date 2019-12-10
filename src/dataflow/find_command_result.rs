@@ -145,9 +145,14 @@ impl FindCommandResult {
                         Ok(lockfile_module) => {
                             let path = lockfile_module
                                 .get_canonical_source_path_from_lockfile_dir(directory.into());
+                            let manifest_dir = lockfile_module
+                                .get_canonical_manifest_path_from_lockfile_dir(
+                                    directory.into(),
+                                    true,
+                                );
                             FindCommandResult::CommandFound {
                                 source: path,
-                                manifest_dir: PathBuf::from(directory),
+                                manifest_dir,
                                 args: lockfile_command.main_args.clone(),
                                 module_name: lockfile_module.name.clone(),
                                 prehashed_cache_key: lockfile
@@ -177,7 +182,7 @@ impl FindCommandResult {
                         let path = lockfile_module
                             .get_canonical_source_path_from_lockfile_dir(directory.into());
                         let manifest_dir = lockfile_module
-                            .get_canonical_manifest_path_from_lockfile_dir(directory.into());
+                            .get_canonical_manifest_path_from_lockfile_dir(directory.into(), true);
                         FindCommandResult::CommandFound {
                             source: path,
                             manifest_dir,
