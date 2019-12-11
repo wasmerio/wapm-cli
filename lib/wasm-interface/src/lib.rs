@@ -8,5 +8,6 @@ pub mod interface;
 pub mod parser;
 #[cfg(feature = "validation")]
 pub mod validate;
+pub mod interface_matcher;
 
 pub use interface::*;

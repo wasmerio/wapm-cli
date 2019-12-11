@@ -1,8 +1,10 @@
 //! The definition of a WASM interface
 
-use std::collections::HashMap;
+use crate::interface_matcher::InterfaceMatcher;
+use std::collections::{HashMap, HashSet};
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Interface {
     /// The name the interface gave itself
     pub name: Option<String>,
@@ -39,9 +41,37 @@ impl Interface {
         }
         Ok(base)
     }
+
+    pub fn create_interface_matcher(&self) -> InterfaceMatcher {
+        let mut namespaces = HashSet::new();
+        let mut namespace_imports: HashMap<String, HashSet<Import>>= HashMap::with_capacity(self.imports.len());
+        let mut exports = HashSet::with_capacity(self.exports.len());
+
+        for (_, import) in self.imports.iter() {
+            match import {
+                Import::Func {
+                    namespace, ..
+                } | Import::Global { namespace, .. } => {
+                    if !namespaces.contains(namespace) {
+                        namespaces.insert(namespace.clone());
+                    }
+                    let ni = namespace_imports.entry(namespace.clone()).or_default();
+                    ni.insert(import.clone());
+                }
+            }
+        }
+        for (_, export) in self.exports.iter() {
+            exports.insert(export.clone());
+        }
+        InterfaceMatcher {
+            namespaces,
+            namespace_imports,
+            exports,
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Import {
     Func {
         namespace: String,
@@ -74,7 +104,7 @@ impl Import {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Export {
     Func {
         name: String,
@@ -102,7 +132,7 @@ impl Export {
 }
 
 /// Primitive wasm type
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WasmType {
     I32,
     I64,
