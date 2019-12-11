@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use serde::{Serialize, Deserialize};
 
-use crate::interface::{Import, Export};
+use crate::interface::{Export, Import};
 
 /// A struct containing data for more efficient matching.
 ///

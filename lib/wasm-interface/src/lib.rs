@@ -5,9 +5,9 @@
 //! they do this by asserting on the imports and exports of the module.
 
 pub mod interface;
+pub mod interface_matcher;
 pub mod parser;
 #[cfg(feature = "validation")]
 pub mod validate;
-pub mod interface_matcher;
 
 pub use interface::*;

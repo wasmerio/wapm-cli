@@ -1,8 +1,8 @@
 //! The definition of a WASM interface
 
 use crate::interface_matcher::InterfaceMatcher;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Interface {
@@ -44,14 +44,13 @@ impl Interface {
 
     pub fn create_interface_matcher(&self) -> InterfaceMatcher {
         let mut namespaces = HashSet::new();
-        let mut namespace_imports: HashMap<String, HashSet<Import>>= HashMap::with_capacity(self.imports.len());
+        let mut namespace_imports: HashMap<String, HashSet<Import>> =
+            HashMap::with_capacity(self.imports.len());
         let mut exports = HashSet::with_capacity(self.exports.len());
 
         for (_, import) in self.imports.iter() {
             match import {
-                Import::Func {
-                    namespace, ..
-                } | Import::Global { namespace, .. } => {
+                Import::Func { namespace, .. } | Import::Global { namespace, .. } => {
                     if !namespaces.contains(namespace) {
                         namespaces.insert(namespace.clone());
                     }
