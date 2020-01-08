@@ -8,8 +8,10 @@ description = "WASM Interface definition and parser"
 license = "MIT"
 
 [dependencies]
+bincode = { version = "1", optional = true }
 either = "1.5"
-nom = "5.0.0"
+nom = "5"
+serde = { version = "1", features = ["derive"] }
 wasmparser = { version = "0.32", optional = true }
 
 [dev-dependencies]
@@ -17,4 +19,5 @@ wabt = "0.7"
 
 [features]
 validation = ["wasmparser"]
+binary_encode = ["bincode"]
 default = ["validation"]
