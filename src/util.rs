@@ -200,7 +200,10 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
     }
 }
 
-/// this function hashes the Wasm module to generate a key
+#[cfg(feature = "prehash-module")]
+/// This function hashes the Wasm module to generate a key.
+/// We use it to speed up the time required to run a commands
+/// since it doesn't require doing the hash of the module at runtime.
 pub fn get_hashed_module_key(path: &Path) -> Option<String> {
     debug!("Creating hash of wasm module at {:?}", path);
     let bytes = match std::fs::read(path) {
@@ -214,8 +217,14 @@ pub fn get_hashed_module_key(path: &Path) -> Option<String> {
             return None;
         }
     };
-    let hash = wasmer_runtime_core::cache::WasmHash::generate(&bytes[..]);
-    Some(hash.encode())
+    let hash = blake3::hash(&bytes[..]);
+    let str_hash = hex::encode(&hash.as_bytes());
+    Some(str_hash)
+}
+
+#[cfg(not(feature = "prehash-module"))]
+pub fn get_hashed_module_key(_path: &Path) -> Option<String> {
+    None
 }
 
 #[cfg(feature = "update-notifications")]
