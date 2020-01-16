@@ -57,27 +57,6 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         otherwise => otherwise?,
     };
 
-    // do not run with wasmer options if running a global command
-    // this will change in the future.
-    let wasmer_extra_flags: Option<Vec<OsString>> =
-        if !is_global {
-            match ManifestResult::find_in_directory(&current_dir) {
-                ManifestResult::Manifest(manifest) => manifest
-                    .package
-                    .wasmer_extra_flags
-                    .clone()
-                    .map(|extra_flags| {
-                        extra_flags
-                            .split_whitespace()
-                            .map(|str| OsString::from(str))
-                            .collect()
-                    }),
-                _ => None,
-            }
-        } else {
-            None
-        };
-
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()
     } else {
@@ -98,6 +77,23 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             source_path_buf.to_string_lossy().to_string(),
         )
     })?;
+
+    let wasmer_extra_flags: Option<Vec<OsString>> =
+        match ManifestResult::find_in_directory(&manifest_dir) {
+            ManifestResult::Manifest(manifest) => {
+                manifest
+                    .package
+                    .wasmer_extra_flags
+                    .clone()
+                    .map(|extra_flags| {
+                        extra_flags
+                            .split_whitespace()
+                            .map(|str| OsString::from(str))
+                            .collect()
+                    })
+            }
+            _ => None,
+        };
 
     let mut wasi_preopened_dir_flags: Vec<OsString> = run_options
         .pre_opened_directories
