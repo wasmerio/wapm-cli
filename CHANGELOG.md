@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.4.3] - 2020-01-16
+### Changed
+- Fixed a bug related to the use of `package.wasmer-extra-flags`
+
 ## [0.4.2] - 2020-01-06
 ### Changed
 - Changed the way manifests are found in the filesystem fixing bugs related to global install and commands in the manifest
