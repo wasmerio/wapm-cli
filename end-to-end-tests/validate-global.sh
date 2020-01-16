@@ -17,4 +17,4 @@ wapm run binary-name-matters-2
 wapm uninstall -g mark2/binary-name-matters-2
 wapm install mark2/binary-name-matters-2 -y
 wapm run binary-name-matters-2
-wapm uninstall binary-name-matters-2
+wapm uninstall mark2/binary-name-matters-2
