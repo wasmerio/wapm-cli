@@ -27,7 +27,7 @@ for information about the cli commands.
 
 ## Get Help
 
-Join the discussion on [spectrum chat][spectrum] in the `wapm-cli` channel, or create a GitHub issue. We love to help!
+Feel free to take a look at the [Wapm Documentation](https://docs.wasmer.io/wapm/wapm). You can also join the discussion on [spectrum chat][spectrum] in the `wapm-cli` channel, or create a GitHub issue. We love to help!
 
 ## Contributing
 
