@@ -105,7 +105,7 @@ impl WapmUpdate {
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);
                 let message = format_message(&old_version, &new_version, &release_url).unwrap();
-                print!("\n{}", message);
+                Boxx::default().display(message);
                 self.last_notified = Some(now);
                 self.save()
             }
@@ -230,109 +230,17 @@ pub fn try_unlock_background_process() {
     }
 }
 
-const HORIZONTAL_LINE_CHAR: &str = "─";
-const TOP_LEFT_LINE_CHAR: &str = "╭";
-const TOP_RIGHT_LINE_CHAR: &str = "╮";
-const MID_LINE_CHAR: &str = "│";
-const BOT_LEFT_LINE_CHAR: &str = "╰";
-const BOT_RIGHT_LINE_CHAR: &str = "╯";
-const PAD_AMOUNT: usize = 2;
-
-fn prefix_line(out: &mut String) -> Result<(), std::fmt::Error> {
-    for _ in 0..4 {
-        out.write_char(' ')?;
-    }
-    Ok(())
-}
-
-// assumes left, mid, and right are 1 character long
-fn write_solid_line(
-    out: &mut String,
-    max_line_len: usize,
-    left: &str,
-    mid: &str,
-    right: &str,
-) -> Result<(), std::fmt::Error> {
-    prefix_line(out)?;
-    out.write_str(&left.yellow())?;
-    for _ in 0..(max_line_len + PAD_AMOUNT * 2) {
-        out.write_str(&mid.yellow())?;
-    }
-    out.write_str(&right.yellow())?;
-    out.write_char('\n')?;
-    Ok(())
-}
-
-fn write_mid_line(
-    out: &mut String,
-    max_line_len: usize,
-    line_to_write: &str,
-    line_len: usize,
-) -> Result<(), std::fmt::Error> {
-    let size_delta = max_line_len - line_len;
-    let offset_amount = size_delta / 2;
-    prefix_line(out)?;
-    out.write_str(&MID_LINE_CHAR.yellow())?;
-    for _ in 0..offset_amount + PAD_AMOUNT {
-        out.write_char(' ')?;
-    }
-    out.write_str(&line_to_write)?;
-    for _ in 0..(size_delta - offset_amount) + PAD_AMOUNT {
-        out.write_char(' ')?;
-    }
-    out.write_str(&MID_LINE_CHAR.yellow())?;
-    out.write_char('\n')?;
-    Ok(())
-}
-
 fn format_message(
     old_version_str: &str,
     new_version_str: &str,
     changelog_url: &str,
 ) -> Result<String, std::fmt::Error> {
-    let hook_prefix = "There's a new version of wasmer and wapm! ";
-    let hook_prefix_len = hook_prefix.chars().count();
-    let rest_of_hook_len = old_version_str.chars().count() + 3 + new_version_str.chars().count();
-    let hook_len = hook_prefix_len + rest_of_hook_len;
-
-    let changelog_prefix = "Changelog: ";
-    let changelog_prefix_len = changelog_prefix.chars().count();
-    let changelog_len = changelog_prefix_len + changelog_url.chars().count();
-
-    let cta_prefix = "Update with ";
-    let update_command = "wasmer self-update";
-    let cta = format!("{}{}!", cta_prefix, update_command.green().bold());
-    let cta_len = cta_prefix.chars().count() + update_command.chars().count() + 1;
-
-    let max_line_len = std::cmp::max(std::cmp::max(hook_len, changelog_len), cta_len);
-
-    let mut out = String::new();
-
-    write_solid_line(
-        &mut out,
-        max_line_len,
-        TOP_LEFT_LINE_CHAR,
-        HORIZONTAL_LINE_CHAR,
-        TOP_RIGHT_LINE_CHAR,
-    )?;
-    let hook_str = format!(
-        "{}{} → {}",
-        hook_prefix,
+    let out = format!(
+        "There's a new version of wasmer and wapm! {} → {}\nChangelog: {}\nUpdate with {}",
         old_version_str.red(),
-        new_version_str.green()
+        new_version_str.green(),
+        changelog_url,
+        "wasmer self-update".green().bold()
     );
-    write_mid_line(&mut out, max_line_len, &hook_str, hook_len)?;
-    let cl_str = format!("{}{}", changelog_prefix, changelog_url);
-    write_mid_line(&mut out, max_line_len, &cl_str, changelog_len)?;
-    write_mid_line(&mut out, max_line_len, &cta, cta_len)?;
-
-    write_solid_line(
-        &mut out,
-        max_line_len,
-        BOT_LEFT_LINE_CHAR,
-        HORIZONTAL_LINE_CHAR,
-        BOT_RIGHT_LINE_CHAR,
-    )?;
-
     Ok(out)
 }
