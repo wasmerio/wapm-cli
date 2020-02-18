@@ -3,6 +3,7 @@
 //! This is turned on in our releases by default but is off when building from source
 
 use crate::{config, proxy, util};
+use boxx::{Boxx, BorderStyle};
 use chrono::{DateTime, Utc};
 use colored::*;
 use reqwest::{
@@ -11,6 +12,7 @@ use reqwest::{
 };
 use std::fs::File;
 use std::path::PathBuf;
+use std::env;
 
 const GITHUB_RELEASE_PAGE: &str = "https://github.com/wasmerio/wasmer/releases/latest";
 const GITHUB_RELEASE_URL_BASE: &str = "https://github.com/wasmerio/wasmer/releases/tag/";
@@ -77,34 +79,40 @@ impl WapmUpdate {
             None => Ok(()),
             Some(last_check) => {
                 let now = Utc::now();
-                if let Some(last_notified) = self.last_notified {
-                    let time_to_check: time::Duration = time::Duration::from_std(
-                        std::time::Duration::from_secs(WAPM_NOTIFICATION_WINDOW),
-                    )
-                    .unwrap();
-                    if now - last_notified < time_to_check {
-                        return Ok(());
+                let force_update_notification = env::var("WAPM_FORCE_UPDATE_NOTIFICATION").unwrap_or("0".to_string()) != "0".to_string();
+                
+                if !force_update_notification {
+                    if let Some(last_notified) = self.last_notified {
+                        let time_to_check: time::Duration = time::Duration::from_std(
+                            std::time::Duration::from_secs(WAPM_NOTIFICATION_WINDOW),
+                        )
+                        .unwrap();
+                        if now - last_notified < time_to_check {
+                            return Ok(());
+                        }
                     }
                 }
 
                 let new_version = last_check.version.to_owned();
                 let old_version = util::get_latest_runtime_version()?;
 
-                if let Some(b) = util::compare_versions(&old_version, &new_version) {
-                    if b {
-                        return Ok(());
-                    }
-                } else {
-                    // fall back to direct comparison
-                    // If we are in the same version
-                    if old_version == new_version {
-                        return Ok(());
+                if !force_update_notification {
+                    if let Some(b) = util::compare_versions(&old_version, &new_version) {
+                        if b {
+                            return Ok(());
+                        }
+                    } else {
+                        // fall back to direct comparison
+                        // If we are in the same version
+                        if old_version == new_version {
+                            return Ok(());
+                        }
                     }
                 }
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);
                 let message = format_message(&old_version, &new_version, &release_url).unwrap();
-                Boxx::builder().border_style(boxx::BorderStyle::Round).build().display(message);
+                Boxx::builder().border_style(BorderStyle::Round).build().display(&message);
                 self.last_notified = Some(now);
                 self.save()
             }
