@@ -9,7 +9,6 @@ use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, RedirectPolicy, Response,
 };
-use std::fmt::Write;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -105,7 +104,7 @@ impl WapmUpdate {
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);
                 let message = format_message(&old_version, &new_version, &release_url).unwrap();
-                Boxx::default().display(message);
+                Boxx::builder().border_style(boxx::BorderStyle::Round).build().display(message);
                 self.last_notified = Some(now);
                 self.save()
             }
