@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::constants::DEFAULT_RUNTIME;
+use crate::util::get_runtime;
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::dataflow;
 use crate::dataflow::find_command_result;
@@ -134,12 +134,13 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
-    let mut child = Command::new(DEFAULT_RUNTIME)
+    let runtime = get_runtime();
+    let mut child = Command::new(&runtime)
         .args(&command_vec)
         .spawn()
         .map_err(|e| -> failure::Error {
             RunError::ProcessFailed {
-                runtime: DEFAULT_RUNTIME.to_string(),
+                runtime: runtime,
                 error: format!("{:?}", e),
             }
             .into()
