@@ -3,13 +3,14 @@
 //! This is turned on in our releases by default but is off when building from source
 
 use crate::{config, proxy, util};
+use boxx::{BorderStyle, Boxx};
 use chrono::{DateTime, Utc};
 use colored::*;
 use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, RedirectPolicy, Response,
 };
-use std::fmt::Write;
+use std::env;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -78,13 +79,19 @@ impl WapmUpdate {
             None => Ok(()),
             Some(last_check) => {
                 let now = Utc::now();
-                if let Some(last_notified) = self.last_notified {
-                    let time_to_check: time::Duration = time::Duration::from_std(
-                        std::time::Duration::from_secs(WAPM_NOTIFICATION_WINDOW),
-                    )
-                    .unwrap();
-                    if now - last_notified < time_to_check {
-                        return Ok(());
+                let force_update_notification = env::var("WAPM_FORCE_UPDATE_NOTIFICATION")
+                    .unwrap_or("0".to_string())
+                    != "0".to_string();
+
+                if !force_update_notification {
+                    if let Some(last_notified) = self.last_notified {
+                        let time_to_check: time::Duration = time::Duration::from_std(
+                            std::time::Duration::from_secs(WAPM_NOTIFICATION_WINDOW),
+                        )
+                        .unwrap();
+                        if now - last_notified < time_to_check {
+                            return Ok(());
+                        }
                     }
                 }
 
@@ -93,21 +100,26 @@ impl WapmUpdate {
                 // update logic is very tied to wasmer itself.
                 let old_version = util::get_latest_runtime_version("wasmer")?;
 
-                if let Some(b) = util::compare_versions(&old_version, &new_version) {
-                    if b {
-                        return Ok(());
-                    }
-                } else {
-                    // fall back to direct comparison
-                    // If we are in the same version
-                    if old_version == new_version {
-                        return Ok(());
+                if !force_update_notification {
+                    if let Some(b) = util::compare_versions(&old_version, &new_version) {
+                        if b {
+                            return Ok(());
+                        }
+                    } else {
+                        // fall back to direct comparison
+                        // If we are in the same version
+                        if old_version == new_version {
+                            return Ok(());
+                        }
                     }
                 }
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);
                 let message = format_message(&old_version, &new_version, &release_url).unwrap();
-                print!("\n{}", message);
+                Boxx::builder()
+                    .border_style(BorderStyle::Round)
+                    .build()
+                    .display(&message);
                 self.last_notified = Some(now);
                 self.save()
             }
@@ -232,109 +244,17 @@ pub fn try_unlock_background_process() {
     }
 }
 
-const HORIZONTAL_LINE_CHAR: &str = "─";
-const TOP_LEFT_LINE_CHAR: &str = "╭";
-const TOP_RIGHT_LINE_CHAR: &str = "╮";
-const MID_LINE_CHAR: &str = "│";
-const BOT_LEFT_LINE_CHAR: &str = "╰";
-const BOT_RIGHT_LINE_CHAR: &str = "╯";
-const PAD_AMOUNT: usize = 2;
-
-fn prefix_line(out: &mut String) -> Result<(), std::fmt::Error> {
-    for _ in 0..4 {
-        out.write_char(' ')?;
-    }
-    Ok(())
-}
-
-// assumes left, mid, and right are 1 character long
-fn write_solid_line(
-    out: &mut String,
-    max_line_len: usize,
-    left: &str,
-    mid: &str,
-    right: &str,
-) -> Result<(), std::fmt::Error> {
-    prefix_line(out)?;
-    out.write_str(&left.yellow())?;
-    for _ in 0..(max_line_len + PAD_AMOUNT * 2) {
-        out.write_str(&mid.yellow())?;
-    }
-    out.write_str(&right.yellow())?;
-    out.write_char('\n')?;
-    Ok(())
-}
-
-fn write_mid_line(
-    out: &mut String,
-    max_line_len: usize,
-    line_to_write: &str,
-    line_len: usize,
-) -> Result<(), std::fmt::Error> {
-    let size_delta = max_line_len - line_len;
-    let offset_amount = size_delta / 2;
-    prefix_line(out)?;
-    out.write_str(&MID_LINE_CHAR.yellow())?;
-    for _ in 0..offset_amount + PAD_AMOUNT {
-        out.write_char(' ')?;
-    }
-    out.write_str(&line_to_write)?;
-    for _ in 0..(size_delta - offset_amount) + PAD_AMOUNT {
-        out.write_char(' ')?;
-    }
-    out.write_str(&MID_LINE_CHAR.yellow())?;
-    out.write_char('\n')?;
-    Ok(())
-}
-
 fn format_message(
     old_version_str: &str,
     new_version_str: &str,
     changelog_url: &str,
 ) -> Result<String, std::fmt::Error> {
-    let hook_prefix = "There's a new version of wasmer and wapm! ";
-    let hook_prefix_len = hook_prefix.chars().count();
-    let rest_of_hook_len = old_version_str.chars().count() + 3 + new_version_str.chars().count();
-    let hook_len = hook_prefix_len + rest_of_hook_len;
-
-    let changelog_prefix = "Changelog: ";
-    let changelog_prefix_len = changelog_prefix.chars().count();
-    let changelog_len = changelog_prefix_len + changelog_url.chars().count();
-
-    let cta_prefix = "Update with ";
-    let update_command = "wasmer self-update";
-    let cta = format!("{}{}!", cta_prefix, update_command.green().bold());
-    let cta_len = cta_prefix.chars().count() + update_command.chars().count() + 1;
-
-    let max_line_len = std::cmp::max(std::cmp::max(hook_len, changelog_len), cta_len);
-
-    let mut out = String::new();
-
-    write_solid_line(
-        &mut out,
-        max_line_len,
-        TOP_LEFT_LINE_CHAR,
-        HORIZONTAL_LINE_CHAR,
-        TOP_RIGHT_LINE_CHAR,
-    )?;
-    let hook_str = format!(
-        "{}{} → {}",
-        hook_prefix,
+    let out = format!(
+        "There's a new version of wasmer and wapm! {} → {}\nChangelog: {}\nUpdate with {}",
         old_version_str.red(),
-        new_version_str.green()
+        new_version_str.green(),
+        changelog_url,
+        "wasmer self-update".green().bold()
     );
-    write_mid_line(&mut out, max_line_len, &hook_str, hook_len)?;
-    let cl_str = format!("{}{}", changelog_prefix, changelog_url);
-    write_mid_line(&mut out, max_line_len, &cl_str, changelog_len)?;
-    write_mid_line(&mut out, max_line_len, &cta, cta_len)?;
-
-    write_solid_line(
-        &mut out,
-        max_line_len,
-        BOT_LEFT_LINE_CHAR,
-        HORIZONTAL_LINE_CHAR,
-        BOT_RIGHT_LINE_CHAR,
-    )?;
-
     Ok(out)
 }

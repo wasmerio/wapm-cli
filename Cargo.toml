@@ -8,6 +8,7 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [dependencies]
+boxx = { version = "0.0.2-beta", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = "1.8"
 dirs = "1"
@@ -61,7 +62,7 @@ members = [
 
 [features]
 telemetry = ["sentry"]
-update-notifications= []
+update-notifications= ["boxx"]
 packagesigning = []
 default = ["packagesigning"]
 integration_tests = ["maplit"]
