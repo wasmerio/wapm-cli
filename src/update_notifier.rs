@@ -89,7 +89,9 @@ impl WapmUpdate {
                 }
 
                 let new_version = last_check.version.to_owned();
-                let old_version = util::get_latest_runtime_version()?;
+                // We use wasmer and not constants::DEFAULT_RUNTIME because the
+                // update logic is very tied to wasmer itself.
+                let old_version = util::get_latest_runtime_version("wasmer")?;
 
                 if let Some(b) = util::compare_versions(&old_version, &new_version) {
                     if b {
