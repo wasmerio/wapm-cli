@@ -281,6 +281,8 @@ mod test {
     }
 }
 
+/// Returns the value of the WAPM_RUNTIME env var if it exists.
+/// Otherwise returns wasmer
 pub fn get_runtime() -> String {
     env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
 }
