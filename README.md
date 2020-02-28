@@ -22,12 +22,11 @@ The WebAssembly Package Manager CLI. This tool enables installing, managing, and
 
 ## Get Started
 
-Read the [`wapm-cli` user guide on `wapm.io`][guide] to get started using the tool and use the [`wapm-cli` reference][reference]
-for information about the cli commands.
+Read the [`wapm-cli` user guide on `wapm.io`][guide] to get started using the tool and use the [`wapm-cli` reference][reference] for information about the CLI commands.
 
 ## Get Help
 
-Join the discussion on [spectrum chat][spectrum] in the `wapm-cli` channel, or create a GitHub issue. We love to help!
+Feel free to take a look at the [WAPM documentation](https://docs.wasmer.io/ecosystem/wapm). You can also join the discussion on [spectrum chat][spectrum] in the `wapm-cli` channel, or create a GitHub issue. We love to help!
 
 ## Contributing
 
@@ -43,7 +42,7 @@ If the WAPM GraphQL server has been updated, update the GraphQL schema with:
 graphql get-schema -e prod
 ```
 
-_Note: You will need graphql-cli installed for it `npm install -g graphql-cli`._
+_Note: You will need `graphql-cli` installed for this: `npm install -g graphql-cli`._
 
 [contributing]: CONTRIBUTING.md
 [guide]: https://wapm.io/help/guide

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+### Added
+- Added support for any WebAssembly runtime via `WAPM_RUNTIME` (so you can use it like `WAPM_RUNTIME=wasmer-js wapm run python`)
+### Changed
+- Use [`boxx`](https://crates.io/crates/boxx) to show the update notification message.
+
+## [0.4.3] - 2020-01-16
+### Changed
+- Fixed a bug related to the use of `package.wasmer-extra-flags`
 
 ## [0.4.2] - 2020-01-06
 ### Changed

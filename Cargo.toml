@@ -1,6 +1,6 @@
 [package]
 name = "wapm-cli"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
 repository = "https://github.com/wasmerio/wapm-cli"
@@ -8,6 +8,7 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [dependencies]
+boxx = { version = "0.0.2-beta", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = "1.8"
 dirs = "1"
@@ -48,8 +49,8 @@ wasmparser = "0.39.2"
 whoami = "0.5"
 zstd = "0.4"
 dialoguer = "0.4.0"
-hex = "0.4"
-blake3 = "0.1.0"
+hex = { version = "0.4", optional = true }
+blake3 = { version = "0.1.0", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
@@ -63,7 +64,7 @@ members = [
 [features]
 default = ["packagesigning"]
 telemetry = ["sentry"]
-update-notifications= []
-prehash-module = []
+update-notifications= ["boxx"]
+prehash-module = ["hex", "blake3"]
 packagesigning = []
 integration_tests = ["maplit"]

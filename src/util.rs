@@ -1,12 +1,11 @@
-#[cfg(feature = "update-notifications")]
-use crate::constants;
+use crate::constants::{DEFAULT_RUNTIME, WAPM_RUNTIME_ENV_KEY};
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
 use license_exprs;
 use semver::Version;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::{env, fs, io};
 
 pub static MAX_NAME_LENGTH: usize = 50;
 
@@ -228,17 +227,17 @@ pub fn get_hashed_module_key(_path: &Path) -> Option<String> {
 }
 
 #[cfg(feature = "update-notifications")]
-pub fn get_latest_runtime_version() -> Result<String, String> {
+pub fn get_latest_runtime_version(runtime: &str) -> Result<String, String> {
     use std::process::Command;
 
-    let output = Command::new(constants::DEFAULT_RUNTIME)
+    let output = Command::new(runtime)
         .arg("-V")
         .output()
         .map_err(|err| err.to_string())?;
     let stdout_str = std::str::from_utf8(&output.stdout).map_err(|err| err.to_string())?;
     let mut whitespace_iter = stdout_str.split_whitespace();
     let _first = whitespace_iter.next();
-    debug_assert_eq!(_first, Some(constants::DEFAULT_RUNTIME));
+    debug_assert_eq!(_first, Some(runtime));
 
     match whitespace_iter.next() {
         Some(v) => Ok(v.to_string()),
@@ -289,4 +288,10 @@ mod test {
         assert_eq!(compare_versions("0.1.1", "0.1.0"), Some(true));
         assert_eq!(compare_versions("0.1.1", "0.2.0"), Some(false));
     }
+}
+
+/// Returns the value of the WAPM_RUNTIME env var if it exists.
+/// Otherwise returns wasmer
+pub fn get_runtime() -> String {
+    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
 }
