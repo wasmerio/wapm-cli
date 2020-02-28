@@ -86,6 +86,10 @@ enum Command {
     #[structopt(name = "remove")]
     /// Remove packages from the manifest
     Remove(commands::RemoveOpt),
+
+    #[structopt(name = "execute")]
+    /// Execute a command, installing it temporarily if necessary
+    Execute(commands::ExecuteOpt),
 }
 
 fn main() {
@@ -113,6 +117,7 @@ fn main() {
         Command::Install(_)
         | Command::Add(_)
         | Command::Run(_)
+        | Command::Execute(_)
         | Command::Publish(_)
         | Command::Search(_)
         | Command::List(_)
@@ -133,6 +138,7 @@ fn main() {
         Command::Remove(remove_options) => commands::remove(remove_options),
         Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
+        Command::Execute(execute_options) => commands::execute(execute_options),
         Command::Search(search_options) => commands::search(search_options),
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),

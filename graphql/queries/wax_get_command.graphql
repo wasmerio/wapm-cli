@@ -1,0 +1,19 @@
+query WaxGetCommandQuery($command: String!) {
+  command: getCommand(name: $command) {
+    command
+    module {
+      abi
+      source
+    }
+    packageVersion {
+      version
+      package {
+        name
+        displayName
+      }
+      distribution {
+        downloadUrl
+      }
+    }
+  }
+}

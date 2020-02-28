@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
+pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.toml";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 
@@ -98,6 +99,11 @@ impl Config {
 
     fn get_file_location() -> Result<PathBuf, GlobalConfigError> {
         Ok(Self::get_folder()?.join(GLOBAL_CONFIG_FILE_NAME))
+    }
+
+    pub fn get_wax_file_path() -> Result<PathBuf, GlobalConfigError> {
+        Config::get_folder()
+            .map(|config_folder| config_folder.join(GLOBAL_WAX_INDEX_FILE_NAME))
     }
 
     pub fn get_database_file_path() -> Result<PathBuf, GlobalConfigError> {

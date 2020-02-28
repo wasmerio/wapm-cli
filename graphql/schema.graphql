@@ -1,5 +1,5 @@
-# source: https://registry.wapm.dev/graphql
-# timestamp: Tue Jul 02 2019 11:49:06 GMT-0700 (Pacific Daylight Time)
+# source: https://registry.wapm.io/graphql
+# timestamp: Thu Feb 27 2020 15:39:20 GMT-0800 (Pacific Standard Time)
 
 type Command {
   command: String!
@@ -30,13 +30,18 @@ type Interface implements Node {
   """The ID of the object."""
   id: ID!
   name: String!
+  displayName: String!
+  description: String!
+  homepage: String
+  icon: String
   createdAt: DateTime!
   updatedAt: DateTime!
-  versions: [InterfaceVersion]
+  versions(before: String, after: String, first: Int, last: Int): InterfaceVersionConnection!
   lastVersion: InterfaceVersion
 }
 
-type InterfaceVersion {
+type InterfaceVersion implements Node {
+  """The ID of the object."""
   id: ID!
   interface: Interface!
   version: String!
@@ -44,6 +49,24 @@ type InterfaceVersion {
   createdAt: DateTime!
   updatedAt: DateTime!
   publishedBy: User!
+  packageVersions(before: String, after: String, first: Int, last: Int): PackageVersionConnection!
+}
+
+type InterfaceVersionConnection {
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection."""
+  edges: [InterfaceVersionEdge]!
+}
+
+"""A Relay edge containing a `InterfaceVersion` and its cursor."""
+type InterfaceVersionEdge {
+  """The item at the end of the edge"""
+  node: InterfaceVersion
+
+  """A cursor for use in pagination"""
+  cursor: String!
 }
 
 type Mutation {
@@ -82,7 +105,7 @@ type Package implements Node {
   private: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
-  maintainers: [User]
+  maintainers: [User!]!
   versions: [PackageVersion]
 
   """The ID of the object."""
@@ -117,7 +140,7 @@ type PackageEdge {
   cursor: String!
 }
 
-type PackageVersion {
+type PackageVersion implements Node {
   package: Package!
   version: String!
   description: String!
@@ -133,10 +156,16 @@ type PackageVersion {
   signature: Signature
   file: String!
   fileSize: Int!
-  commands: [Command]
+  commands: [Command!]!
+
+  """The ID of the object."""
+  id: ID!
   distribution: PackageDistribution!
+  filesystem: [PackageVersionFilesystem]!
   isLastVersion: Boolean!
   isSigned: Boolean!
+  moduleInterfaces: [InterfaceVersion!]!
+  modules: [PackageVersionModule!]!
 }
 
 type PackageVersionConnection {
@@ -154,6 +183,11 @@ type PackageVersionEdge {
 
   """A cursor for use in pagination"""
   cursor: String!
+}
+
+type PackageVersionFilesystem {
+  wasm: String!
+  host: String!
 }
 
 type PackageVersionModule {
@@ -299,9 +333,7 @@ type Signature {
 }
 
 type User {
-  """
-  Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-  """
+  """Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."""
   username: String!
   avatar(size: Int): String
 }
