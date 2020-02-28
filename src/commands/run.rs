@@ -1,10 +1,10 @@
 use crate::config::Config;
-use crate::constants::DEFAULT_RUNTIME;
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::dataflow;
 use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
+use crate::util::get_runtime;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -134,16 +134,18 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
-    let mut child = Command::new(DEFAULT_RUNTIME)
-        .args(&command_vec)
-        .spawn()
-        .map_err(|e| -> failure::Error {
-            RunError::ProcessFailed {
-                runtime: DEFAULT_RUNTIME.to_string(),
-                error: format!("{:?}", e),
-            }
-            .into()
-        })?;
+    let runtime = get_runtime();
+    let mut child =
+        Command::new(&runtime)
+            .args(&command_vec)
+            .spawn()
+            .map_err(|e| -> failure::Error {
+                RunError::ProcessFailed {
+                    runtime: runtime,
+                    error: format!("{:?}", e),
+                }
+                .into()
+            })?;
 
     child.wait()?;
     Ok(())

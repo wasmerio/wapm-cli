@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+### Added
+- Added support for any WebAssembly runtime via `WAPM_RUNTIME` (so you can use it like `WAPM_RUNTIME=wasmer-js wapm run python`)
+### Changed
+- Use [`boxx`](https://crates.io/crates/boxx) to show the update notification message.
+- Make module pre-hashing optional and non-dependent on the [wasmer runtime](https://github.com/wasmerio/wasmer)
 
 ## [0.4.3] - 2020-01-16
 ### Changed

@@ -1,12 +1,11 @@
-#[cfg(feature = "update-notifications")]
-use crate::constants;
+use crate::constants::{DEFAULT_RUNTIME, WAPM_RUNTIME_ENV_KEY};
 use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::graphql::execute_query;
 use graphql_client::*;
 use license_exprs;
 use semver::Version;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::{env, fs, io};
 
 pub static MAX_NAME_LENGTH: usize = 50;
 
@@ -200,7 +199,10 @@ pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
     }
 }
 
-/// this function hashes the Wasm module to generate a key
+#[cfg(feature = "prehash-module")]
+/// This function hashes the Wasm module to generate a key.
+/// We use it to speed up the time required to run a commands
+/// since it doesn't require doing the hash of the module at runtime.
 pub fn get_hashed_module_key(path: &Path) -> Option<String> {
     debug!("Creating hash of wasm module at {:?}", path);
     let bytes = match std::fs::read(path) {
@@ -214,22 +216,28 @@ pub fn get_hashed_module_key(path: &Path) -> Option<String> {
             return None;
         }
     };
-    let hash = wasmer_runtime_core::cache::WasmHash::generate(&bytes[..]);
-    Some(hash.encode())
+    let hash = blake3::hash(&bytes[..]);
+    let str_hash = hex::encode(&hash.as_bytes());
+    Some(str_hash)
+}
+
+#[cfg(not(feature = "prehash-module"))]
+pub fn get_hashed_module_key(_path: &Path) -> Option<String> {
+    None
 }
 
 #[cfg(feature = "update-notifications")]
-pub fn get_latest_runtime_version() -> Result<String, String> {
+pub fn get_latest_runtime_version(runtime: &str) -> Result<String, String> {
     use std::process::Command;
 
-    let output = Command::new(constants::DEFAULT_RUNTIME)
+    let output = Command::new(runtime)
         .arg("-V")
         .output()
         .map_err(|err| err.to_string())?;
     let stdout_str = std::str::from_utf8(&output.stdout).map_err(|err| err.to_string())?;
     let mut whitespace_iter = stdout_str.split_whitespace();
     let _first = whitespace_iter.next();
-    debug_assert_eq!(_first, Some(constants::DEFAULT_RUNTIME));
+    debug_assert_eq!(_first, Some(runtime));
 
     match whitespace_iter.next() {
         Some(v) => Ok(v.to_string()),
@@ -280,4 +288,10 @@ mod test {
         assert_eq!(compare_versions("0.1.1", "0.1.0"), Some(true));
         assert_eq!(compare_versions("0.1.1", "0.2.0"), Some(false));
     }
+}
+
+/// Returns the value of the WAPM_RUNTIME env var if it exists.
+/// Otherwise returns wasmer
+pub fn get_runtime() -> String {
+    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
 }
