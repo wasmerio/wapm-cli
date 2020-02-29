@@ -102,8 +102,7 @@ impl Config {
     }
 
     pub fn get_wax_file_path() -> Result<PathBuf, GlobalConfigError> {
-        Config::get_folder()
-            .map(|config_folder| config_folder.join(GLOBAL_WAX_INDEX_FILE_NAME))
+        Config::get_folder().map(|config_folder| config_folder.join(GLOBAL_WAX_INDEX_FILE_NAME))
     }
 
     pub fn get_database_file_path() -> Result<PathBuf, GlobalConfigError> {

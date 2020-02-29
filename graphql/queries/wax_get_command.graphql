@@ -11,6 +11,17 @@ query WaxGetCommandQuery($command: String!) {
         name
         displayName
       }
+      signature {
+        publicKey {
+          keyId
+          owner {
+            username
+          }
+          key
+          uploadedAt
+          revoked
+        }
+      }
       distribution {
         downloadUrl
       }

@@ -2,16 +2,19 @@
 //! command.
 
 use crate::config;
+use semver::Version;
 use std::convert::From;
 use std::fs;
-use std::io::{Read, Write, self};
-use semver::Version;
-use std::path::PathBuf;
+use std::io::{self, Read, Write};
+use std::env;
+use std::path::{PathBuf, Path};
 
 use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WaxIndex {
+    base_dir: PathBuf,
+    #[serde(serialize_with = "toml::ser::tables_last")]
     index: HashMap<String, WaxIndexEntry>,
 }
 
@@ -24,32 +27,56 @@ pub struct WaxIndexEntry {
 impl WaxIndex {
     /// Read the `WaxIndex` from disk
     pub fn open() -> Result<Self, failure::Error> {
+        trace!("Loading WaxIndex!");
         let wax_path = config::Config::get_wax_file_path()?;
-        let mut f = fs::OpenOptions::new().read(true).create(true).open(wax_path)?;
+        let wax_index = 
+            if wax_path.exists() {
+                let mut f = fs::OpenOptions::new()
+                    .read(true)
+                    .open(wax_path)?;
+                
+                let index_str = {
+                    let mut s = String::new();
+                    f.read_to_string(&mut s)?;
+                    s
+                };
+                
+                if index_str.is_empty() {
+                    WaxIndex {
+                        index: Default::default(),
+                        base_dir: env::temp_dir().join("wax"),
+                    }
+                } else {
+                    toml::from_str(&index_str)?    
+                }
+            } else {
+                WaxIndex {
+                    index: Default::default(),
+                    base_dir: env::temp_dir().join("wax"),
+                }
+            };
 
-        let index_str = {
-            let mut s = String::new();
-            f.read_to_string(&mut s)?;
-            s
-        };
+        // ensure the directory exists
+        fs::create_dir_all(&wax_index.base_dir)?;
+        trace!("WaxIndex created!");
 
-        if index_str.is_empty() {
-            return Ok(WaxIndex {
-                index: Default::default(),
-            });
-        }
-
-        Ok(toml::from_str(&index_str)?)
+        Ok(wax_index)
     }
 
     /// Save the `WaxIndex` to disk
     pub fn save(&self) -> Result<(), failure::Error> {
+        trace!("Saving WaxIndex!");
         let wax_path = config::Config::get_wax_file_path()?;
-        let mut f = fs::OpenOptions::new().write(true).create(true).truncate(true).open(wax_path)?;
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(wax_path)?;
 
         let toml_str = toml::to_string(self)?;
 
         f.write_all(toml_str.as_bytes())?;
+        trace!("WaxIndex saved!");
         Ok(())
     }
 
@@ -59,21 +86,34 @@ impl WaxIndex {
         if let Some(found_entry) = self.index.get(&entry) {
             // check if entry still exists and if not remove it
             if found_entry.location.exists() {
+                trace!("Wax entry found and it still exists!");
                 return Ok(found_entry.clone());
             }
+            trace!("Wax entry found but it no longer exists, removing from registry!");
             self.index.remove(&entry);
         }
-        return Err(WaxIndexError::EntryNotFound { entry: entry.clone() }.into());
+        return Err(WaxIndexError::EntryNotFound {
+            entry: entry.clone(),
+        }
+        .into());
     }
 
     /// Package installed, add it to the index.
     ///
     /// Returns the `WaxIndexEntry` at `entry` if one exists
-    pub fn insert_entry(&mut self, entry: String, version: Version, location: PathBuf) -> Option<WaxIndexEntry> {
-        self.index.insert(entry, WaxIndexEntry {
-            version,
-            location
-        })
+    pub fn insert_entry(
+        &mut self,
+        entry: String,
+        version: Version,
+        location: PathBuf,
+    ) -> Option<WaxIndexEntry> {
+        self.index
+            .insert(entry, WaxIndexEntry { version, location })
+    }
+
+    /// Get path at which packages should be installed.
+    pub fn base_path(&self) -> &Path {
+        &self.base_dir
     }
 }
 
