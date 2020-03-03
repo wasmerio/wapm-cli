@@ -4,10 +4,10 @@
 use crate::config;
 use semver::Version;
 use std::convert::From;
+use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::env;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 use std::collections::HashMap;
 
@@ -29,32 +29,29 @@ impl WaxIndex {
     pub fn open() -> Result<Self, failure::Error> {
         trace!("Loading WaxIndex!");
         let wax_path = config::Config::get_wax_file_path()?;
-        let wax_index = 
-            if wax_path.exists() {
-                let mut f = fs::OpenOptions::new()
-                    .read(true)
-                    .open(wax_path)?;
-                
-                let index_str = {
-                    let mut s = String::new();
-                    f.read_to_string(&mut s)?;
-                    s
-                };
-                
-                if index_str.is_empty() {
-                    WaxIndex {
-                        index: Default::default(),
-                        base_dir: env::temp_dir().join("wax"),
-                    }
-                } else {
-                    toml::from_str(&index_str)?    
-                }
-            } else {
+        let wax_index = if wax_path.exists() {
+            let mut f = fs::OpenOptions::new().read(true).open(wax_path)?;
+
+            let index_str = {
+                let mut s = String::new();
+                f.read_to_string(&mut s)?;
+                s
+            };
+
+            if index_str.is_empty() {
                 WaxIndex {
                     index: Default::default(),
                     base_dir: env::temp_dir().join("wax"),
                 }
-            };
+            } else {
+                toml::from_str(&index_str)?
+            }
+        } else {
+            WaxIndex {
+                index: Default::default(),
+                base_dir: env::temp_dir().join("wax"),
+            }
+        };
 
         // ensure the directory exists
         fs::create_dir_all(&wax_index.base_dir)?;

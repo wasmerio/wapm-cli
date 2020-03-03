@@ -16,7 +16,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
     let colors_level = colors_line.info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
-        .level(log::LevelFilter::Trace)
+        .level(log::LevelFilter::Debug)
         .chain({
             let base = if should_color {
                 fern::Dispatch::new().format(move |out, message, record| {
@@ -83,7 +83,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                             .unwrap_or_else(|| "".to_string()),
                     ));
                 })
-                .level(log::LevelFilter::Trace)
+                .level(log::LevelFilter::Debug)
                 .level_for("hyper", log::LevelFilter::Info)
                 .level_for("tokio_reactor", log::LevelFilter::Info)
                 .chain(
