@@ -248,21 +248,27 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                     );
                     #[cfg(feature = "telemetry")]
                     {
-                        sentry::integrations::failure::capture_error(format!(
+                        sentry::capture_message(
+                            &format!(
                             "Lockfile not found in `{}` just after install! This should not happen",
                             &install_loc.to_string_lossy()
-                        ));
+                        ),
+                            sentry::Level::Error,
+                        );
                     }
                 }
                 LockfileResult::LockfileError(e) => {
                     error!("Error in lockfile at `{}`! This is likely an internal Wapm error! Error details: {}", &install_loc.to_string_lossy(), e);
                     #[cfg(feature = "telemetry")]
                     {
-                        sentry::integrations::failure::capture_error(format!(
-                            "Error in lockfile at `{}`. Error details: {}",
-                            &install_loc.to_string_lossy(),
-                            e
-                        ));
+                        sentry::capture_message(
+                            &format!(
+                                "Error in lockfile at `{}`. Error details: {}",
+                                &install_loc.to_string_lossy(),
+                                e
+                            ),
+                            sentry::Level::Error,
+                        );
                     }
                 }
             }
