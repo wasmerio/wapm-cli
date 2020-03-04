@@ -187,6 +187,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
             install_from_remote = true;
         }
 
+        // perform the install
         if install_from_remote {
             trace!("Installing Wax package from registry");
             // do install

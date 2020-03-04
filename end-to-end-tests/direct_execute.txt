@@ -1,0 +1,12 @@
+[INFO] Installing _/coreutils@0.0.1
+"hello"
+[INFO] Installing _/cowsay@0.1.2
+ _______
+< hello >
+ -------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+               ||----w |
+                ||     ||
+No packages found
