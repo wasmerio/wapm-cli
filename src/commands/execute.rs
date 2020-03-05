@@ -1,6 +1,6 @@
 //! Module for wax, executes a module immediately
 
-use crate::constants::RFC3339_FORMAT_STRING_WITH_TIMEZONE;
+//use crate::constants::RFC3339_FORMAT_STRING_WITH_TIMEZONE;
 use crate::data::wax_index;
 use crate::dataflow::find_command_result::FindCommandResult;
 use crate::dataflow::installed_packages::{InstalledPackages, RegistryInstaller};
@@ -10,7 +10,7 @@ use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::{execute_query, DateTime};
-use crate::keys;
+//use crate::keys;
 use crate::util;
 
 use graphql_client::*;
@@ -187,10 +187,11 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
 
         let install_from_remote;
         if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
+            let package_version_str = format!("{}@{}", &package_name, &version);
             let location = wax_index
                 .base_path()
-                .join(format!("{}@{}", &package_name, &version));
-            if registry_version > version && dbg!(location.join("wapm.lock").exists()) {
+                .join(&package_version_str);
+            if registry_version > version || !location.join("wapm_packages").join(&package_version_str).join("wapm.toml").exists() {
                 debug!(
                     "Found version {} locally in Wax but version {} from the registry: upgrading",
                     version, registry_version

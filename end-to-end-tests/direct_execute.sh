@@ -13,3 +13,5 @@ wapm execute lolcat -- -V
 wapm uninstall lolcat
 wapm execute lolcat -- -V
 wapm list -a
+rm -rf $(wapm execute --which lolcat)/wapm_packages/_/lolcat@0.1.1/*
+wapm execute lolcat -- -V
