@@ -25,7 +25,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub struct ExecuteOpt {
     /// The command to run.
-    command: String,
+    command: Option<String>,
 
     /// Run unsandboxed emscripten modules too.
     #[structopt(long = "emscripten")]
@@ -42,6 +42,10 @@ pub struct ExecuteOpt {
     /// Prevent the current directory from being preopened by default.
     #[structopt(long = "no-default-preopen")]
     no_default_preopen: bool,
+
+    #[structopt(long = "which")]
+    /// The command to run.
+    which: Option<String>,
 
     /// Arguments that the command will get.
     #[structopt(raw(multiple = "true"), parse(from_os_str))]
@@ -66,6 +70,8 @@ enum ExecuteError {
     ErrorInDataFromRegistry(String),
     #[fail(display = "An error occured during installation: {}", _0)]
     InstallationError(String),
+    #[fail(display = "Please specify a command to run!")]
+    NoCommandGiven,
 }
 
 #[derive(GraphQLQuery)]
@@ -82,8 +88,35 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
     }
     let opt = opt;
     trace!("Execute {:?}", &opt);
-    let command_name = opt.command.as_str();
     let current_dir = env::current_dir()?;
+    if let Some(which) = opt.which {
+        let mut wax_index = wax_index::WaxIndex::open()?;
+        let dir = if let Ok((package_name, version)) = wax_index.search_for_entry(which.clone()) {
+            wax_index
+                .base_path()
+                .join(format!("{}@{}", package_name, version))
+        } else {
+            if let FindCommandResult::CommandFound { manifest_dir, .. } =
+                FindCommandResult::find_command_in_directory(&current_dir, &which)
+            {
+                manifest_dir
+            } else {
+                return Err(ExecuteError::CommandNotFound {
+                    name: which.clone(),
+                }
+                .into());
+            }
+        };
+
+        println!("{}", dir.to_string_lossy());
+        return Ok(());
+    }
+    let command = if let Some(command) = opt.command {
+        command.clone()
+    } else {
+        return Err(ExecuteError::NoCommandGiven.into());
+    };
+    let command_name = command.as_str();
     let _value = util::set_wapm_should_accept_all_prompts(opt.force_yes);
     debug_assert!(
         _value.is_some(),
@@ -157,7 +190,7 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
             let location = wax_index
                 .base_path()
                 .join(format!("{}@{}", &package_name, &version));
-            if registry_version > version && dbg!(location.join("wapm.toml").exists()) {
+            if registry_version > version && dbg!(location.join("wapm.lock").exists()) {
                 debug!(
                     "Found version {} locally in Wax but version {} from the registry: upgrading",
                     version, registry_version
@@ -199,24 +232,26 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
                     },
                     (
                         command.package_version.distribution.download_url.clone(),
-                        command
-                            .package_version
-                            .signature
-                            .map(|sig| keys::WapmPackageSignature {
-                                public_key_id: sig.public_key.key_id.clone(),
-                                public_key: sig.public_key.key.clone(),
-                                signature_data: sig.data.clone(),
-                                date_created: time::strptime(
-                                    &sig.public_key.uploaded_at,
-                                    RFC3339_FORMAT_STRING_WITH_TIMEZONE,
-                                )
-                                .unwrap_or_else(|err| {
-                                    panic!("Failed to parse time string: {}", err)
-                                })
-                                .to_timespec(),
-                                revoked: sig.public_key.revoked,
-                                owner: sig.public_key.owner.username.clone(),
-                            }),
+                        None, /*
+                                  // package signing disabled for `wapm execute` for now
+                              command
+                                  .package_version
+                                  .signature
+                                  .map(|sig| keys::WapmPackageSignature {
+                                      public_key_id: sig.public_key.key_id.clone(),
+                                      public_key: sig.public_key.key.clone(),
+                                      signature_data: sig.data.clone(),
+                                      date_created: time::strptime(
+                                          &sig.public_key.uploaded_at,
+                                          RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                                      )
+                                      .unwrap_or_else(|err| {
+                                          panic!("Failed to parse time string: {}", err)
+                                      })
+                                      .to_timespec(),
+                                      revoked: sig.public_key.revoked,
+                                      owner: sig.public_key.owner.username.clone(),
+                                  })*/
                     ),
                 )],
             };

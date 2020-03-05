@@ -109,7 +109,15 @@ fn main() {
         }
     };
 
-    let args = Command::from_args();
+    let prog_name = std::env::args()
+        .next()
+        .expect("Fatal error could not find any arguments!");
+
+    let args = if prog_name == "wax" {
+        Command::Execute(commands::ExecuteOpt::from_args())
+    } else {
+        Command::from_args()
+    };
 
     #[cfg(feature = "update-notifications")]
     // Only show the async check on certain commands
