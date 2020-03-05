@@ -188,10 +188,14 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
         let install_from_remote;
         if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
             let package_version_str = format!("{}@{}", &package_name, &version);
-            let location = wax_index
-                .base_path()
-                .join(&package_version_str);
-            if registry_version > version || !location.join("wapm_packages").join(&package_version_str).join("wapm.toml").exists() {
+            let location = wax_index.base_path().join(&package_version_str);
+            if registry_version > version
+                || !location
+                    .join("wapm_packages")
+                    .join(&package_version_str)
+                    .join("wapm.toml")
+                    .exists()
+            {
                 debug!(
                     "Found version {} locally in Wax but version {} from the registry: upgrading",
                     version, registry_version

@@ -33,6 +33,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
             local = true;
         }
     }
+    let local_start_value = local;
 
     let mut handle = String::new();
     if local {
@@ -60,6 +61,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                     writeln!(handle, "No packages in current directory")?;
                     return Ok(());
                 }
+                local = false;
             }
             LockfileResult::LockfileError(e) => {
                 return Err(format_err!(
@@ -95,10 +97,11 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                 }
             }
             LockfileResult::NoLockfile => {
-                if !local {
+                if !local_start_value {
                     writeln!(handle, "No global packages")?;
                     return Ok(());
                 }
+                global = false;
             }
             LockfileResult::LockfileError(e) => {
                 return Err(format_err!(
