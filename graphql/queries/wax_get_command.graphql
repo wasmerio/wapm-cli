@@ -21,6 +21,7 @@ query WaxGetCommandQuery($command: String!) {
           uploadedAt
           revoked
         }
+        data
       }
       distribution {
         downloadUrl

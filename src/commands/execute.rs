@@ -1,10 +1,13 @@
 //! Module for wax, executes a module immediately
 
+use crate::constants::RFC3339_FORMAT_STRING_WITH_TIMEZONE;
 use crate::data::wax_index;
 use crate::dataflow::find_command_result::FindCommandResult;
 use crate::dataflow::installed_packages::{InstalledPackages, RegistryInstaller};
-use crate::dataflow::lockfile_packages::LockfileResult;
+use crate::dataflow::lockfile_packages::{LockfilePackages, LockfileResult};
+use crate::dataflow::merged_lockfile_packages::MergedLockfilePackages;
 use crate::dataflow::resolved_packages::ResolvedPackages;
+use crate::dataflow::retained_lockfile_packages::RetainedLockfilePackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::{execute_query, DateTime};
 use crate::keys;
@@ -21,21 +24,26 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub struct ExecuteOpt {
-    /// Command name
+    /// The command to run.
     command: String,
-    /// Run unsandboxed emscripten modules too
+
+    /// Run unsandboxed emscripten modules too.
     #[structopt(long = "emscripten")]
-    run_emscripten_too: bool,
-    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
+    enable_emscripten: bool,
+
+    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior).
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
-    /// WASI pre-opened directory
+
+    /// Pre-open a directory for WASI.
     #[structopt(long = "dir", multiple = true, group = "wasi")]
     pre_opened_directories: Vec<String>,
-    /// Print info about Wax instead of executing a command
-    #[structopt(long = "info")]
-    just_print_info: bool,
-    /// Application arguments
+
+    /// Prevent the current directory from being preopened by default.
+    #[structopt(long = "no-default-preopen")]
+    no_default_preopen: bool,
+
+    /// Arguments that the command will get.
     #[structopt(raw(multiple = "true"), parse(from_os_str))]
     args: Vec<OsString>,
 }
@@ -43,7 +51,7 @@ pub struct ExecuteOpt {
 #[derive(Debug, Fail)]
 enum ExecuteError {
     #[fail(
-        display = "No package for command `{}` found locally or in the registry",
+        display = "Command `{}` not found in the registry or in the current directory",
         name
     )]
     CommandNotFound { name: String },
@@ -56,6 +64,8 @@ enum ExecuteError {
     WaxIndexError(wax_index::WaxIndexError),
     #[fail(display = "Error parsing data from register: {}", _0)]
     ErrorInDataFromRegistry(String),
+    #[fail(display = "An error occured during installation: {}", _0)]
+    InstallationError(String),
 }
 
 #[derive(GraphQLQuery)]
@@ -66,7 +76,11 @@ enum ExecuteError {
 )]
 struct WaxGetCommandQuery;
 
-pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
+pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
+    if !opt.no_default_preopen {
+        opt.pre_opened_directories.push(".".into());
+    }
+    let opt = opt;
     trace!("Execute {:?}", &opt);
     let command_name = opt.command.as_str();
     let current_dir = env::current_dir()?;
@@ -75,23 +89,6 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         _value.is_some(),
         "this function should only be called once!"
     );
-
-    if opt.just_print_info {
-        println!("Wax downloads Wasm modules if they're not available locally, stores them temporarily, and executes them.");
-        match wax_index::WaxIndex::open() {
-            Ok(wax_index) => {
-                let wax_base_path = wax_index.base_path();
-                println!(
-                    "Wax modules are installed to `{}`",
-                    wax_base_path.to_string_lossy()
-                );
-            }
-            Err(e) => {
-                println!("Failed to open the Wax Index. Ensure the `WASMER_DIR` env var is set and try again: {}", e);
-            }
-        }
-        return Ok(());
-    }
 
     // first search for locally installed command
     match FindCommandResult::find_command_in_directory(&current_dir, &command_name) {
@@ -144,7 +141,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
     if let Some(command) = response.command {
         // command found, check if it's installed
         if let Some(abi) = command.module.abi.as_ref() {
-            if abi == "emscripten" && !opt.run_emscripten_too {
+            if abi == "emscripten" && !opt.enable_emscripten {
                 return Err(ExecuteError::EmscriptenDisabled {
                     name: command_name.to_string(),
                 }
@@ -156,10 +153,11 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
             .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string()))?;
 
         let install_from_remote;
-        if let Ok(wax_index::WaxIndexEntry { version, location }) =
-            wax_index.search_for_entry(command_name.to_string())
-        {
-            if registry_version > version {
+        if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
+            let location = wax_index
+                .base_path()
+                .join(format!("{}@{}", &package_name, &version));
+            if registry_version > version && dbg!(location.join("wapm.toml").exists()) {
                 debug!(
                     "Found version {} locally in Wax but version {} from the registry: upgrading",
                     version, registry_version
@@ -173,11 +171,9 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 install_from_remote = false;
                 wax_index.save()?;
 
-                // this shouldn't be needed!
-                //crate::dataflow::update(vec![], vec![], wax_index.base_path()).unwrap();
                 run(
                     command_name,
-                    location.to_owned(),
+                    location,
                     &opt.pre_opened_directories,
                     &opt.args,
                 )?;
@@ -195,7 +191,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 "{}@{}",
                 &command.package_version.package.name, &registry_version
             ));
-            let resolve_packages = ResolvedPackages {
+            let resolved_packages = ResolvedPackages {
                 packages: vec![(
                     WapmPackageKey {
                         name: command.package_version.package.name.clone().into(),
@@ -203,29 +199,46 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                     },
                     (
                         command.package_version.distribution.download_url.clone(),
-                        None, /*
-                               TODO: package signing support
-                               command.package_version.signature.map(|sig| keys::WapmPackageSignature {
-                                  public_key_id: sig.key_id.clone(),
-                                  public_key: sig.key.clone(),
-                                  signature_data: todo!("HMMM"),
-                                  date_created: todo!("TODO PARSE IT")a,
-                                  revoked: sig.revoked,
-                                  owner: sig.owner.username.clone(),
-                              })
-                               */
+                        command
+                            .package_version
+                            .signature
+                            .map(|sig| keys::WapmPackageSignature {
+                                public_key_id: sig.public_key.key_id.clone(),
+                                public_key: sig.public_key.key.clone(),
+                                signature_data: sig.data.clone(),
+                                date_created: time::strptime(
+                                    &sig.public_key.uploaded_at,
+                                    RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                                )
+                                .unwrap_or_else(|err| {
+                                    panic!("Failed to parse time string: {}", err)
+                                })
+                                .to_timespec(),
+                                revoked: sig.public_key.revoked,
+                                owner: sig.public_key.owner.username.clone(),
+                            }),
                     ),
                 )],
             };
-            crate::dataflow::update(
-                vec![(
-                    &command.package_version.package.name,
-                    &command.package_version.version,
-                )],
-                vec![],
-                &install_loc,
-            )
-            .unwrap();
+
+            // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
+            let lockfile_result = LockfileResult::find_in_directory(&install_loc);
+            let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
+                .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+            let installed_packages =
+                InstalledPackages::install::<RegistryInstaller>(&install_loc, resolved_packages)?;
+            let added_lockfile_data =
+                LockfilePackages::from_installed_packages(&installed_packages)
+                    .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
+            let retained_lockfile_packages =
+                RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
+            let final_lockfile_data =
+                MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
+            final_lockfile_data
+                .generate_lockfile(&install_loc)
+                .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
             debug!("Wax package installed to {}", install_loc.to_string_lossy());
 
             // get all the commands from the lockfile and index them
@@ -236,7 +249,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                         wax_index.insert_entry(
                             command_name.to_string(),
                             command_info.package_version.clone(),
-                            install_loc.clone(),
+                            command.package_version.package.name.clone(),
                         );
                     }
                     lockfile_not_found = false;
@@ -281,7 +294,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 wax_index.insert_entry(
                     command_name.to_string(),
                     registry_version,
-                    install_loc.clone(),
+                    command.package_version.package.name.clone(),
                 );
             }
             wax_index.save()?;
@@ -310,6 +323,9 @@ fn run(
 ) -> Result<(), failure::Error> {
     match FindCommandResult::find_command_in_directory(&location, command_name) {
         FindCommandResult::CommandNotFound(s) => {
+            // this should only happen if the package is deleted immediately
+            // after being installed to the temp directory or the package is
+            // corrupt
             todo!(
                 "Implement command not found logic!: {}, {}: {}",
                 location.to_string_lossy(),

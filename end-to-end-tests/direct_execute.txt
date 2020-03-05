@@ -1,4 +1,5 @@
 [INFO] Installing _/coreutils@0.0.1
+aGVsbG8K
 "hello"
 [INFO] Installing _/cowsay@0.1.2
  _______
@@ -9,4 +10,9 @@
             (__)\       )\/\
                ||----w |
                 ||     ||
+[INFO] Installing _/lolcat@0.1.1
+"wapm-run-lolcat" 1.0.1
+"wapm-run-lolcat" 1.0.1
+[INFO] Installing _/lolcat@0.1.1
+"wapm-run-lolcat" 1.0.1
 No packages found

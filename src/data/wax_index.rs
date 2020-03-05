@@ -15,18 +15,12 @@ use std::collections::HashMap;
 pub struct WaxIndex {
     base_dir: PathBuf,
     #[serde(serialize_with = "toml::ser::tables_last")]
-    index: HashMap<String, WaxIndexEntry>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct WaxIndexEntry {
-    pub location: PathBuf,
-    pub version: Version,
+    index: HashMap<String, String>,
 }
 
 impl WaxIndex {
     /// Read the `WaxIndex` from disk
-    pub fn open() -> Result<Self, failure::Error> {
+    pub fn open() -> Result<Self, WaxIndexError> {
         trace!("Loading WaxIndex!");
         let wax_path = config::Config::get_wax_file_path()?;
         let wax_index = if wax_path.exists() {
@@ -61,7 +55,7 @@ impl WaxIndex {
     }
 
     /// Save the `WaxIndex` to disk
-    pub fn save(&self) -> Result<(), failure::Error> {
+    pub fn save(&self) -> Result<(), WaxIndexError> {
         trace!("Saving WaxIndex!");
         let wax_path = config::Config::get_wax_file_path()?;
         let mut f = fs::OpenOptions::new()
@@ -79,12 +73,26 @@ impl WaxIndex {
 
     /// This function takes a `&mut` because it will update itself with the
     /// information that it finds.
-    pub fn search_for_entry(&mut self, entry: String) -> Result<WaxIndexEntry, failure::Error> {
+    pub fn search_for_entry(&mut self, entry: String) -> Result<(String, Version), WaxIndexError> {
         if let Some(found_entry) = self.index.get(&entry) {
+            let location = self.base_path().join(found_entry);
             // check if entry still exists and if not remove it
-            if found_entry.location.exists() {
+            if location.exists() {
                 trace!("Wax entry found and it still exists!");
-                return Ok(found_entry.clone());
+                let mut splitter = found_entry.split('@');
+                let package_name = splitter
+                    .next()
+                    .ok_or_else(|| WaxIndexError::EntryCorrupt {
+                        entry: entry.clone(),
+                    })?
+                    .to_string();
+                let version = splitter
+                    .next()
+                    .and_then(|v| Version::parse(v).ok())
+                    .ok_or_else(|| WaxIndexError::EntryCorrupt {
+                        entry: entry.clone(),
+                    })?;
+                return Ok((package_name, version));
             }
             trace!("Wax entry found but it no longer exists, removing from registry!");
             self.index.remove(&entry);
@@ -97,15 +105,15 @@ impl WaxIndex {
 
     /// Package installed, add it to the index.
     ///
-    /// Returns the `WaxIndexEntry` at `entry` if one exists
+    /// Returns the existing entry as a `package_name@version` String if one exists
     pub fn insert_entry(
         &mut self,
         entry: String,
         version: Version,
-        location: PathBuf,
-    ) -> Option<WaxIndexEntry> {
+        package_name: String,
+    ) -> Option<String> {
         self.index
-            .insert(entry, WaxIndexEntry { version, location })
+            .insert(entry, format!("{}@{}", package_name, version))
     }
 
     /// Get path at which packages should be installed.
@@ -126,6 +134,8 @@ pub enum WaxIndexError {
     IndexConvertError(toml::ser::Error),
     #[fail(display = "Entry `{}` not found", entry)]
     EntryNotFound { entry: String },
+    #[fail(display = "Entry `{}` found but was corrupt", entry)]
+    EntryCorrupt { entry: String },
 }
 
 impl From<config::GlobalConfigError> for WaxIndexError {
