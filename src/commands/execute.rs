@@ -35,6 +35,10 @@ pub struct ExecuteOpt {
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
 
+    /// Package will be verified by its signature. Off by default
+    #[structopt(long = "verify", short = "v")]
+    verify_signature: bool,
+
     /// Pre-open a directory for WASI.
     #[structopt(long = "dir", multiple = true, group = "wasi")]
     pre_opened_directories: Vec<String>,
@@ -265,8 +269,11 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
             let lockfile_result = LockfileResult::find_in_directory(&install_loc);
             let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
                 .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-            let installed_packages =
-                InstalledPackages::install::<RegistryInstaller>(&install_loc, resolved_packages)?;
+            let installed_packages = InstalledPackages::install::<RegistryInstaller>(
+                &install_loc,
+                resolved_packages,
+                !opt.verify_signature,
+            )?;
             let added_lockfile_data =
                 LockfilePackages::from_installed_packages(&installed_packages)
                     .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;

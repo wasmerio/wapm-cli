@@ -11,7 +11,7 @@ use crate::util::{
 };
 use flate2::read::GzDecoder;
 use reqwest::ClientBuilder;
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -74,6 +74,7 @@ impl<'a> InstalledPackages<'a> {
     pub fn install<Installer: Install<'a>>(
         directory: &Path,
         resolve_packages: ResolvedPackages<'a>,
+        force_insecure_install: bool,
     ) -> Result<Self, Error> {
         let packages_result: Result<Vec<(WapmPackageKey, PathBuf, String)>, Error> =
             resolve_packages
@@ -81,7 +82,13 @@ impl<'a> InstalledPackages<'a> {
                 .into_iter()
                 .map(|(key, (download_url, signature))| {
                     info!("Installing {}@{}", key.name, key.version);
-                    Installer::install_package(&directory, key, &download_url, signature)
+                    Installer::install_package(
+                        &directory,
+                        key,
+                        &download_url,
+                        signature,
+                        force_insecure_install,
+                    )
                 })
                 .collect();
         let packages_result: Result<Vec<(WapmPackageKey, Manifest, String)>, Error> =
@@ -118,6 +125,7 @@ pub trait Install<'a> {
         key: WapmPackageKey<'a>,
         download_url: &str,
         signature: Option<keys::WapmPackageSignature>,
+        force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error>;
 }
 
@@ -139,6 +147,155 @@ impl RegistryInstaller {
     }
 }
 
+#[derive(Debug, Clone)]
+struct PackageSignatureVerificationData {
+    insecure_install: bool,
+    key_to_verify_package_with: Option<(String, String)>,
+    signature_to_use: Option<String>,
+}
+
+fn verify_integrity_of_package(
+    namespace: &str,
+    fully_qualified_package_name: String,
+    signature: Option<keys::WapmPackageSignature>,
+) -> Result<PackageSignatureVerificationData, Error> {
+    let mut keys_db = database::open_db().map_err(|e| {
+        Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
+    })?;
+    // get the latest key for the given namespace first. If the server claims that the owner
+    // is someone else, then we'll search the local database for a key from that user
+    // this is required for how globally namespaced packages work and also allows transfer
+    // of ownership
+    let mut latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
+        .map_err(|e| {
+            Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
+        })?;
+
+    let import_public_key = |mut_db_handle, pk_id, pkv, associated_user| {
+        keys::import_public_key(mut_db_handle, pk_id, pkv, associated_user).map_err(|e| {
+            Error::KeyManagementError(
+                fully_qualified_package_name.clone(),
+                format!("could not add public key: {}", e),
+            )
+        })
+    };
+
+    let mut insecure_install = false;
+    let mut key_to_verify_package_with = None;
+    let mut signature_to_use = None;
+
+    if let Some(keys::WapmPackageSignature {
+        public_key_id,
+        public_key,
+        signature_data,
+        owner,
+        ..
+    }) = signature
+    {
+        // Cases 1-X:
+        // get key for owner as identified by the server
+        latest_public_key = if owner != namespace {
+            keys::get_latest_public_key_for_user(&keys_db, &owner).map_err(|e| {
+                Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
+            })?
+        } else {
+            latest_public_key
+        };
+        debug!(
+            "Latest public key for user {} during install: {:?}",
+            &namespace, latest_public_key
+        );
+
+        if let Some(latest_local_key) = latest_public_key {
+            // Case 1-1: server has key and client has key
+            // verify or prompt and store
+            if public_key_id == latest_local_key.public_key_id
+                && public_key == latest_local_key.public_key_value
+            {
+                // keys match
+                trace!("Public key from server matches latest key locally");
+                key_to_verify_package_with = Some((
+                    latest_local_key.public_key_id,
+                    latest_local_key.public_key_value,
+                ));
+
+                signature_to_use = Some(signature_data);
+            } else {
+                // mismatch, prompt user
+                let user_trusts_new_key =
+                        util::prompt_user_for_yes(&format!(
+                            "The keys {:?} and {:?} do not match. Do you want to trust the new key ({:?} {:?})?",
+                            &latest_local_key.public_key_id, &public_key_id, &public_key_id, &public_key
+                        )).expect("Could not read input from user");
+
+                if user_trusts_new_key {
+                    import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
+                    key_to_verify_package_with = Some((public_key_id, public_key));
+                    signature_to_use = Some(signature_data);
+                } else {
+                    return Err(Error::InstallAborted(format!(
+                        "Mismatching key on package {} was not trusted by user",
+                        &fully_qualified_package_name
+                    )));
+                }
+            }
+        } else {
+            // Case 1-0: server has key and client does not have key
+            // prompt and store
+            let user_trusts_new_key = util::prompt_user_for_yes(&format!(
+                "New public key encountered for user {}: {} {} while installing {}.
+Would you like to trust this key?",
+                &owner, &public_key_id, &public_key, &fully_qualified_package_name
+            ))
+            .expect("Could not read input from user");
+            if user_trusts_new_key {
+                import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
+                key_to_verify_package_with = Some((public_key_id, public_key));
+                signature_to_use = Some(signature_data);
+            } else {
+                return Err(Error::InstallAborted(format!(
+                    "User did not trust key from registry for package {}",
+                    &fully_qualified_package_name
+                )));
+            }
+        }
+    } else {
+        // Cases 0-X:
+        // server does not have key
+        if let Some(latest_local_key) = latest_public_key {
+            // Case 0-1: server does not have key and client has key
+            // server error or scary things happening
+            warn!(
+                    "The server does not have a public key for {} for the package {} and the package is not signed but a public key for {} is known locally ({}).\nThis could mean that the wapm registry has been compromised, that the package was created before the publisher started signing their packages, or that the publisher decided not to sign this package.",
+                    &namespace, &fully_qualified_package_name, &namespace, &latest_local_key.public_key_id
+                );
+
+            let user_wants_to_do_insecure_install = util::prompt_user_for_yes(
+                "Would you like to proceed with an unverified installation?",
+            )
+            .expect("Could not read input from user");
+
+            if user_wants_to_do_insecure_install {
+                insecure_install = true;
+            } else {
+                return Err(Error::InstallAborted(format!(
+                    "User did not trust unsigned package {}",
+                    &fully_qualified_package_name
+                )));
+            }
+        } else {
+            // Case 0-0: server does not have key and client does not have key
+            // silently proceed to insecure install for now
+            insecure_install = true;
+        }
+    }
+    Ok(PackageSignatureVerificationData {
+        insecure_install,
+        key_to_verify_package_with,
+        signature_to_use,
+    })
+}
+
 /// This impl will install packages from a wapm registry.
 impl<'a> Install<'a> for RegistryInstaller {
     fn install_package(
@@ -146,6 +303,7 @@ impl<'a> Install<'a> for RegistryInstaller {
         key: WapmPackageKey<'a>,
         download_url: &str,
         signature: Option<keys::WapmPackageSignature>,
+        force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error> {
         let (namespace, pkg_name) = get_package_namespace_and_name(&key.name)
             .map_err(|e| Error::FailedToParsePackageName(key.to_string(), e.to_string()))?;
@@ -185,136 +343,49 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Error::DownloadError(key.to_string(), error_message)
             })?;
 
-        let mut keys_db = database::open_db().map_err(|e| {
-            Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
-        })?;
-        // get the latest key for the given namespace first. If the server claims that the owner
-        // is someone else, then we'll search the local database for a key from that user
-        // this is required for how globally namespaced packages work and also allows transfer
-        // of ownership
-        let mut latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
-            .map_err(|e| {
-                Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
-            })?;
-
-        let import_public_key = |mut_db_handle, pk_id, pkv, associated_user| {
-            keys::import_public_key(mut_db_handle, pk_id, pkv, associated_user).map_err(|e| {
-                Error::KeyManagementError(
+        // step to perform after package is decompressed: may be a no-op or may
+        // execute side effects such as logging to the user.
+        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
+            if !force_insecure_install {
+                let PackageSignatureVerificationData {
+                    insecure_install,
+                    key_to_verify_package_with,
+                    signature_to_use,
+                } = verify_integrity_of_package(
+                    namespace,
                     fully_qualified_package_name.clone(),
-                    format!("could not add public key: {}", e),
-                )
-            })
-        };
+                    signature,
+                )?;
 
-        let mut insecure_install = false;
-        let mut key_to_verify_package_with = None;
-        let mut signature_to_use = None;
-
-        if let Some(keys::WapmPackageSignature {
-            public_key_id,
-            public_key,
-            signature_data,
-            owner,
-            ..
-        }) = signature
-        {
-            // Cases 1-X:
-            // get key for owner as identified by the server
-            latest_public_key = if owner != namespace {
-                keys::get_latest_public_key_for_user(&keys_db, &owner).map_err(|e| {
-                    Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
-                })?
-            } else {
-                latest_public_key
-            };
-            debug!(
-                "Latest public key for user {} during install: {:?}",
-                &namespace, latest_public_key
-            );
-
-            if let Some(latest_local_key) = latest_public_key {
-                // Case 1-1: server has key and client has key
-                // verify or prompt and store
-                if public_key_id == latest_local_key.public_key_id
-                    && public_key == latest_local_key.public_key_value
-                {
-                    // keys match
-                    trace!("Public key from server matches latest key locally");
-                    key_to_verify_package_with = Some((
-                        latest_local_key.public_key_id,
-                        latest_local_key.public_key_value,
-                    ));
-
-                    signature_to_use = Some(signature_data);
+                if insecure_install {
+                    Box::new(|_dest| Ok(()))
                 } else {
-                    // mismatch, prompt user
-                    let user_trusts_new_key =
-                        util::prompt_user_for_yes(&format!(
-                            "The keys {:?} and {:?} do not match. Do you want to trust the new key ({:?} {:?})?",
-                            &latest_local_key.public_key_id, &public_key_id, &public_key_id, &public_key
-                        )).expect("Could not read input from user");
-
-                    if user_trusts_new_key {
-                        import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
-                        key_to_verify_package_with = Some((public_key_id, public_key));
-                        signature_to_use = Some(signature_data);
-                    } else {
-                        return Err(Error::InstallAborted(format!(
-                            "Mismatching key on package {} was not trusted by user",
+                    Box::new(move |mut dest| {
+                        let (pk_id, pkv) = key_to_verify_package_with
+                            .clone()
+                            .expect("Critical internal logic error");
+                        let signature_to_use = signature_to_use
+                            .clone()
+                            .expect("Critical internal logic error");
+                        verify_signature_on_package(&pkv, &signature_to_use, &mut dest).map_err(
+                            |e| {
+                                Error::FailedToValidateSignature(
+                                    fully_qualified_package_name.clone(),
+                                    pk_id,
+                                    e.to_string(),
+                                )
+                            },
+                        )?;
+                        info!(
+                            "Signature of package {} verified!",
                             &fully_qualified_package_name
-                        )));
-                    }
+                        );
+                        Ok(())
+                    })
                 }
             } else {
-                // Case 1-0: server has key and client does not have key
-                // prompt and store
-                let user_trusts_new_key = util::prompt_user_for_yes(&format!(
-                    "New public key encountered for user {}: {} {} while installing {}.
-Would you like to trust this key?",
-                    &owner, &public_key_id, &public_key, &fully_qualified_package_name
-                ))
-                .expect("Could not read input from user");
-                if user_trusts_new_key {
-                    import_public_key(&mut keys_db, &public_key_id, &public_key, owner)?;
-                    key_to_verify_package_with = Some((public_key_id, public_key));
-                    signature_to_use = Some(signature_data);
-                } else {
-                    return Err(Error::InstallAborted(format!(
-                        "User did not trust key from registry for package {}",
-                        &fully_qualified_package_name
-                    )));
-                }
-            }
-        } else {
-            // Cases 0-X:
-            // server does not have key
-            if let Some(latest_local_key) = latest_public_key {
-                // Case 0-1: server does not have key and client has key
-                // server error or scary things happening
-                warn!(
-                    "The server does not have a public key for {} for the package {} and the package is not signed but a public key for {} is known locally ({}).\nThis could mean that the wapm registry has been compromised, that the package was created before the publisher started signing their packages, or that the publisher decided not to sign this package.",
-                    &namespace, &fully_qualified_package_name, &namespace, &latest_local_key.public_key_id
-                );
-
-                let user_wants_to_do_insecure_install = util::prompt_user_for_yes(
-                    "Would you like to proceed with an unverified installation?",
-                )
-                .expect("Could not read input from user");
-
-                if user_wants_to_do_insecure_install {
-                    insecure_install = true;
-                } else {
-                    return Err(Error::InstallAborted(format!(
-                        "User did not trust unsigned package {}",
-                        &fully_qualified_package_name
-                    )));
-                }
-            } else {
-                // Case 0-0: server does not have key and client does not have key
-                // silently proceed to insecure install for now
-                insecure_install = true;
-            }
-        }
+                Box::new(|_dest| Ok(()))
+            };
 
         let temp_dir = tempdir::TempDir::new("wapm_package_install")
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
@@ -328,21 +399,7 @@ Would you like to trust this key?",
         io::copy(&mut response, &mut dest)
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
 
-        if !insecure_install {
-            let (pk_id, pkv) = key_to_verify_package_with.expect("Critical internal logic error");
-            let signature_to_use = signature_to_use.expect("Critical internal logic error");
-            verify_signature_on_package(&pkv, &signature_to_use, &mut dest).map_err(|e| {
-                Error::FailedToValidateSignature(
-                    fully_qualified_package_name.clone(),
-                    pk_id,
-                    e.to_string(),
-                )
-            })?;
-            info!(
-                "Signature of package {} verified!",
-                &fully_qualified_package_name
-            );
-        }
+        key_sign_end_step(&mut dest)?;
 
         Self::decompress_and_extract_archive(dest, &package_dir, &key)
             .map_err(|e| Error::DecompressionError(key.to_string(), e.to_string()))?;
@@ -354,7 +411,7 @@ Would you like to trust this key?",
 fn verify_signature_on_package(
     pkv: &str,
     signature_to_use: &str,
-    dest: &mut std::fs::File,
+    dest: &mut fs::File,
 ) -> Result<(), failure::Error> {
     dest.seek(SeekFrom::Start(0))?;
     // TODO: refactor to remove extra bit of info here

@@ -65,8 +65,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
 
     // verbose logging to file
     let dispatch = if let Ok(wasmer_dir) = Config::get_folder() {
-        let mut log_out = wasmer_dir;
-        log_out.push("wapm.log");
+        let log_out = wasmer_dir.join("wapm.log");
         dispatch.chain(
             fern::Dispatch::new()
                 .format(move |out, message, record| {
