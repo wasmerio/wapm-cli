@@ -20,13 +20,13 @@ use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
-use structopt::StructOpt;
+use structopt::{
+    StructOpt,
+};
 
 #[derive(StructOpt, Debug)]
-pub struct ExecuteOpt {
-    /// The command to run.
-    command: Option<String>,
-
+pub enum ExecuteOpt {
+    /*
     /// Run unsandboxed emscripten modules too.
     #[structopt(long = "emscripten")]
     enable_emscripten: bool,
@@ -51,8 +51,55 @@ pub struct ExecuteOpt {
     /// The command to run.
     which: Option<String>,
 
+    /// The command to run.
+    #[structopt(conflicts_with_all(&["which"]), index = 1)]
+    command: Option<String>,
+    */
     /// Arguments that the command will get.
-    #[structopt(raw(multiple = "true"), parse(from_os_str))]
+    #[structopt(external_subcommand)]
+    ExecArgs(Vec<String>),
+}
+
+impl ExecuteOpt {
+    fn args(&self) -> &[String] {
+        match self {
+            ExecuteOpt::ExecArgs(args) => args.as_slice(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ExecuteOptInner {
+    /// Run unsandboxed emscripten modules too.
+    // #[structopt(long = "emscripten")]
+    enable_emscripten: bool,
+
+    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior).
+    // #[structopt(long = "force-yes", short = "y")]
+    force_yes: bool,
+
+    /// Package will be verified by its signature. Off by default
+    // #[structopt(long = "verify", short = "v")]
+    verify_signature: bool,
+
+    /// Pre-open a directory for WASI.
+    // #[structopt(long = "dir", multiple = true, group = "wasi")]
+    pre_opened_directories: Vec<String>,
+
+    /// Prevent the current directory from being preopened by default.
+    // #[structopt(long = "no-default-preopen")]
+    no_default_preopen: bool,
+
+    /// The command to run.
+    // #[structopt(long = "which")]
+    which: Option<String>,
+
+    /// The command to run.
+    // #[structopt(conflicts_with_all(&["which"]), index = 1)]
+    command: Option<String>,
+
+    /// Arguments that the command will get.
+    // #[structopt(multiple = true, parse(from_os_str), last(true))]
     args: Vec<OsString>,
 }
 
@@ -78,6 +125,17 @@ enum ExecuteError {
     NoCommandGiven,
 }
 
+#[derive(Debug, Fail)]
+enum ExecuteArgParsingError {
+    #[fail(
+        display = "Argument `{}` expects a value `{}` but none was found.",
+        arg_name, expected
+    )]
+    MissingValue { arg_name: String, expected: String },
+    #[fail(display = "Unrecognized argument `{}`", arg_name)]
+    UnrecognizedArgument { arg_name: String },
+}
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -86,7 +144,74 @@ enum ExecuteError {
 )]
 struct WaxGetCommandQuery;
 
-pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
+fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgParsingError> {
+    let mut idx = 0;
+    let mut out = ExecuteOptInner::default();
+    let parse_which = |which_arg: Option<String>| -> Result<String, ExecuteArgParsingError> {
+        let val: String =
+            which_arg
+                .ok_or_else(|| ExecuteArgParsingError::MissingValue {
+                    arg_name: "--which".to_string(),
+                    expected: "<COMMAND NAME>".to_string(),
+                })?;
+        Ok(val)
+    };
+    let parse_dir = |dir_arg: Option<String>| -> Result<String, ExecuteArgParsingError> {
+        let val: String =
+            dir_arg
+                .ok_or_else(|| ExecuteArgParsingError::MissingValue {
+                    arg_name: "--dir".to_string(),
+                    expected: "<DIRECTORY>".to_string(),
+                })?;
+        Ok(val)
+    };
+    while idx < arg_stream.len() {
+        match arg_stream[idx].as_ref() {
+            "--emscripten" => out.enable_emscripten = true,
+            "--force_yes" | "-y" => out.force_yes = true,
+            "--verify" | "-v" => out.verify_signature = true,
+            "--no-default-preopen" => out.no_default_preopen = true,
+            "--which" => {
+                out.which = Some(parse_which(arg_stream.get(idx + 1).cloned())?);
+                idx += 1;
+            }
+            "--dir" => {
+                out.pre_opened_directories.push(parse_dir(arg_stream.get(idx + 1).cloned())?);
+                idx += 1;
+            }
+            misc => {
+                if misc.contains('=') {
+                    // if it has a `=`, then it's an argument
+                    let mut splitter = misc.split('=');
+                    let arg = splitter.next().unwrap();
+                    let val = splitter.next().map(|x| x.to_string());
+                    match arg {
+                        "--which" => out.which = Some(parse_which(val)?),
+                        "--dir" => {
+                            out.pre_opened_directories.push(parse_dir(val)?);
+                        }
+                        otherwise => {
+                            return Err(ExecuteArgParsingError::UnrecognizedArgument {
+                                arg_name: otherwise.to_string(),
+                            })
+                        }
+                    }
+                } else {
+                    //otherwise, this is a command
+                    out.command = Some(misc.to_string());
+                    out.args = arg_stream[idx + 1..].iter().map(Into::into).collect();
+                    break;
+                }
+            }
+        }
+        idx += 1;
+    }
+
+    Ok(out)
+}
+
+pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
+    let mut opt = transform_args(opt.args())?;
     if !opt.no_default_preopen {
         opt.pre_opened_directories.push(".".into());
     }
@@ -118,6 +243,7 @@ pub fn execute(mut opt: ExecuteOpt) -> Result<(), failure::Error> {
     let command = if let Some(command) = opt.command {
         command.clone()
     } else {
+        // this should never execute due to structopt settings
         return Err(ExecuteError::NoCommandGiven.into());
     };
     let command_name = command.as_str();

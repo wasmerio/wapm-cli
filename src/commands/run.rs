@@ -19,7 +19,7 @@ pub struct RunOpt {
     #[structopt(long = "dir", multiple = true, group = "wasi")]
     pre_opened_directories: Vec<String>,
     /// Application arguments
-    #[structopt(raw(multiple = "true"), parse(from_os_str))]
+    #[structopt(multiple = true, parse(from_os_str))]
     args: Vec<OsString>,
 }
 
