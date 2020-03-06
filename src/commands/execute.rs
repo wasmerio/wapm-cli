@@ -20,13 +20,28 @@ use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
-use structopt::{
-    StructOpt,
-};
+use structopt::{clap::AppSettings, StructOpt};
 
 #[derive(StructOpt, Debug)]
 pub enum ExecuteOpt {
-    /*
+    /// The inner execute command
+    #[structopt(external_subcommand)]
+    ExecArgs(Vec<String>),
+}
+
+impl ExecuteOpt {
+    fn args(&self) -> &[String] {
+        match self {
+            ExecuteOpt::ExecArgs(args) => args.as_slice(),
+        }
+    }
+}
+
+// NOTE: we only derive structopt for the help text, we don't actually
+// use it to parse anything!!
+#[derive(StructOpt, Debug, Clone, Default)]
+#[structopt(settings = &[AppSettings::ColoredHelp])]
+struct ExecuteOptInner {
     /// Run unsandboxed emscripten modules too.
     #[structopt(long = "emscripten")]
     enable_emscripten: bool,
@@ -40,67 +55,43 @@ pub enum ExecuteOpt {
     verify_signature: bool,
 
     /// Pre-open a directory for WASI.
-    #[structopt(long = "dir", multiple = true, group = "wasi")]
+    #[structopt(
+        long = "dir",
+        multiple = true,
+        group = "wasi",
+        value_name = "DIRECTORY"
+    )]
     pre_opened_directories: Vec<String>,
 
     /// Prevent the current directory from being preopened by default.
     #[structopt(long = "no-default-preopen")]
     no_default_preopen: bool,
 
-    #[structopt(long = "which")]
     /// The command to run.
+    #[structopt(long = "which", value_name = "COMMAND")]
     which: Option<String>,
 
     /// The command to run.
-    #[structopt(conflicts_with_all(&["which"]), index = 1)]
-    command: Option<String>,
-    */
-    /// Arguments that the command will get.
-    #[structopt(external_subcommand)]
-    ExecArgs(Vec<String>),
-}
-
-impl ExecuteOpt {
-    fn args(&self) -> &[String] {
-        match self {
-            ExecuteOpt::ExecArgs(args) => args.as_slice(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ExecuteOptInner {
-    /// Run unsandboxed emscripten modules too.
-    // #[structopt(long = "emscripten")]
-    enable_emscripten: bool,
-
-    /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior).
-    // #[structopt(long = "force-yes", short = "y")]
-    force_yes: bool,
-
-    /// Package will be verified by its signature. Off by default
-    // #[structopt(long = "verify", short = "v")]
-    verify_signature: bool,
-
-    /// Pre-open a directory for WASI.
-    // #[structopt(long = "dir", multiple = true, group = "wasi")]
-    pre_opened_directories: Vec<String>,
-
-    /// Prevent the current directory from being preopened by default.
-    // #[structopt(long = "no-default-preopen")]
-    no_default_preopen: bool,
-
-    /// The command to run.
-    // #[structopt(long = "which")]
-    which: Option<String>,
-
-    /// The command to run.
-    // #[structopt(conflicts_with_all(&["which"]), index = 1)]
+    #[structopt(conflicts_with_all(&["which"]), index = 1, value_name = "COMMAND")]
     command: Option<String>,
 
     /// Arguments that the command will get.
-    // #[structopt(multiple = true, parse(from_os_str), last(true))]
+    #[structopt(multiple = true, parse(from_os_str), last(true), value_name = "ARGS")]
     args: Vec<OsString>,
+}
+
+impl ExecuteOptInner {
+    fn print_help_text() {
+        // simple hack to force a help message and have StructOpt
+        // manage our help text without doing our parsing
+        ExecuteOptInner::clap()
+            .bin_name("wax")
+            .usage("wax [FLAGS] [OPTIONS] <COMMAND> [<ARGS>...]")
+            .print_help()
+            .expect("could not print help text");
+        // pad with extra new line
+        println!("");
+    }
 }
 
 #[derive(Debug, Fail)]
@@ -148,21 +139,17 @@ fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgPa
     let mut idx = 0;
     let mut out = ExecuteOptInner::default();
     let parse_which = |which_arg: Option<String>| -> Result<String, ExecuteArgParsingError> {
-        let val: String =
-            which_arg
-                .ok_or_else(|| ExecuteArgParsingError::MissingValue {
-                    arg_name: "--which".to_string(),
-                    expected: "<COMMAND NAME>".to_string(),
-                })?;
+        let val: String = which_arg.ok_or_else(|| ExecuteArgParsingError::MissingValue {
+            arg_name: "--which".to_string(),
+            expected: "<COMMAND NAME>".to_string(),
+        })?;
         Ok(val)
     };
     let parse_dir = |dir_arg: Option<String>| -> Result<String, ExecuteArgParsingError> {
-        let val: String =
-            dir_arg
-                .ok_or_else(|| ExecuteArgParsingError::MissingValue {
-                    arg_name: "--dir".to_string(),
-                    expected: "<DIRECTORY>".to_string(),
-                })?;
+        let val: String = dir_arg.ok_or_else(|| ExecuteArgParsingError::MissingValue {
+            arg_name: "--dir".to_string(),
+            expected: "<DIRECTORY>".to_string(),
+        })?;
         Ok(val)
     };
     while idx < arg_stream.len() {
@@ -176,8 +163,13 @@ fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgPa
                 idx += 1;
             }
             "--dir" => {
-                out.pre_opened_directories.push(parse_dir(arg_stream.get(idx + 1).cloned())?);
+                out.pre_opened_directories
+                    .push(parse_dir(arg_stream.get(idx + 1).cloned())?);
                 idx += 1;
+            }
+            "help" | "--help" | "-h" => {
+                ExecuteOptInner::print_help_text();
+                std::process::exit(0);
             }
             misc => {
                 if misc.contains('=') {
@@ -199,6 +191,12 @@ fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgPa
                 } else {
                     //otherwise, this is a command
                     out.command = Some(misc.to_string());
+                    if let Some(after_command) = arg_stream.get(idx + 1) {
+                        // eat `--` after command if it exists
+                        if after_command == "--" {
+                            idx += 1;
+                        }
+                    }
                     out.args = arg_stream[idx + 1..].iter().map(Into::into).collect();
                     break;
                 }
@@ -243,7 +241,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
     let command = if let Some(command) = opt.command {
         command.clone()
     } else {
-        // this should never execute due to structopt settings
+        ExecuteOptInner::print_help_text();
         return Err(ExecuteError::NoCommandGiven.into());
     };
     let command_name = command.as_str();
@@ -282,7 +280,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 command_name,
                 &module_name,
                 &opt.pre_opened_directories,
-                &opt.args,
+                dbg!(&opt.args),
                 prehashed_cache_key,
             )?;
             return Ok(());

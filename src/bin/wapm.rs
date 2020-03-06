@@ -1,11 +1,11 @@
+use std::{env, path};
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
 use wapm_cli::update_notifier;
 use wapm_cli::{commands, logging};
-use std::{env, path};
 
 #[derive(StructOpt, Debug)]
-#[structopt(global_settings = &[AppSettings::VersionlessSubcommands])]
+#[structopt(global_settings = &[AppSettings::VersionlessSubcommands, AppSettings::ColorAuto, AppSettings::ColoredHelp])]
 enum Command {
     #[structopt(name = "whoami")]
     /// Prints the current user (if authed) in the stdout
@@ -115,19 +115,20 @@ fn main() {
             .next()
             .expect("Fatal error could not find any arguments!"),
     );
-    let maybe_subcommand_name =
-        env::args()
-        .skip(1)
-            .next();
+    let maybe_subcommand_name = env::args().skip(1).next();
     let prog_name = prog_name
         .file_name()
         .expect("Could not parse argv[0] as a path")
         .to_string_lossy();
 
     let args = if prog_name == "wax" {
-        Command::Execute(commands::ExecuteOpt::ExecArgs(env::args().skip(1).collect()))
+        Command::Execute(commands::ExecuteOpt::ExecArgs(
+            env::args().skip(1).collect(),
+        ))
     } else if maybe_subcommand_name == Some("execute".to_string()) {
-        Command::Execute(commands::ExecuteOpt::ExecArgs(env::args().skip(2).collect()))
+        Command::Execute(commands::ExecuteOpt::ExecArgs(
+            env::args().skip(2).collect(),
+        ))
     } else {
         Command::from_args()
     };
