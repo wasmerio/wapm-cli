@@ -280,7 +280,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 command_name,
                 &module_name,
                 &opt.pre_opened_directories,
-                dbg!(&opt.args),
+                &opt.args,
                 prehashed_cache_key,
             )?;
             return Ok(());
