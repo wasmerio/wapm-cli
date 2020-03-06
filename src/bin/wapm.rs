@@ -1,9 +1,11 @@
+use std::{env, path};
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
 use wapm_cli::update_notifier;
 use wapm_cli::{commands, logging};
 
 #[derive(StructOpt, Debug)]
+#[structopt(global_settings = &[AppSettings::VersionlessSubcommands, AppSettings::ColorAuto, AppSettings::ColoredHelp])]
 enum Command {
     #[structopt(name = "whoami")]
     /// Prints the current user (if authed) in the stdout
@@ -31,7 +33,7 @@ enum Command {
 
     #[structopt(
         name = "run",
-        raw(settings = "&[AppSettings::TrailingVarArg, AppSettings::AllowLeadingHyphen]")
+        settings = &[AppSettings::TrailingVarArg, AppSettings::AllowLeadingHyphen],
     )]
     /// Run a command from the package or one of the dependencies
     Run(commands::RunOpt),
@@ -86,6 +88,9 @@ enum Command {
     #[structopt(name = "remove")]
     /// Remove packages from the manifest
     Remove(commands::RemoveOpt),
+
+    /// Execute a command, installing it temporarily if necessary
+    Execute(commands::ExecuteOpt),
 }
 
 fn main() {
@@ -105,7 +110,28 @@ fn main() {
         }
     };
 
-    let args = Command::from_args();
+    let prog_name = path::PathBuf::from(
+        env::args()
+            .next()
+            .expect("Fatal error could not find any arguments!"),
+    );
+    let maybe_subcommand_name = env::args().skip(1).next();
+    let prog_name = prog_name
+        .file_name()
+        .expect("Could not parse argv[0] as a path")
+        .to_string_lossy();
+
+    let args = if prog_name == "wax" {
+        Command::Execute(commands::ExecuteOpt::ExecArgs(
+            env::args().skip(1).collect(),
+        ))
+    } else if maybe_subcommand_name == Some("execute".to_string()) {
+        Command::Execute(commands::ExecuteOpt::ExecArgs(
+            env::args().skip(2).collect(),
+        ))
+    } else {
+        Command::from_args()
+    };
 
     #[cfg(feature = "update-notifications")]
     // Only show the async check on certain commands
@@ -113,6 +139,7 @@ fn main() {
         Command::Install(_)
         | Command::Add(_)
         | Command::Run(_)
+        | Command::Execute(_)
         | Command::Publish(_)
         | Command::Search(_)
         | Command::List(_)
@@ -133,6 +160,7 @@ fn main() {
         Command::Remove(remove_options) => commands::remove(remove_options),
         Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
+        Command::Execute(execute_options) => commands::execute(execute_options),
         Command::Search(search_options) => commands::search(search_options),
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),

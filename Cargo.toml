@@ -36,11 +36,11 @@ sentry = {version = "0.15", optional = true, features = ["with_failure", "with_p
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-structopt = "0.2.15"
+structopt = { version = "0.3", features = ["color"] }
 tar = "0.4"
 tempdir = "0.3"
 time = "0.1"
-toml = "0.5.5"
+toml = "0.5.6"
 toml-query = "0.9.2"
 url = "1.7"
 walrus = "0.5"

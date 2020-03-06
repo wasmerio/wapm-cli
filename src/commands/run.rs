@@ -19,7 +19,7 @@ pub struct RunOpt {
     #[structopt(long = "dir", multiple = true, group = "wasi")]
     pre_opened_directories: Vec<String>,
     /// Application arguments
-    #[structopt(raw(multiple = "true"), parse(from_os_str))]
+    #[structopt(multiple = true, parse(from_os_str))]
     args: Vec<OsString>,
 }
 
@@ -65,6 +65,28 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 
     let manifest_dir = run_dir.join(manifest_dir);
 
+    do_run(
+        run_dir,
+        source_path_buf,
+        manifest_dir,
+        command_name,
+        &module_name,
+        &run_options.pre_opened_directories,
+        &args,
+        prehashed_cache_key,
+    )
+}
+
+pub(crate) fn do_run(
+    run_dir: PathBuf,
+    source_path_buf: PathBuf,
+    manifest_dir: PathBuf,
+    command_name: &str,
+    module_name: &str,
+    pre_opened_directories: &[String],
+    args: &[OsString],
+    prehashed_cache_key: Option<String>,
+) -> Result<(), failure::Error> {
     debug!(
         "Running module located at {:?}",
         &run_dir.join(&source_path_buf)
@@ -95,8 +117,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
             _ => None,
         };
 
-    let mut wasi_preopened_dir_flags: Vec<OsString> = run_options
-        .pre_opened_directories
+    let mut wasi_preopened_dir_flags: Vec<OsString> = pre_opened_directories
         .iter()
         .map(|entry| OsString::from(format!("--dir={}", entry)))
         .collect();
@@ -152,7 +173,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 }
 
 fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
-    args: &Vec<OsString>,
+    args: &[OsString],
     wasmer_extra_flags: Option<Vec<OsString>>,
     wasi_preopened_dir_flags: Vec<OsString>,
     directory: P,
