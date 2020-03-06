@@ -8,7 +8,7 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [dependencies]
-boxx = { version = "0.0.2-beta", optional = true }
+billboard = { version = "0.1.0", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = "1.8"
 dirs = "1"
@@ -64,7 +64,7 @@ members = [
 [features]
 default = ["packagesigning"]
 telemetry = ["sentry"]
-update-notifications= ["boxx"]
+update-notifications= ["billboard"]
 prehash-module = ["hex", "blake3"]
 packagesigning = []
 integration_tests = ["maplit"]

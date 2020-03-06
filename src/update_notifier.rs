@@ -3,7 +3,7 @@
 //! This is turned on in our releases by default but is off when building from source
 
 use crate::{config, proxy, util};
-use boxx::{BorderStyle, Boxx};
+use billboard::{Billboard, BorderStyle};
 use chrono::{DateTime, Utc};
 use colored::*;
 use reqwest::{
@@ -116,7 +116,7 @@ impl WapmUpdate {
 
                 let release_url = format!("{}{}", GITHUB_RELEASE_URL_BASE, new_version);
                 let message = format_message(&old_version, &new_version, &release_url).unwrap();
-                Boxx::builder()
+                Billboard::builder()
                     .border_style(BorderStyle::Round)
                     .build()
                     .display(&message);
