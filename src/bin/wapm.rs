@@ -109,9 +109,15 @@ fn main() {
         }
     };
 
-    let prog_name = std::env::args()
-        .next()
-        .expect("Fatal error could not find any arguments!");
+    let prog_name = std::path::PathBuf::from(
+        std::env::args()
+            .next()
+            .expect("Fatal error could not find any arguments!"),
+    );
+    let prog_name = prog_name
+        .file_name()
+        .expect("Could not parse argv[0] as a path")
+        .to_string_lossy();
 
     let args = if prog_name == "wax" {
         Command::Execute(commands::ExecuteOpt::from_args())
