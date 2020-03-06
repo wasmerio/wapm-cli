@@ -185,7 +185,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     path.push(directory);
     path.push(wasm_file_path);
     let path_string = path.into_os_string();
-    let command_vec = vec![OsString::from("run"), path_string];
+    let command_vec = vec![path_string];
     let override_command_name_vec = override_command_name
         .map(|cn| {
             vec![
@@ -236,7 +236,6 @@ mod test {
         let expected_dir: PathBuf = wapm_module_dir.clone();
         let expected_dir = expected_dir.join("foo_entry.wasm");
         let expected_command = vec![
-            OsString::from("run"),
             expected_dir.into_os_string(),
             OsString::from("--"),
             OsString::from("arg1"),

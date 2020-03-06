@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Use [`boxx`](https://crates.io/crates/boxx) to show the update notification message.
 - Make module pre-hashing optional and non-dependent on the [wasmer runtime](https://github.com/wasmerio/wasmer)
+- Remove `run` extra runtime argument passed to `WAPM_RUNTIME`
 
 ## [0.4.3] - 2020-01-16
 ### Changed
