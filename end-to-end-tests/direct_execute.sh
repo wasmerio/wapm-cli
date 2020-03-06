@@ -2,7 +2,7 @@
 
 export RUST_BACKTRACE=1
 alias wapm=target/debug/wapm
-ln -sf wax target/debug/wapm
+ln -sf target/debug/wapm wax
 wapm config set registry.url "https://registry.wapm.dev"
 
 echo "hello" | wapm execute base64
