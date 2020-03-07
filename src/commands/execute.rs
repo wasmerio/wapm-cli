@@ -54,6 +54,10 @@ struct ExecuteOptInner {
     #[structopt(long = "verify", short = "v")]
     verify_signature: bool,
 
+    /// Run `wax` in offline mode.
+    #[structopt(long = "offline")]
+    offline: bool,
+
     /// Pre-open a directory for WASI.
     #[structopt(
         long = "dir",
@@ -112,8 +116,18 @@ enum ExecuteError {
     ErrorInDataFromRegistry(String),
     #[fail(display = "An error occured during installation: {}", _0)]
     InstallationError(String),
-    #[fail(display = "Please specify a command to run!")]
+    #[fail(display = "Please specify a command to run.")]
     NoCommandGiven,
+    #[fail(
+        display = "The command `{}` was not found.\nIf you are offline you will need to reconnect to the Internet for this command to succeed.\nOtherwise there may be an error with the wapm registry that you're connected to: run `wapm config get registry.url` to print the URL that we tried to connect to.",
+        _0
+    )]
+    CommandNotFoundOfflineMode(String),
+    #[fail(
+        display = "The command `{}` was not found.\nPlease try to run this command again without the `--offline` flag.",
+        _0
+    )]
+    CommandNotFoundOfflineModeOfflineFlag(String),
 }
 
 #[derive(Debug, Fail)]
@@ -135,6 +149,7 @@ enum ExecuteArgParsingError {
 )]
 struct WaxGetCommandQuery;
 
+/// Do the real argument parsing into [`ExecuteOptInner`].
 fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgParsingError> {
     let mut idx = 0;
     let mut out = ExecuteOptInner::default();
@@ -158,6 +173,7 @@ fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgPa
             "--force_yes" | "-y" => out.force_yes = true,
             "--verify" | "-v" => out.verify_signature = true,
             "--no-default-preopen" => out.no_default_preopen = true,
+            "--offline" => out.offline = true,
             "--which" => {
                 out.which = Some(parse_which(arg_stream.get(idx + 1).cloned())?);
                 idx += 1;
@@ -238,7 +254,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         println!("{}", dir.to_string_lossy());
         return Ok(());
     }
-    let command = if let Some(command) = opt.command {
+    let command = if let Some(command) = &opt.command {
         command.clone()
     } else {
         ExecuteOptInner::print_help_text();
@@ -297,7 +313,17 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
     let q = WaxGetCommandQuery::build_query(wax_get_command_query::Variables {
         command: command_name.to_string(),
     });
-    let response: wax_get_command_query::ResponseData = execute_query(&q)?;
+    let response: wax_get_command_query::ResponseData = if !opt.offline {
+        let response: Result<wax_get_command_query::ResponseData, _> = execute_query(&q);
+        if response.is_err() {
+            info!("Failed to connect to the wapm registry. Continuning in offline mode.");
+            return do_offline_run(command_name, &opt);
+        }
+        response?
+    } else {
+        return do_offline_run(command_name, &opt);
+    };
+
     trace!("Wax get command query: {:?}", response);
     if let Some(command) = response.command {
         // command found, check if it's installed
@@ -524,6 +550,32 @@ fn run(
         }
         FindCommandResult::Error(e) => return Err(e),
     };
+}
+
+fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> Result<(), failure::Error> {
+    let mut wax_index = wax_index::WaxIndex::open()?;
+    if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
+        let package_version_str = format!("{}@{}", &package_name, &version);
+        let location = wax_index.base_path().join(&package_version_str);
+
+        wax_index.save()?;
+
+        run(
+            command_name,
+            location,
+            &opt.pre_opened_directories,
+            &opt.args,
+        )
+    } else {
+        if opt.offline {
+            return Err(ExecuteError::CommandNotFoundOfflineModeOfflineFlag(
+                command_name.to_string(),
+            )
+            .into());
+        } else {
+            return Err(ExecuteError::CommandNotFoundOfflineMode(command_name.to_string()).into());
+        }
+    }
 }
 
 impl From<wax_index::WaxIndexError> for ExecuteError {

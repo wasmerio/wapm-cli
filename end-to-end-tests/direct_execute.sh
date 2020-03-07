@@ -16,3 +16,4 @@ wapm uninstall lolcat
 wapm list -a
 rm -rf $(./wax --which lolcat)/wapm_packages/_/lolcat@0.1.1/*
 ./wax lolcat -V
+./wax --offline lolcat -V
