@@ -234,7 +234,8 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
     let current_dir = env::current_dir()?;
     if let Some(which) = opt.which {
         let mut wax_index = wax_index::WaxIndex::open()?;
-        let dir = if let Ok((package_name, version)) = wax_index.search_for_entry(which.clone()) {
+        let dir = if let Ok((package_name, version, _)) = wax_index.search_for_entry(which.clone())
+        {
             wax_index
                 .base_path()
                 .join(format!("{}@{}", package_name, version))
@@ -309,6 +310,51 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         }
     }
 
+    let mut wax_index = wax_index::WaxIndex::open()?;
+    let (wax_info, exists_and_recently_updated): (Option<(String, semver::Version)>, bool) =
+        if let Ok((package_name, version, last_seen)) =
+            wax_index.search_for_entry(command_name.to_string())
+        {
+            let cmp_time = (time::now() - time::Duration::minutes(5)).to_timespec();
+            let recently_updated = last_seen > cmp_time;
+            (Some((package_name, version)), recently_updated)
+        } else {
+            (None, false)
+        };
+
+    if exists_and_recently_updated {
+        let (package_name, version) = wax_info
+            .clone()
+            .expect("critical internal logic error in `wapm execute`");
+        let package_version_str = format!("{}@{}", &package_name, &version);
+        let location = wax_index.base_path().join(&package_version_str);
+        if !location
+            .join("wapm_packages")
+            .join(&package_version_str)
+            .join("wapm.toml")
+            .exists()
+        {
+            debug!("Package found in index, but cache has been cleared! continuing to logic that should reinstall");
+        } else {
+            // do execute unless it fails then continue
+            wax_index.save()?;
+
+            match run(
+                command_name,
+                location,
+                &opt.pre_opened_directories,
+                &opt.args,
+            ) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    // REVIEW: does this even make sense?
+                    // maybe if we force a reinstall but eh
+                    debug!("Failed to run when cached due to `{}`. continuing...", e);
+                }
+            }
+        }
+    }
+
     // if not found, query the server and check if we already have it installed
     let q = WaxGetCommandQuery::build_query(wax_get_command_query::Variables {
         command: command_name.to_string(),
@@ -335,12 +381,11 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 .into());
             }
         }
-        let mut wax_index = wax_index::WaxIndex::open()?;
         let registry_version = semver::Version::from_str(&command.package_version.version)
             .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string()))?;
 
         let install_from_remote;
-        if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
+        if let Some((package_name, version)) = wax_info {
             let package_version_str = format!("{}@{}", &package_name, &version);
             let location = wax_index.base_path().join(&package_version_str);
             if registry_version > version
@@ -554,7 +599,7 @@ fn run(
 
 fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> Result<(), failure::Error> {
     let mut wax_index = wax_index::WaxIndex::open()?;
-    if let Ok((package_name, version)) = wax_index.search_for_entry(command_name.to_string()) {
+    if let Ok((package_name, version, _)) = wax_index.search_for_entry(command_name.to_string()) {
         let package_version_str = format!("{}@{}", &package_name, &version);
         let location = wax_index.base_path().join(&package_version_str);
 

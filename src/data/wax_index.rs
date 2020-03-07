@@ -2,6 +2,7 @@
 //! command.
 
 use crate::config;
+use crate::constants::RFC3339_FORMAT_STRING;
 use semver::Version;
 use std::convert::From;
 use std::env;
@@ -15,7 +16,7 @@ use std::collections::HashMap;
 pub struct WaxIndex {
     base_dir: PathBuf,
     #[serde(serialize_with = "toml::ser::tables_last")]
-    index: HashMap<String, String>,
+    index: HashMap<String, (String, String)>,
 }
 
 impl WaxIndex {
@@ -73,8 +74,11 @@ impl WaxIndex {
 
     /// This function takes a `&mut` because it will update itself with the
     /// information that it finds.
-    pub fn search_for_entry(&mut self, entry: String) -> Result<(String, Version), WaxIndexError> {
-        if let Some(found_entry) = self.index.get(&entry) {
+    pub fn search_for_entry(
+        &mut self,
+        entry: String,
+    ) -> Result<(String, Version, time::Timespec), WaxIndexError> {
+        if let Some((found_entry, found_time)) = self.index.get(&entry) {
             let location = self.base_path().join(found_entry);
             // check if entry still exists and if not remove it
             if location.exists() {
@@ -92,7 +96,13 @@ impl WaxIndex {
                     .ok_or_else(|| WaxIndexError::EntryCorrupt {
                         entry: entry.clone(),
                     })?;
-                return Ok((package_name, version));
+                let last_seen =
+                    time::strptime(&found_time, RFC3339_FORMAT_STRING).map_err(|e| {
+                        WaxIndexError::EntryCorrupt {
+                            entry: format!("{}", e),
+                        }
+                    })?;
+                return Ok((package_name, version, last_seen.to_timespec()));
             }
             trace!("Wax entry found but it no longer exists, removing from registry!");
             self.index.remove(&entry);
@@ -111,9 +121,11 @@ impl WaxIndex {
         entry: String,
         version: Version,
         package_name: String,
-    ) -> Option<String> {
+    ) -> Option<(String, String)> {
+        let now = time::now();
+        let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).ok()?;
         self.index
-            .insert(entry, format!("{}@{}", package_name, version))
+            .insert(entry, (format!("{}@{}", package_name, version), now_str))
     }
 
     /// Get path at which packages should be installed.
