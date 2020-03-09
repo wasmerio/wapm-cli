@@ -5,21 +5,38 @@ use std::path::PathBuf;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
-pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.toml";
+pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.json";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Config {
+    /// The number of seconds to wait before checking the registry for a new
+    /// version of the package.
+    #[serde(default = "wax_default_cooldown")]
+    pub wax_cooldown: i32,
+
+    /// The registry that wapm will connect to.
     pub registry: Registry,
+
+    /// Whether or not telemetry is enabled.
     #[cfg(feature = "telemetry")]
     #[serde(default)]
     pub telemetry: Telemetry,
+
+    /// Whether or not updated notifications are enabled.
     #[cfg(feature = "update-notifications")]
     #[serde(default)]
     pub update_notifications: UpdateNotifications,
+
+    /// The proxy to use when connecting to the Internet.
     #[serde(default)]
     pub proxy: Proxy,
+}
+
+/// The default cooldown for wax.
+pub const fn wax_default_cooldown() -> i32 {
+    5 * 60
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -75,6 +92,7 @@ impl Default for Config {
             #[cfg(feature = "update-notifications")]
             update_notifications: UpdateNotifications::default(),
             proxy: Proxy::default(),
+            wax_cooldown: wax_default_cooldown(),
         }
     }
 }
@@ -197,6 +215,8 @@ pub enum GlobalConfigError {
 pub enum ConfigError {
     #[fail(display = "Key not found: {}", key)]
     KeyNotFound { key: String },
+    #[fail(display = "Failed to parse value `{}` for key `{}`", value, key)]
+    CanNotParse { value: String, key: String },
 }
 
 pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
@@ -222,6 +242,13 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
         "proxy.url" => {
             config.proxy.url = if value.is_empty() { None } else { Some(value) };
         }
+        "wax.cooldown" => {
+            let num = value.parse::<i32>().map_err(|_| ConfigError::CanNotParse {
+                value: value.clone(),
+                key: key.clone(),
+            })?;
+            config.wax_cooldown = num;
+        }
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
@@ -230,24 +257,25 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
     Ok(())
 }
 
-pub fn get(config: &mut Config, key: String) -> Result<&str, failure::Error> {
+pub fn get(config: &mut Config, key: String) -> Result<String, failure::Error> {
     let value = match key.as_ref() {
-        "registry.url" => &config.registry.url,
+        "registry.url" => config.registry.url.clone(),
         "registry.token" => {
             unimplemented!()
             // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
         }
         #[cfg(feature = "telemetry")]
-        "telemetry.enabled" => &config.telemetry.enabled,
+        "telemetry.enabled" => config.telemetry.enabled.clone(),
         #[cfg(feature = "update-notifications")]
-        "update-notifications.enabled" => &config.update_notifications.enabled,
+        "update-notifications.enabled" => config.update_notifications.enabled.clone(),
         "proxy.url" => {
             if let Some(url) = &config.proxy.url {
-                &url
+                url.clone()
             } else {
-                "No proxy configured"
+                "No proxy configured".to_owned()
             }
         }
+        "wax.cooldown" => format!("{}", config.wax_cooldown),
         _ => {
             return Err(ConfigError::KeyNotFound { key }.into());
         }
