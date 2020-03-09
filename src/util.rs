@@ -83,8 +83,8 @@ pub fn telemetry_is_enabled() -> bool {
         // telemetry once we have more confidence in wapm's stability/userbase size
         return true;
     };
-    let telemetry_str =
-        crate::config::get(&mut config, "telemetry.enabled".to_string()).unwrap_or("true");
+    let telemetry_str = crate::config::get(&mut config, "telemetry.enabled".to_string())
+        .unwrap_or_else(|_| "true".to_string());
 
     // if we fail to parse, someone probably tried to turn it off
     telemetry_str.parse::<bool>().unwrap_or(false)

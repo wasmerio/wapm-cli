@@ -16,7 +16,24 @@ use std::collections::HashMap;
 pub struct WaxIndex {
     base_dir: PathBuf,
     #[serde(serialize_with = "toml::ser::tables_last")]
-    index: HashMap<String, (String, String)>,
+    index: HashMap<String, WaxEntry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct WaxEntry {
+    /// Fully qualified package name `namespace/name@version`
+    package_name: String,
+    /// Timestamp when wax was last updated
+    last_updated: String,
+}
+
+impl WaxEntry {
+    fn new(name: String, version: Version, time: String) -> Self {
+        WaxEntry {
+            package_name: format!("{}@{}", name, version),
+            last_updated: time,
+        }
+    }
 }
 
 impl WaxIndex {
@@ -78,12 +95,16 @@ impl WaxIndex {
         &mut self,
         entry: String,
     ) -> Result<(String, Version, time::Timespec), WaxIndexError> {
-        if let Some((found_entry, found_time)) = self.index.get(&entry) {
-            let location = self.base_path().join(found_entry);
+        if let Some(WaxEntry {
+            package_name,
+            last_updated,
+        }) = self.index.get(&entry)
+        {
+            let location = self.base_path().join(package_name);
             // check if entry still exists and if not remove it
             if location.exists() {
                 trace!("Wax entry found and it still exists!");
-                let mut splitter = found_entry.split('@');
+                let mut splitter = package_name.split('@');
                 let package_name = splitter
                     .next()
                     .ok_or_else(|| WaxIndexError::EntryCorrupt {
@@ -97,7 +118,7 @@ impl WaxIndex {
                         entry: entry.clone(),
                     })?;
                 let last_seen =
-                    time::strptime(&found_time, RFC3339_FORMAT_STRING).map_err(|e| {
+                    time::strptime(&last_updated, RFC3339_FORMAT_STRING).map_err(|e| {
                         WaxIndexError::EntryCorrupt {
                             entry: format!("{}", e),
                         }
@@ -115,17 +136,20 @@ impl WaxIndex {
 
     /// Package installed, add it to the index.
     ///
-    /// Returns the existing entry as a `package_name@version` String if one exists
+    /// Returns true if an existing entry was updated.
     pub fn insert_entry(
         &mut self,
         entry: String,
         version: Version,
         package_name: String,
-    ) -> Option<(String, String)> {
-        let now = time::now();
+    ) -> Option<bool> {
+        let now = time::now_utc();
         let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).ok()?;
-        self.index
-            .insert(entry, (format!("{}@{}", package_name, version), now_str))
+        Some(
+            self.index
+                .insert(entry, WaxEntry::new(package_name, version, now_str))
+                .is_some(),
+        )
     }
 
     /// Get path at which packages should be installed.

@@ -1,6 +1,7 @@
 //! Module for wax, executes a module immediately
 
 //use crate::constants::RFC3339_FORMAT_STRING_WITH_TIMEZONE;
+use crate::config;
 use crate::data::wax_index;
 use crate::dataflow::find_command_result::FindCommandResult;
 use crate::dataflow::installed_packages::{InstalledPackages, RegistryInstaller};
@@ -310,13 +311,22 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         }
     }
 
+    // get wax info from the index and find out if the entry is stale
     let mut wax_index = wax_index::WaxIndex::open()?;
     let (wax_info, exists_and_recently_updated): (Option<(String, semver::Version)>, bool) =
         if let Ok((package_name, version, last_seen)) =
             wax_index.search_for_entry(command_name.to_string())
         {
-            let cmp_time = (time::now() - time::Duration::minutes(5)).to_timespec();
-            let recently_updated = last_seen > cmp_time;
+            let wax_cooldown = get_wax_cooldown();
+            trace!("Using wax cooldown: {}", wax_cooldown);
+            let now = time::now_utc().to_timespec();
+            let cooldown_duration = time::Duration::seconds(wax_cooldown as i64);
+            let time_to_update = last_seen + cooldown_duration;
+
+            // if we haven't yet hit the time to update, then we've recently updated
+            let recently_updated = now < time_to_update;
+            debug!("The package was recently updated? {}", recently_updated);
+
             (Some((package_name, version)), recently_updated)
         } else {
             (None, false)
@@ -360,6 +370,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         command: command_name.to_string(),
     });
     let response: wax_get_command_query::ResponseData = if !opt.offline {
+        debug!("Querying server for package info");
         let response: Result<wax_get_command_query::ResponseData, _> = execute_query(&q);
         if response.is_err() {
             info!("Failed to connect to the wapm registry. Continuning in offline mode.");
@@ -384,7 +395,6 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
         let registry_version = semver::Version::from_str(&command.package_version.version)
             .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string()))?;
 
-        let install_from_remote;
         if let Some((package_name, version)) = wax_info {
             let package_version_str = format!("{}@{}", &package_name, &version);
             let location = wax_index.base_path().join(&package_version_str);
@@ -399,13 +409,16 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                     "Found version {} locally in Wax but version {} from the registry: upgrading",
                     version, registry_version
                 );
-                install_from_remote = true;
             } else {
                 debug!(
                     "Command found in Wax index, executing version {} directly",
                     version
                 );
-                install_from_remote = false;
+                wax_index.insert_entry(
+                    command_name.to_string(),
+                    registry_version.clone(),
+                    command.package_version.package.name.clone(),
+                );
                 wax_index.save()?;
 
                 run(
@@ -414,147 +427,145 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                     &opt.pre_opened_directories,
                     &opt.args,
                 )?;
+                return Ok(());
             }
         } else {
             debug!("Entry not found in wax index");
-            install_from_remote = true;
         }
 
-        // perform the install
-        if install_from_remote {
-            trace!("Installing Wax package from registry");
-            // do install
-            let install_loc = wax_index.base_path().join(format!(
-                "{}@{}",
-                &command.package_version.package.name, &registry_version
-            ));
-            let resolved_packages = ResolvedPackages {
-                packages: vec![(
-                    WapmPackageKey {
-                        name: command.package_version.package.name.clone().into(),
-                        version: registry_version.clone(),
-                    },
-                    (
-                        command.package_version.distribution.download_url.clone(),
-                        None, /*
-                                  // package signing disabled for `wapm execute` for now
+        // ===================
+        // Perform the install
+        // if we made it this far, it means we haven't executed the command yet,
+        // so we install the package and run it
+        trace!("Installing Wax package from registry");
+        let install_loc = wax_index.base_path().join(format!(
+            "{}@{}",
+            &command.package_version.package.name, &registry_version
+        ));
+        let resolved_packages = ResolvedPackages {
+            packages: vec![(
+                WapmPackageKey {
+                    name: command.package_version.package.name.clone().into(),
+                    version: registry_version.clone(),
+                },
+                (
+                    command.package_version.distribution.download_url.clone(),
+                    None, /*
+                              // package signing disabled for `wapm execute` for now
                               command
-                                  .package_version
-                                  .signature
-                                  .map(|sig| keys::WapmPackageSignature {
-                                      public_key_id: sig.public_key.key_id.clone(),
-                                      public_key: sig.public_key.key.clone(),
-                                      signature_data: sig.data.clone(),
-                                      date_created: time::strptime(
-                                          &sig.public_key.uploaded_at,
-                                          RFC3339_FORMAT_STRING_WITH_TIMEZONE,
-                                      )
-                                      .unwrap_or_else(|err| {
-                                          panic!("Failed to parse time string: {}", err)
-                                      })
-                                      .to_timespec(),
-                                      revoked: sig.public_key.revoked,
-                                      owner: sig.public_key.owner.username.clone(),
-                                  })*/
-                    ),
-                )],
-            };
+                              .package_version
+                              .signature
+                              .map(|sig| keys::WapmPackageSignature {
+                              public_key_id: sig.public_key.key_id.clone(),
+                              public_key: sig.public_key.key.clone(),
+                              signature_data: sig.data.clone(),
+                              date_created: time::strptime(
+                              &sig.public_key.uploaded_at,
+                              RFC3339_FORMAT_STRING_WITH_TIMEZONE,
+                          )
+                              .unwrap_or_else(|err| {
+                              panic!("Failed to parse time string: {}", err)
+                          })
+                              .to_timespec(),
+                              revoked: sig.public_key.revoked,
+                              owner: sig.public_key.owner.username.clone(),
+                          })*/
+                ),
+            )],
+        };
 
-            // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
-            let lockfile_result = LockfileResult::find_in_directory(&install_loc);
-            let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
-                .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-            let installed_packages = InstalledPackages::install::<RegistryInstaller>(
-                &install_loc,
-                resolved_packages,
-                !opt.verify_signature,
-            )?;
-            let added_lockfile_data =
-                LockfilePackages::from_installed_packages(&installed_packages)
-                    .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+        // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
+        let lockfile_result = LockfileResult::find_in_directory(&install_loc);
+        let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
+            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+        let installed_packages = InstalledPackages::install::<RegistryInstaller>(
+            &install_loc,
+            resolved_packages,
+            !opt.verify_signature,
+        )?;
+        let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
+            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
 
-            let retained_lockfile_packages =
-                RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
-            let final_lockfile_data =
-                MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
-            final_lockfile_data
-                .generate_lockfile(&install_loc)
-                .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+        let retained_lockfile_packages =
+            RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
+        let final_lockfile_data =
+            MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
+        final_lockfile_data
+            .generate_lockfile(&install_loc)
+            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
 
-            debug!("Wax package installed to {}", install_loc.to_string_lossy());
+        debug!("Wax package installed to {}", install_loc.to_string_lossy());
 
-            // get all the commands from the lockfile and index them
-            let mut lockfile_not_found = true;
-            match LockfileResult::find_in_directory(&install_loc) {
-                LockfileResult::Lockfile(l) => {
-                    for (command_name, command_info) in l.commands.iter() {
-                        wax_index.insert_entry(
-                            command_name.to_string(),
-                            command_info.package_version.clone(),
-                            command.package_version.package.name.clone(),
-                        );
-                    }
-                    lockfile_not_found = false;
-                }
-                LockfileResult::NoLockfile => {
-                    error!(
-                        "Lockfile not found in `{}`! This is likely an internal Wapm error!",
-                        &install_loc.to_string_lossy()
+        // get all the commands from the lockfile and index them
+        let mut lockfile_not_found = true;
+        match LockfileResult::find_in_directory(&install_loc) {
+            LockfileResult::Lockfile(l) => {
+                for (command_name, command_info) in l.commands.iter() {
+                    wax_index.insert_entry(
+                        command_name.to_string(),
+                        command_info.package_version.clone(),
+                        command.package_version.package.name.clone(),
                     );
-                    #[cfg(feature = "telemetry")]
-                    {
-                        sentry::capture_message(
-                            &format!(
+                }
+                lockfile_not_found = false;
+            }
+            LockfileResult::NoLockfile => {
+                error!(
+                    "Lockfile not found in `{}`! This is likely an internal Wapm error!",
+                    &install_loc.to_string_lossy()
+                );
+                #[cfg(feature = "telemetry")]
+                {
+                    sentry::capture_message(
+                        &format!(
                             "Lockfile not found in `{}` just after install! This should not happen",
                             &install_loc.to_string_lossy()
                         ),
-                            sentry::Level::Error,
-                        );
-                    }
-                }
-                LockfileResult::LockfileError(e) => {
-                    error!("Error in lockfile at `{}`! This is likely an internal Wapm error! Error details: {}", &install_loc.to_string_lossy(), e);
-                    #[cfg(feature = "telemetry")]
-                    {
-                        sentry::capture_message(
-                            &format!(
-                                "Error in lockfile at `{}`. Error details: {}",
-                                &install_loc.to_string_lossy(),
-                                e
-                            ),
-                            sentry::Level::Error,
-                        );
-                    }
+                        sentry::Level::Error,
+                    );
                 }
             }
-
-            // Just add the current package if we couldn't find the lockfile.
-            // This is honestly an error but we'll play it safe and try to keep
-            // going even if we run into issues because we've reported the error
-            // if telemetry is enabled and printed an error to the user.
-            if lockfile_not_found {
-                wax_index.insert_entry(
-                    command_name.to_string(),
-                    registry_version,
-                    command.package_version.package.name.clone(),
-                );
+            LockfileResult::LockfileError(e) => {
+                error!("Error in lockfile at `{}`! This is likely an internal Wapm error! Error details: {}", &install_loc.to_string_lossy(), e);
+                #[cfg(feature = "telemetry")]
+                {
+                    sentry::capture_message(
+                        &format!(
+                            "Error in lockfile at `{}`. Error details: {}",
+                            &install_loc.to_string_lossy(),
+                            e
+                        ),
+                        sentry::Level::Error,
+                    );
+                }
             }
-            wax_index.save()?;
-            run(
-                command_name,
-                install_loc,
-                &opt.pre_opened_directories,
-                &opt.args,
-            )?;
         }
+
+        // Just add the current package if we couldn't find the lockfile.
+        // This is honestly an error but we'll play it safe and try to keep
+        // going even if we run into issues because we've reported the error
+        // if telemetry is enabled and printed an error to the user.
+        if lockfile_not_found {
+            wax_index.insert_entry(
+                command_name.to_string(),
+                registry_version,
+                command.package_version.package.name.clone(),
+            );
+        }
+        wax_index.save()?;
+        run(
+            command_name,
+            install_loc,
+            &opt.pre_opened_directories,
+            &opt.args,
+        )?;
+        return Ok(());
     } else {
         return Err(ExecuteError::CommandNotFound {
             name: command_name.to_string(),
         }
         .into());
     }
-
-    Ok(())
 }
 
 fn run(
@@ -627,4 +638,11 @@ impl From<wax_index::WaxIndexError> for ExecuteError {
     fn from(other: wax_index::WaxIndexError) -> Self {
         ExecuteError::WaxIndexError(other)
     }
+}
+
+fn get_wax_cooldown() -> i32 {
+    config::Config::from_file()
+        .ok()
+        .map(|c| c.wax_cooldown)
+        .unwrap_or(config::wax_default_cooldown())
 }
