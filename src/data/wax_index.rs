@@ -15,7 +15,6 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WaxIndex {
     base_dir: PathBuf,
-    #[serde(serialize_with = "toml::ser::tables_last")]
     index: HashMap<String, WaxEntry>,
 }
 
@@ -56,7 +55,7 @@ impl WaxIndex {
                     base_dir: env::temp_dir().join("wax"),
                 }
             } else {
-                toml::from_str(&index_str)?
+                serde_json::from_str(&index_str)?
             }
         } else {
             WaxIndex {
@@ -82,9 +81,9 @@ impl WaxIndex {
             .truncate(true)
             .open(wax_path)?;
 
-        let toml_str = toml::to_string(self)?;
+        let json_str = serde_json::to_string(self)?;
 
-        f.write_all(toml_str.as_bytes())?;
+        f.write_all(json_str.as_bytes())?;
         trace!("WaxIndex saved!");
         Ok(())
     }
@@ -137,19 +136,12 @@ impl WaxIndex {
     /// Package installed, add it to the index.
     ///
     /// Returns true if an existing entry was updated.
-    pub fn insert_entry(
-        &mut self,
-        entry: String,
-        version: Version,
-        package_name: String,
-    ) -> Option<bool> {
+    pub fn insert_entry(&mut self, entry: String, version: Version, package_name: String) -> bool {
         let now = time::now_utc();
-        let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).ok()?;
-        Some(
-            self.index
-                .insert(entry, WaxEntry::new(package_name, version, now_str))
-                .is_some(),
-        )
+        let now_str = time::strftime(RFC3339_FORMAT_STRING, &now).expect("Format current time!");
+        self.index
+            .insert(entry, WaxEntry::new(package_name, version, now_str))
+            .is_some()
     }
 
     /// Get path at which packages should be installed.
@@ -164,10 +156,11 @@ pub enum WaxIndexError {
     ConfigError(config::GlobalConfigError),
     #[fail(display = "Failed to operate on Wax index file: `{}`", _0)]
     IoError(io::Error),
-    #[fail(display = "Failed to parse WaxIndex from toml: `{}`", _0)]
-    IndexParseError(toml::de::Error),
-    #[fail(display = "Failed to covert WaxIndex to toml: `{}`", _0)]
-    IndexConvertError(toml::ser::Error),
+    #[fail(
+        display = "Failed to parse WaxIndex from JSON or convert WaxIndex to JSON: `{}`",
+        _0
+    )]
+    SerdeError(serde_json::error::Error),
     #[fail(display = "Entry `{}` not found", entry)]
     EntryNotFound { entry: String },
     #[fail(display = "Entry `{}` found but was corrupt", entry)]
@@ -186,14 +179,8 @@ impl From<io::Error> for WaxIndexError {
     }
 }
 
-impl From<toml::de::Error> for WaxIndexError {
-    fn from(other: toml::de::Error) -> Self {
-        WaxIndexError::IndexParseError(other)
-    }
-}
-
-impl From<toml::ser::Error> for WaxIndexError {
-    fn from(other: toml::ser::Error) -> Self {
-        WaxIndexError::IndexConvertError(other)
+impl From<serde_json::error::Error> for WaxIndexError {
+    fn from(other: serde_json::error::Error) -> Self {
+        WaxIndexError::SerdeError(other)
     }
 }
