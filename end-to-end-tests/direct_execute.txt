@@ -12,7 +12,7 @@ hello
                 ||     ||
 [INFO] Installing _/lolcat@0.1.1
 Package installed successfully to wapm_packages!
-wax-lolcat 1.0.1
+wapm-run-lolcat 1.0.1
 wax-lolcat 1.0.1
 [INFO] Package "lolcat" is uninstalled.
 [INFO] Installing _/lolcat@0.1.1
