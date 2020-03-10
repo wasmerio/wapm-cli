@@ -189,8 +189,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let override_command_name_vec = override_command_name
         .map(|cn| {
             vec![
-                OsString::from("--command-name"),
-                OsString::from(format!("\"{}\"", cn)),
+                OsString::from(format!("--command-name=\"{}\"", cn)),
             ]
         })
         .unwrap_or_default();
