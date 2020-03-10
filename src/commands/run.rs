@@ -79,11 +79,9 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
 }
 
 fn default_wapm_command_name_formatter(command_name: &str) -> String {
-    format!("\"wapm run {}\"", command_name)
+    format!("wapm run {}", command_name)
 }
 
-/// NOTE: `command_name_formatter` must be produce an escaped string. Otherwise
-/// shell injection attacks or other bad things may be possible.
 pub(crate) fn do_run(
     run_dir: PathBuf,
     source_path_buf: PathBuf,
@@ -187,8 +185,6 @@ pub(crate) fn do_run(
     Ok(())
 }
 
-/// NOTE: `override_command_name` must be escaped, not escaping it may lead to
-/// shell injection attacks or other bad things.
 fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &[OsString],
     wasmer_extra_flags: Option<Vec<OsString>>,
@@ -203,8 +199,8 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     path.push(wasm_file_path);
     let path_string = path.into_os_string();
     let command_vec = vec![path_string];
-    let override_command_name_vec = override_command_name
-        .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
+    let override_command_name = override_command_name
+        .map(|cn| OsString::from(format!("--command-name={}", cn)))
         .unwrap_or_default();
     let prehashed_cache_key_flag = prehashed_cache_key
         .map(|pck| vec![OsString::from(format!("--cache-key=\"{}\"", pck))])
@@ -215,7 +211,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     // an empty OsString may pass empty args to the child program which can cause issues
     Ok([
         &command_vec[..],
-        &override_command_name_vec[..],
+        &[override_command_name],
         &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
         &prehashed_cache_key_flag[..],
