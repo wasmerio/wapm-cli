@@ -47,39 +47,43 @@ pub fn set_up_logging(count_lines: bool) -> Result<(), failure::Error> {
     let colors_level = colors_line.info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
-        .level(log::LevelFilter::Info)
-        .filter(|metadata| metadata.target().starts_with("wapm_cli"))
         .chain({
             let base = if should_color {
-                fern::Dispatch::new().format(move |out, message, record| {
-                    if count_lines && record.level() == log::Level::Info {
-                        let num_lines = message.to_string().lines().count();
-                        add_lines_printed_to_stdout(num_lines);
-                    }
-                    out.finish(format_args!(
-                        "{color_line}[{level}{color_line}]{ansi_close} {message}",
-                        color_line = format_args!(
-                            "\x1B[{}m",
-                            colors_line.get_color(&record.level()).to_fg_str()
-                        ),
-                        level = colors_level.color(record.level()),
-                        ansi_close = "\x1B[0m",
-                        message = message,
-                    ));
-                })
+                fern::Dispatch::new()
+                    .level(log::LevelFilter::Info)
+                    .filter(|metadata| metadata.target().starts_with("wapm_cli"))
+                    .format(move |out, message, record| {
+                        if count_lines && record.level() == log::Level::Info {
+                            let num_lines = message.to_string().lines().count();
+                            add_lines_printed_to_stdout(num_lines);
+                        }
+                        out.finish(format_args!(
+                            "{color_line}[{level}{color_line}]{ansi_close} {message}",
+                            color_line = format_args!(
+                                "\x1B[{}m",
+                                colors_line.get_color(&record.level()).to_fg_str()
+                            ),
+                            level = colors_level.color(record.level()),
+                            ansi_close = "\x1B[0m",
+                            message = message,
+                        ));
+                    })
             } else {
                 // default formatter without color
-                fern::Dispatch::new().format(move |out, message, record| {
-                    if count_lines && record.level() == log::Level::Info {
-                        let num_lines = message.to_string().lines().count();
-                        add_lines_printed_to_stdout(num_lines);
-                    }
-                    out.finish(format_args!(
-                        "[{level}] {message}",
-                        level = record.level(),
-                        message = message,
-                    ));
-                })
+                fern::Dispatch::new()
+                    .level(log::LevelFilter::Info)
+                    .filter(|metadata| metadata.target().starts_with("wapm_cli"))
+                    .format(move |out, message, record| {
+                        if count_lines && record.level() == log::Level::Info {
+                            let num_lines = message.to_string().lines().count();
+                            add_lines_printed_to_stdout(num_lines);
+                        }
+                        out.finish(format_args!(
+                            "[{level}] {message}",
+                            level = record.level(),
+                            message = message,
+                        ));
+                    })
             };
             base
                 // stdout

@@ -74,9 +74,16 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         &run_options.pre_opened_directories,
         &args,
         prehashed_cache_key,
+        &default_wapm_command_name_formatter,
     )
 }
 
+fn default_wapm_command_name_formatter(command_name: &str) -> String {
+    format!("\"wapm run {}\"", command_name)
+}
+
+/// NOTE: `command_name_formatter` must be produce an escaped string. Otherwise
+/// shell injection attacks or other bad things may be possible.
 pub(crate) fn do_run(
     run_dir: PathBuf,
     source_path_buf: PathBuf,
@@ -86,6 +93,7 @@ pub(crate) fn do_run(
     pre_opened_directories: &[String],
     args: &[OsString],
     prehashed_cache_key: Option<String>,
+    command_name_formatter: &dyn Fn(&str) -> String,
 ) -> Result<(), failure::Error> {
     debug!(
         "Running module located at {:?}",
@@ -123,10 +131,13 @@ pub(crate) fn do_run(
         .collect();
 
     let mut disable_command_rename = false;
+    let mut rename_commands_to_raw_command_name = false;
 
     match ManifestResult::find_in_directory(&manifest_dir) {
         ManifestResult::Manifest(manifest) => {
             disable_command_rename = manifest.package.disable_command_rename;
+            rename_commands_to_raw_command_name =
+                manifest.package.rename_commands_to_raw_command_name;
             if let Some(ref fs) = manifest.fs {
                 // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
                 for (guest_path, host_path) in fs.iter() {
@@ -150,7 +161,11 @@ pub(crate) fn do_run(
         if disable_command_rename {
             None
         } else {
-            Some(format!("wapm run {}", command_name))
+            if rename_commands_to_raw_command_name {
+                Some(command_name.to_string())
+            } else {
+                Some(command_name_formatter(command_name))
+            }
         },
         prehashed_cache_key,
     )?;
@@ -172,6 +187,8 @@ pub(crate) fn do_run(
     Ok(())
 }
 
+/// NOTE: `override_command_name` must be escaped, not escaping it may lead to
+/// shell injection attacks or other bad things.
 fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     args: &[OsString],
     wasmer_extra_flags: Option<Vec<OsString>>,
@@ -187,12 +204,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let path_string = path.into_os_string();
     let command_vec = vec![path_string];
     let override_command_name_vec = override_command_name
-        .map(|cn| {
-            vec![
-                OsString::from("--command-name"),
-                OsString::from(format!("\"{}\"", cn)),
-            ]
-        })
+        .map(|cn| vec![OsString::from("--command-name"), OsString::from(cn)])
         .unwrap_or_default();
     let prehashed_cache_key_flag = prehashed_cache_key
         .map(|pck| vec![OsString::from(format!("--cache-key=\"{}\"", pck))])
