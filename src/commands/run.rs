@@ -200,7 +200,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     let path_string = path.into_os_string();
     let command_vec = vec![path_string];
     let override_command_name = override_command_name
-        .map(|cn| OsString::from(format!("--command-name={}", cn)))
+        .map(|cn| vec![OsString::from(format!("--command-name={}", cn))])
         .unwrap_or_default();
     let prehashed_cache_key_flag = prehashed_cache_key
         .map(|pck| vec![OsString::from(format!("--cache-key=\"{}\"", pck))])
@@ -211,7 +211,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     // an empty OsString may pass empty args to the child program which can cause issues
     Ok([
         &command_vec[..],
-        &[override_command_name],
+        &override_command_name[..],
         &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
         &prehashed_cache_key_flag[..],
