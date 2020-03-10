@@ -4,9 +4,40 @@ use crate::config::Config;
 use crate::util;
 use fern::colors::{Color, ColoredLevelConfig};
 use std::fs;
+use std::io;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static STDOUT_LINE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+fn get_num_stdout_lines_logged() -> usize {
+    STDOUT_LINE_COUNTER.load(Ordering::Acquire)
+}
+
+/// Updates counter with the lines printed to stdout
+pub(crate) fn add_lines_printed_to_stdout(num_lines: usize) {
+    STDOUT_LINE_COUNTER.fetch_add(num_lines, Ordering::AcqRel);
+}
+
+/// Note: this function doesn't lock the atomic, so using it from
+/// multiple threads may not work.
+pub(crate) fn clear_stdout() -> io::Result<()> {
+    use std::io::Write;
+
+    let stdout = io::stdout();
+    let mut f = stdout.lock();
+    let num_lines_to_clear = get_num_stdout_lines_logged();
+    for _ in 0..num_lines_to_clear {
+        // ANSI escape codes for:
+        // - go up one line: \x1B[<NUM LINES>A
+        // - clear the line: \x1B[2K
+        write!(f, "\x1B[1A\x1B[2K")?;
+    }
+    f.flush()?;
+    Ok(())
+}
 
 /// Subroutine to instantiate the loggers
-pub fn set_up_logging() -> Result<(), failure::Error> {
+pub fn set_up_logging(count_lines: bool) -> Result<(), failure::Error> {
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
@@ -16,10 +47,15 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
     let colors_level = colors_line.info(Color::Green);
     let dispatch = fern::Dispatch::new()
         // stdout and stderr logging
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Info)
+        .filter(|metadata| metadata.target().starts_with("wapm_cli"))
         .chain({
             let base = if should_color {
                 fern::Dispatch::new().format(move |out, message, record| {
+                    if count_lines && record.level() == log::Level::Info {
+                        let num_lines = message.to_string().lines().count();
+                        add_lines_printed_to_stdout(num_lines);
+                    }
                     out.finish(format_args!(
                         "{color_line}[{level}{color_line}]{ansi_close} {message}",
                         color_line = format_args!(
@@ -34,6 +70,10 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
             } else {
                 // default formatter without color
                 fern::Dispatch::new().format(move |out, message, record| {
+                    if count_lines && record.level() == log::Level::Info {
+                        let num_lines = message.to_string().lines().count();
+                        add_lines_printed_to_stdout(num_lines);
+                    }
                     out.finish(format_args!(
                         "[{level}] {message}",
                         level = record.level(),
@@ -45,10 +85,7 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                 // stdout
                 .chain(
                     fern::Dispatch::new()
-                        .filter(|metadata| {
-                            metadata.level() == log::LevelFilter::Info
-                                && metadata.target().starts_with("wapm_cli")
-                        })
+                        .filter(|metadata| metadata.level() == log::LevelFilter::Info)
                         .chain(std::io::stdout()),
                 )
                 // stderr
@@ -68,6 +105,9 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
         let log_out = wasmer_dir.join("wapm.log");
         dispatch.chain(
             fern::Dispatch::new()
+                .level(log::LevelFilter::Debug)
+                .level_for("hyper", log::LevelFilter::Info)
+                .level_for("tokio_reactor", log::LevelFilter::Info)
                 .format(move |out, message, record| {
                     out.finish(format_args!(
                         "[{date}][{level}][{target}][{file}:{line}] {message}",
@@ -82,9 +122,6 @@ pub fn set_up_logging() -> Result<(), failure::Error> {
                             .unwrap_or_else(|| "".to_string()),
                     ));
                 })
-                .level(log::LevelFilter::Debug)
-                .level_for("hyper", log::LevelFilter::Info)
-                .level_for("tokio_reactor", log::LevelFilter::Info)
                 .chain(
                     fs::OpenOptions::new()
                         .write(true)

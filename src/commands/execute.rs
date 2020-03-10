@@ -593,6 +593,7 @@ fn run(
             module_name,
             prehashed_cache_key,
         } => {
+            crate::logging::clear_stdout()?;
             return crate::commands::run::do_run(
                 location,
                 source,
@@ -616,6 +617,7 @@ fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> Result<(), failu
 
         wax_index.save()?;
 
+        crate::logging::clear_stdout()?;
         run(
             command_name,
             location,

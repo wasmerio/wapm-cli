@@ -2558,6 +2558,7 @@ dependencies = [
 name = "wapm-cli"
 version = "0.4.3"
 dependencies = [
+ "atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "billboard 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "blake3 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",

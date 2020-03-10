@@ -94,7 +94,8 @@ enum Command {
 }
 
 fn main() {
-    if let Err(e) = logging::set_up_logging() {
+    let is_atty = atty::is(atty::Stream::Stdout);
+    if let Err(e) = logging::set_up_logging(is_atty) {
         eprintln!("Error: {}", e);
     }
 
