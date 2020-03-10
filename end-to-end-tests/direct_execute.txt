@@ -1,5 +1,6 @@
 [INFO] Installing mark2/coreutils@0.0.3
 aGVsbG8K
+[INFO] Installing mark2/coreutils@0.0.3
 hello
 [INFO] Installing _/cowsay@0.1.2
  _______
