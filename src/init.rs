@@ -97,7 +97,6 @@ pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
                 wasmer_extra_flags: None,
                 readme: None,
                 disable_command_rename: false,
-                rename_commands_to_raw_command_name: false,
             },
             dependencies: None,
             module: Some(vec![Module {

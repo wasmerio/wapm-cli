@@ -75,12 +75,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         &run_options.pre_opened_directories,
         &args,
         prehashed_cache_key,
-        &default_wapm_command_name_formatter,
     )
-}
-
-fn default_wapm_command_name_formatter(command_name: &str) -> String {
-    format!("wapm run {}", command_name)
 }
 
 pub(crate) fn do_run(
@@ -92,7 +87,6 @@ pub(crate) fn do_run(
     pre_opened_directories: &[String],
     args: &[OsString],
     prehashed_cache_key: Option<String>,
-    command_name_formatter: &dyn Fn(&str) -> String,
 ) -> Result<(), failure::Error> {
     debug!(
         "Running module located at {:?}",
@@ -130,13 +124,10 @@ pub(crate) fn do_run(
         .collect();
 
     let mut disable_command_rename = false;
-    let mut rename_commands_to_raw_command_name = false;
 
     match ManifestResult::find_in_directory(&manifest_dir) {
         ManifestResult::Manifest(manifest) => {
             disable_command_rename = manifest.package.disable_command_rename;
-            rename_commands_to_raw_command_name =
-                manifest.package.rename_commands_to_raw_command_name;
             if let Some(ref fs) = manifest.fs {
                 // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
                 for (guest_path, host_path) in fs.iter() {
@@ -160,11 +151,7 @@ pub(crate) fn do_run(
     let command_override_name = if !using_default_runtime || disable_command_rename {
         None
     } else {
-        if rename_commands_to_raw_command_name {
-            Some(command_name.to_string())
-        } else {
-            Some(command_name_formatter(command_name))
-        }
+        Some(command_name.to_string())
     };
     let command_vec = create_run_command(
         args,
