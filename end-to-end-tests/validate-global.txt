@@ -1,9 +1,9 @@
-[INFO] Installing mark2/binary-name-matters@0.0.0
+[INFO] Installing mark2/binary-name-matters@0.0.2
 Global package installed successfully!
 Success: command name correct
 Success: fs found
 [INFO] Package "mark2/binary-name-matters" is uninstalled.
-[INFO] Installing mark2/binary-name-matters@0.0.0
+[INFO] Installing mark2/binary-name-matters@0.0.2
 Package installed successfully to wapm_packages!
 Success: command name correct
 Success: fs found

@@ -17,3 +17,4 @@ wapm list -a
 rm -rf $(./wax --which lolcat)/wapm_packages/_/lolcat@0.1.1/*
 ./wax lolcat -V
 ./wax --offline lolcat -V
+WAPM_RUNTIME=echo ./wax ls | grep "\-\-command-name" || echo "Success: command-name not found"
