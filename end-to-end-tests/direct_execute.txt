@@ -22,3 +22,5 @@ No packages found
 [INFO] Installing _/lolcat@0.1.1
 wax-lolcat 1.0.1
 wax-lolcat 1.0.1
+Success: command-name not found
+

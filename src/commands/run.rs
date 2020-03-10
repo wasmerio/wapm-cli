@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::constants::DEFAULT_RUNTIME;
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::dataflow;
 use crate::dataflow::find_command_result;
@@ -150,25 +151,31 @@ pub(crate) fn do_run(
         _ => (),
     }
 
+    let runtime = get_runtime();
+    // avoid `wasmer-js`, allow other wasmers
+    let using_default_runtime = Path::new(&runtime)
+        .file_name()
+        .map(|file_name| file_name.to_string_lossy().ends_with(DEFAULT_RUNTIME))
+        .unwrap_or(false);
+    let command_override_name = if !using_default_runtime || disable_command_rename {
+        None
+    } else {
+        if rename_commands_to_raw_command_name {
+            Some(command_name.to_string())
+        } else {
+            Some(command_name_formatter(command_name))
+        }
+    };
     let command_vec = create_run_command(
         args,
         wasmer_extra_flags,
         wasi_preopened_dir_flags,
         &run_dir,
         source_path_buf,
-        if disable_command_rename {
-            None
-        } else {
-            if rename_commands_to_raw_command_name {
-                Some(command_name.to_string())
-            } else {
-                Some(command_name_formatter(command_name))
-            }
-        },
+        command_override_name,
         prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
-    let runtime = get_runtime();
     let mut child =
         Command::new(&runtime)
             .args(&command_vec)
