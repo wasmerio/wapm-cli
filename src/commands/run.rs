@@ -160,11 +160,7 @@ pub(crate) fn do_run(
     let command_override_name = if !using_default_runtime || disable_command_rename {
         None
     } else {
-        if rename_commands_to_raw_command_name {
-            Some(command_name.to_string())
-        } else {
-            Some(command_name_formatter(command_name))
-        }
+        Some(command_name.to_string())
     };
     let command_vec = create_run_command(
         args,
