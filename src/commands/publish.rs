@@ -117,7 +117,7 @@ pub fn publish(publish_opts: PublishOpt) -> Result<(), failure::Error> {
                                                         PublishError::NoModule)?;
     let archive_name = "package.tar.gz".to_string();
     let archive_dir = tempfile::TempDir::new()?;
-    fs::create_dir("wapm_package")?;
+    fs::create_dir(archive_dir.path().join("wapm_package"))?;
     let archive_path = archive_dir
         .as_ref()
         .join("wapm_package")

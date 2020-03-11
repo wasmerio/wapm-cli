@@ -389,7 +389,7 @@ impl<'a> Install<'a> for RegistryInstaller {
 
         let temp_dir = tempfile::TempDir::new()
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-        fs::create_dir("wapm_package_install")
+        fs::create_dir(temp_dir.path().join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir
             .path()
