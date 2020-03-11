@@ -302,7 +302,7 @@ mod test {
 
     #[test]
     fn get_non_existent_config() {
-        let tmp_dir = tempdir::TempDir::new("get_non_existent_config").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         // set the env var to our temp dir
         std::env::set_var(
             GLOBAL_CONFIG_FOLDER_ENV_VAR,
@@ -320,7 +320,7 @@ mod test {
 
     #[test]
     fn get_global_config() {
-        let tmp_dir = tempdir::TempDir::new("get_global_config").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let manifest_absolute_path = tmp_dir.path().join(GLOBAL_CONFIG_FILE_NAME);
         let mut file = File::create(&manifest_absolute_path).unwrap();
         let config = Config::default();

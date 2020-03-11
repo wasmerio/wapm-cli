@@ -103,7 +103,7 @@ pub fn validate_wasm_and_report_errors_old(
     let mut parser = wasmparser::ValidatingParser::new(wasm, None);
     loop {
         let state = parser.read();
-        match *state {
+        match state {
             wasmparser::ParserState::EndWasm => return Ok(()),
             wasmparser::ParserState::Error(e) => {
                 return Err(ValidationError::InvalidWasm {

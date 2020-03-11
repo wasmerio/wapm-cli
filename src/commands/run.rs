@@ -224,7 +224,7 @@ mod test {
     #[test]
     fn create_run_command_vec() {
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
-        let tmp_dir = tempdir::TempDir::new("create_run_command_vec").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let dir = tmp_dir.path();
         let wapm_module_dir = dir.join(
             [PACKAGES_DIR_NAME, "_", "foo@1.0.2"]
@@ -232,7 +232,6 @@ mod test {
                 .collect::<PathBuf>(),
         );
         fs::create_dir_all(&wapm_module_dir).unwrap();
-        // calling dunce here to help wih comparing paths on different platforms
         let expected_dir: PathBuf = wapm_module_dir.clone();
         let expected_dir = expected_dir.join("foo_entry.wasm");
         let expected_command = vec![
