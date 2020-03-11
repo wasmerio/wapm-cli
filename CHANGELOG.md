@@ -6,12 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## **[Unreleased]**
+
+## [0.5.0] - 2020-03-10
 ### Added
 - Added support for any WebAssembly runtime via `WAPM_RUNTIME` (so you can use it like `WAPM_RUNTIME=wasmer-js wapm run python`)
+- Add ergonomic `wax` command for directly executing Wasm from the wapm registry. TODO: write a brief intro to wax here (can also put it in docs)
 ### Changed
 - Use [`boxx`](https://crates.io/crates/boxx) to show the update notification message.
 - Make module pre-hashing optional and non-dependent on the [wasmer runtime](https://github.com/wasmerio/wasmer)
 - Remove `run` extra runtime argument passed to `WAPM_RUNTIME`
+- The `--comand-name` flag passed to Wasm runtimes is now of the form `command-name` instead of `wapm run command-name`.
 
 ## [0.4.3] - 2020-01-16
 ### Changed
