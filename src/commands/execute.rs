@@ -300,6 +300,7 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 &opt.pre_opened_directories,
                 &opt.args,
                 prehashed_cache_key,
+                &default_wax_command_name_formatter,
             )?;
             return Ok(());
         }
@@ -496,62 +497,11 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
 
         debug!("Wax package installed to {}", install_loc.to_string_lossy());
 
-        // get all the commands from the lockfile and index them
-        let mut lockfile_not_found = true;
-        match LockfileResult::find_in_directory(&install_loc) {
-            LockfileResult::Lockfile(l) => {
-                for (command_name, command_info) in l.commands.iter() {
-                    wax_index.insert_entry(
-                        command_name.to_string(),
-                        command_info.package_version.clone(),
-                        command.package_version.package.name.clone(),
-                    );
-                }
-                lockfile_not_found = false;
-            }
-            LockfileResult::NoLockfile => {
-                error!(
-                    "Lockfile not found in `{}`! This is likely an internal Wapm error!",
-                    &install_loc.to_string_lossy()
-                );
-                #[cfg(feature = "telemetry")]
-                {
-                    sentry::capture_message(
-                        &format!(
-                            "Lockfile not found in `{}` just after install! This should not happen",
-                            &install_loc.to_string_lossy()
-                        ),
-                        sentry::Level::Error,
-                    );
-                }
-            }
-            LockfileResult::LockfileError(e) => {
-                error!("Error in lockfile at `{}`! This is likely an internal Wapm error! Error details: {}", &install_loc.to_string_lossy(), e);
-                #[cfg(feature = "telemetry")]
-                {
-                    sentry::capture_message(
-                        &format!(
-                            "Error in lockfile at `{}`. Error details: {}",
-                            &install_loc.to_string_lossy(),
-                            e
-                        ),
-                        sentry::Level::Error,
-                    );
-                }
-            }
-        }
-
-        // Just add the current package if we couldn't find the lockfile.
-        // This is honestly an error but we'll play it safe and try to keep
-        // going even if we run into issues because we've reported the error
-        // if telemetry is enabled and printed an error to the user.
-        if lockfile_not_found {
-            wax_index.insert_entry(
-                command_name.to_string(),
-                registry_version,
-                command.package_version.package.name.clone(),
-            );
-        }
+        wax_index.insert_entry(
+            command_name.to_string(),
+            registry_version,
+            command.package_version.package.name.clone(),
+        );
         wax_index.save()?;
         run(
             command_name,
@@ -603,6 +553,7 @@ fn run(
                 pre_opened_directories,
                 args,
                 prehashed_cache_key,
+                &default_wax_command_name_formatter,
             );
         }
         FindCommandResult::Error(e) => return Err(e),
@@ -647,4 +598,8 @@ fn get_wax_cooldown() -> i32 {
         .ok()
         .map(|c| c.wax_cooldown)
         .unwrap_or(config::wax_default_cooldown())
+}
+
+fn default_wax_command_name_formatter(command_name: &str) -> String {
+    format!("wax {}", command_name)
 }

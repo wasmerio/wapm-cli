@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::constants::DEFAULT_RUNTIME;
 use crate::data::lock::is_lockfile_out_of_date;
 use crate::dataflow;
 use crate::dataflow::find_command_result;
@@ -74,7 +75,12 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
         &run_options.pre_opened_directories,
         &args,
         prehashed_cache_key,
+        &default_wapm_command_name_formatter,
     )
+}
+
+fn default_wapm_command_name_formatter(command_name: &str) -> String {
+    format!("wapm run {}", command_name)
 }
 
 pub(crate) fn do_run(
@@ -86,6 +92,7 @@ pub(crate) fn do_run(
     pre_opened_directories: &[String],
     args: &[OsString],
     prehashed_cache_key: Option<String>,
+    command_name_formatter: &dyn Fn(&str) -> String,
 ) -> Result<(), failure::Error> {
     debug!(
         "Running module located at {:?}",
@@ -123,10 +130,13 @@ pub(crate) fn do_run(
         .collect();
 
     let mut disable_command_rename = false;
+    let mut rename_commands_to_raw_command_name = false;
 
     match ManifestResult::find_in_directory(&manifest_dir) {
         ManifestResult::Manifest(manifest) => {
             disable_command_rename = manifest.package.disable_command_rename;
+            rename_commands_to_raw_command_name =
+                manifest.package.rename_commands_to_raw_command_name;
             if let Some(ref fs) = manifest.fs {
                 // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
                 for (guest_path, host_path) in fs.iter() {
@@ -141,21 +151,27 @@ pub(crate) fn do_run(
         _ => (),
     }
 
+    let runtime = get_runtime();
+    // avoid `wasmer-js`, allow other wasmers
+    let using_default_runtime = Path::new(&runtime)
+        .file_name()
+        .map(|file_name| file_name.to_string_lossy().ends_with(DEFAULT_RUNTIME))
+        .unwrap_or(false);
+    let command_override_name = if !using_default_runtime || disable_command_rename {
+        None
+    } else {
+        Some(command_name.to_string())
+    };
     let command_vec = create_run_command(
         args,
         wasmer_extra_flags,
         wasi_preopened_dir_flags,
         &run_dir,
         source_path_buf,
-        if disable_command_rename {
-            None
-        } else {
-            Some(format!("wapm run {}", command_name))
-        },
+        command_override_name,
         prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
-    let runtime = get_runtime();
     let mut child =
         Command::new(&runtime)
             .args(&command_vec)
@@ -186,13 +202,8 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     path.push(wasm_file_path);
     let path_string = path.into_os_string();
     let command_vec = vec![path_string];
-    let override_command_name_vec = override_command_name
-        .map(|cn| {
-            vec![
-                OsString::from("--command-name"),
-                OsString::from(format!("\"{}\"", cn)),
-            ]
-        })
+    let override_command_name = override_command_name
+        .map(|cn| vec![OsString::from(format!("--command-name={}", cn))])
         .unwrap_or_default();
     let prehashed_cache_key_flag = prehashed_cache_key
         .map(|pck| vec![OsString::from(format!("--cache-key=\"{}\"", pck))])
@@ -203,7 +214,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     // an empty OsString may pass empty args to the child program which can cause issues
     Ok([
         &command_vec[..],
-        &override_command_name_vec[..],
+        &override_command_name[..],
         &wasi_preopened_dir_flags[..],
         &wasmer_extra_flags.unwrap_or_default()[..],
         &prehashed_cache_key_flag[..],

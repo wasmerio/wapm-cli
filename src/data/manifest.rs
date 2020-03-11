@@ -30,6 +30,16 @@ pub struct Package {
         skip_serializing_if = "std::ops::Not::not"
     )]
     pub disable_command_rename: bool,
+    /// Unlike, `disable-command-rename` which prevents `wapm run <Module name>`,
+    /// this flag enables the command rename of `wapm run <COMMAND_NAME>` into
+    /// just `<COMMAND_NAME>. This is useful for programs that need to inspect
+    /// their argv[0] names and when the command name matches their executable name.
+    #[serde(
+        rename = "rename-commands-to-raw-command-name",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    pub rename_commands_to_raw_command_name: bool,
 }
 
 /// Describes a command for a wapm module
