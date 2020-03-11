@@ -7,8 +7,9 @@ use billboard::{Billboard, BorderStyle};
 use chrono::{DateTime, Utc};
 use colored::*;
 use reqwest::{
+    blocking::{Client, Response},
     header::{HeaderValue, ACCEPT},
-    Client, RedirectPolicy, Response,
+    redirect,
 };
 use std::env;
 use std::fs::File;
@@ -200,11 +201,11 @@ pub fn get_latest_tag() -> Result<String, String> {
         Ok(None) => builder, //continue without proxy
         Err(e) => return Err(e.to_string()),
     }
-    .redirect(RedirectPolicy::limited(10))
+    .redirect(redirect::Policy::limited(10))
     .build()
     .map_err(|err| err.to_string())?;
 
-    let mut response: Response = client
+    let response: Response = client
         .get(GITHUB_RELEASE_PAGE)
         .header(ACCEPT, HeaderValue::from_static("application/json"))
         .send()
