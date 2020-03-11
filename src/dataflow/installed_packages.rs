@@ -10,7 +10,7 @@ use crate::util::{
     self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
 };
 use flate2::read::GzDecoder;
-use reqwest::ClientBuilder;
+use reqwest::blocking::ClientBuilder;
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
@@ -387,9 +387,14 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Box::new(|_dest| Ok(()))
             };
 
-        let temp_dir = tempdir::TempDir::new("wapm_package_install")
+        let temp_dir = tempfile::TempDir::new()
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-        let temp_tar_gz_path = temp_dir.path().join("package.tar.gz");
+        fs::create_dir(temp_dir.path().join("wapm_package_install"))
+            .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
+        let temp_tar_gz_path = temp_dir
+            .path()
+            .join("wapm_package_install")
+            .join("package.tar.gz");
         let mut dest = OpenOptions::new()
             .read(true)
             .write(true)

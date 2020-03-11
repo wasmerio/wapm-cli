@@ -12,9 +12,8 @@ pub fn set_registry_to_dev() -> Result<(), failure::Error> {
     ))
 }
 
-pub fn set_test_dir_to_new_temp_dir() -> tempdir::TempDir {
-    let new_dir =
-        tempdir::TempDir::new("wapm_integration_test").expect("Could not create temp dir");
+pub fn set_test_dir_to_new_temp_dir() -> tempfile::TempDir {
+    let new_dir = tempfile::TempDir::new().expect("Could not create temp dir");
     let new_cur_dir = new_dir.path().join("integration_test");
     std::fs::create_dir(&new_cur_dir).expect("Could not create subdir");
     std::env::set_current_dir(new_cur_dir)

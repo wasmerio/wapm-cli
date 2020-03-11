@@ -288,7 +288,7 @@ mod dependency_tests {
 
     #[test]
     fn add_new_dependency() {
-        let tmp_dir = tempdir::TempDir::new("add_new_dependency").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {

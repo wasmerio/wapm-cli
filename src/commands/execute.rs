@@ -300,7 +300,6 @@ pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
                 &opt.pre_opened_directories,
                 &opt.args,
                 prehashed_cache_key,
-                &default_wax_command_name_formatter,
             )?;
             return Ok(());
         }
@@ -553,7 +552,6 @@ fn run(
                 pre_opened_directories,
                 args,
                 prehashed_cache_key,
-                &default_wax_command_name_formatter,
             );
         }
         FindCommandResult::Error(e) => return Err(e),
@@ -598,8 +596,4 @@ fn get_wax_cooldown() -> i32 {
         .ok()
         .map(|c| c.wax_cooldown)
         .unwrap_or(config::wax_default_cooldown())
-}
-
-fn default_wax_command_name_formatter(command_name: &str) -> String {
-    format!("wax {}", command_name)
 }

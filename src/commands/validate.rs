@@ -37,7 +37,7 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         gz.read_to_end(&mut archive_data)
             .map_err(|e| format_err!("Failed to read archive data: {}", e.to_string()))?;
 
-        let temp_out_dir = tempdir::TempDir::new("temp")
+        let temp_out_dir = tempfile::TempDir::new()
             .map_err(|e| format_err!("Could not create temporary directory: {}", e.to_string()))?;
         let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());

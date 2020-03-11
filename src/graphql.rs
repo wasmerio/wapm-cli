@@ -1,8 +1,9 @@
 use crate::proxy;
 use failure;
 use graphql_client::{QueryBody, Response};
+use reqwest::blocking::multipart;
+use reqwest::blocking::Client;
 use reqwest::header::USER_AGENT;
-use reqwest::Client;
 use serde;
 use std::string::ToString;
 
@@ -24,7 +25,7 @@ pub fn execute_query_modifier<R, V, F>(
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
-    F: FnOnce(reqwest::multipart::Form) -> reqwest::multipart::Form,
+    F: FnOnce(multipart::Form) -> multipart::Form,
 {
     let client = {
         let builder = Client::builder();
@@ -41,7 +42,7 @@ where
     let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();
 
-    let form = reqwest::multipart::Form::new()
+    let form = multipart::Form::new()
         .text("query", query.query.to_string())
         .text("operationName", query.operation_name.to_string())
         .text("variables", vars);
@@ -55,7 +56,7 @@ where
         whoami::os().to_lowercase(),
     );
 
-    let mut res = client
+    let res = client
         .post(registry_url)
         .multipart(form)
         .bearer_auth(&config.registry.token.unwrap_or_else(|| "".to_string()))
