@@ -5,7 +5,7 @@ use crate::dataflow;
 use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
-use crate::util::{get_runtime, split_runtime_and_args};
+use crate::util::get_runtime_with_args;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -143,7 +143,7 @@ pub(crate) fn do_run(
         _ => (),
     }
 
-    let (runtime, runtime_args) = split_runtime_and_args(get_runtime());
+    let (runtime, runtime_args) = get_runtime_with_args();
 
     // avoid `wasmer-js`, allow other wasmers
     let using_default_runtime = Path::new(&runtime)

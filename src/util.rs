@@ -273,12 +273,12 @@ pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
 
 /// Returns the value of the WAPM_RUNTIME env var if it exists.
 /// Otherwise returns wasmer
-pub fn get_runtime() -> String {
+fn get_runtime() -> String {
     env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
 }
 
 /// Splits the runtime from the rest of arguments
-pub fn split_runtime_and_args(runtime: String) -> (String, Vec<String>) {
+fn split_runtime_and_args(runtime: String) -> (String, Vec<String>) {
     let runtime_split = runtime.split_whitespace();
     if let Some((split_runtime, split_runtime_args)) = runtime_split
         .map(|s| s.to_string())
@@ -288,6 +288,13 @@ pub fn split_runtime_and_args(runtime: String) -> (String, Vec<String>) {
         return (split_runtime.to_string(), split_runtime_args.to_vec());
     }
     (runtime, vec![])
+}
+
+/// We put this in a new function, to be clear that runtime can be both
+/// 1. A string with the runtime value (eg. "wasmer")
+/// 2. A string with the runtime value and the args (eg. "wasmer --backend=singlepass")
+pub fn get_runtime_with_args() -> (String, Vec<String>) {
+    split_runtime_and_args(get_runtime())
 }
 
 #[cfg(test)]
