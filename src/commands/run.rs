@@ -5,7 +5,7 @@ use crate::dataflow;
 use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
-use crate::util::get_runtime;
+use crate::util::{get_runtime, split_runtime_and_args};
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -143,7 +143,8 @@ pub(crate) fn do_run(
         _ => (),
     }
 
-    let runtime = get_runtime();
+    let (runtime, runtime_args) = split_runtime_and_args(get_runtime());
+
     // avoid `wasmer-js`, allow other wasmers
     let using_default_runtime = Path::new(&runtime)
         .file_name()
@@ -164,17 +165,17 @@ pub(crate) fn do_run(
         prehashed_cache_key,
     )?;
     debug!("Running command with args: {:?}", command_vec);
-    let mut child =
-        Command::new(&runtime)
-            .args(&command_vec)
-            .spawn()
-            .map_err(|e| -> failure::Error {
-                RunError::ProcessFailed {
-                    runtime: runtime,
-                    error: format!("{:?}", e),
-                }
-                .into()
-            })?;
+    let mut child = Command::new(&runtime)
+        .args(&runtime_args)
+        .args(&command_vec)
+        .spawn()
+        .map_err(|e| -> failure::Error {
+            RunError::ProcessFailed {
+                runtime: runtime,
+                error: format!("{:?}", e),
+            }
+            .into()
+        })?;
 
     child.wait()?;
     Ok(())
