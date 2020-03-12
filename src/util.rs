@@ -329,5 +329,19 @@ mod test {
             split_runtime_and_args("wasmer run".to_owned()),
             ("wasmer".to_owned(), vec!["run".to_owned()])
         );
+
+        // Weird spacing
+        assert_eq!(
+            split_runtime_and_args("  wasmer   ".to_owned()),
+            ("wasmer".to_owned(), vec![])
+        );
+        assert_eq!(
+            split_runtime_and_args("wasmer  run  ".to_owned()),
+            ("wasmer".to_owned(), vec!["run".to_owned()])
+        );
+        assert_eq!(
+            split_runtime_and_args("  wasmer  run  ".to_owned()),
+            ("wasmer".to_owned(), vec!["run".to_owned()])
+        );
     }
 }
