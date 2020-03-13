@@ -271,6 +271,32 @@ pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
     }
 }
 
+/// Returns the value of the WAPM_RUNTIME env var if it exists.
+/// Otherwise returns wasmer
+fn get_runtime() -> String {
+    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
+}
+
+/// Splits the runtime from the rest of arguments
+fn split_runtime_and_args(runtime: String) -> (String, Vec<String>) {
+    let runtime_split = runtime.split_whitespace();
+    if let Some((split_runtime, split_runtime_args)) = runtime_split
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>()
+        .split_first()
+    {
+        return (split_runtime.to_string(), split_runtime_args.to_vec());
+    }
+    (runtime, vec![])
+}
+
+/// We put this in a new function, to be clear that runtime can be both
+/// 1. A string with the runtime value (eg. "wasmer")
+/// 2. A string with the runtime value and the args (eg. "wasmer --backend=singlepass")
+pub fn get_runtime_with_args() -> (String, Vec<String>) {
+    split_runtime_and_args(get_runtime())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -288,10 +314,34 @@ mod test {
         assert_eq!(compare_versions("0.1.1", "0.1.0"), Some(true));
         assert_eq!(compare_versions("0.1.1", "0.2.0"), Some(false));
     }
-}
 
-/// Returns the value of the WAPM_RUNTIME env var if it exists.
-/// Otherwise returns wasmer
-pub fn get_runtime() -> String {
-    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
+    #[test]
+    pub fn test_split_runtime_and_args() {
+        assert_eq!(
+            split_runtime_and_args("wasmer".to_owned()),
+            ("wasmer".to_owned(), vec![])
+        );
+        assert_eq!(
+            split_runtime_and_args("wasmer --backend=llvm".to_owned()),
+            ("wasmer".to_owned(), vec!["--backend=llvm".to_owned()])
+        );
+        assert_eq!(
+            split_runtime_and_args("wasmer run".to_owned()),
+            ("wasmer".to_owned(), vec!["run".to_owned()])
+        );
+
+        // Weird spacing
+        assert_eq!(
+            split_runtime_and_args("  wasmer   ".to_owned()),
+            ("wasmer".to_owned(), vec![])
+        );
+        assert_eq!(
+            split_runtime_and_args("wasmer  run  ".to_owned()),
+            ("wasmer".to_owned(), vec!["run".to_owned()])
+        );
+        assert_eq!(
+            split_runtime_and_args("  wasmer  run  ".to_owned()),
+            ("wasmer".to_owned(), vec!["run".to_owned()])
+        );
+    }
 }
