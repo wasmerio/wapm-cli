@@ -70,25 +70,6 @@ jobs:
         # around a bug in the 'cache' action that causes directories outside of
         # the workspace dir to be saved/restored incorrectly.
         run: echo "::set-env name=CARGO_HOME::$(pwd)/.cargo_home"
-      - name: Cache
-        uses: actions/cache@master
-        with:
-          # Note: crates from the git repo always get rebuilt
-          # so we cache only those subdirectories of target/{debug|release} that
-          # contain the build output for crates that come from the registry.
-          path: |-
-            .cargo_home
-            target/*/.*
-            target/*/build
-            target/*/deps
-          key: ${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-${{ matrix.rust }}-
-       # Install sccache
-       - uses: actions/cache@master
-         with:
-           path: ${{ runner.tool_cache }}/cargo-sccache
-           key: cargo-sccache-bin-${{ env.CARGO_SCCACHE_VERSION }}
        - name: Install sccache
          run: |
            echo "::add-path::${{ runner.tool_cache }}/cargo-sccache/bin"
@@ -144,6 +125,20 @@ jobs:
         with:
           name: wapm-${{ matrix.os }}
           path: target/release/wapm.exe
+      - name: Cache
+        uses: actions/cache@master
+        with:
+          # Note: crates from the git repo always get rebuilt
+          # so we cache only those subdirectories of target/{debug|release} that
+          # contain the build output for crates that come from the registry.
+          path: |-
+            .cargo_home
+            target/*/.*
+            target/*/build
+            target/*/deps
+          key: ${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('Cargo.lock') }}
 
   regression_tests:
     needs: [setup, test]
