@@ -150,8 +150,7 @@ jobs:
       - name: Set up for tests
         runs: |
           export PATH=`pwd`/artifacts:$PATH
-      # TODO: move this logic into files
-      - name: Regression test: direct execution works
+      - name: Regression test: direct execution works # TODO: move these steps into files
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
