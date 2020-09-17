@@ -150,9 +150,10 @@ jobs:
       - name: Set up for tests
         runs: |
           export PATH=`pwd`/artifacts:$PATH
-      - name: Regression test: direct execution works # TODO: move these steps into files
+      - name: Regression test: direct execution works
         shell: bash
         run: |
+          # TODO: move these steps into files
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
