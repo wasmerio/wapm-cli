@@ -148,7 +148,7 @@ jobs:
         with:
           path: artifacts
       - name: Set up for tests
-        runs: |
+        run: |
           export PATH=`pwd`/artifacts:$PATH
       - name: 'Regression test: direct execution works'
         shell: bash
