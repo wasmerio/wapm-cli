@@ -150,7 +150,7 @@ jobs:
       - name: Set up for tests
         runs: |
           export PATH=`pwd`/artifacts:$PATH
-      - name: Regression test: direct execution works
+      - name: 'Regression test: direct execution works'
         shell: bash
         run: |
           # TODO: move these steps into files
@@ -176,7 +176,7 @@ jobs:
           rm /tmp/direct_execute.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
-      - name: Regression test: Install, Uninstall, Run, and List
+      - name: 'Regression test: Install, Uninstall, Run, and List'
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
@@ -202,7 +202,7 @@ jobs:
           rm /tmp/install-out.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
-      - name: Regression test: verification and public key management
+      - name: 'Regression test: verification and public key management'
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
@@ -228,7 +228,7 @@ jobs:
           rm /tmp/verification-out.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
-#      - name: Regression test: pkg_fs works globally and when installed locally
+#      - name: 'Regression test: pkg_fs works globally and when installed locally'
 #        shell: bash
 #        run: |
 #          export PATH=$PATH:$HOME/.cargo/bin
@@ -257,7 +257,7 @@ jobs:
 #          rm $HOME/.wasmer/wapm.sqlite
 #          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
 #          exit $OUT
-      - name: Regression test: manifest validation rejects invalid manifests
+      - name: 'Regression test: manifest validation rejects invalid manifests'
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
@@ -284,7 +284,7 @@ jobs:
           rm $HOME/.wasmer/wapm.sqlite
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
-      - name: Regression test: package fs and command rename
+      - name: 'Regression test: package fs and command rename'
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
@@ -311,7 +311,7 @@ jobs:
           rm $HOME/.wasmer/wapm.sqlite
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
-      - name: Regression test: Init a Manifest and Add some dependencies
+      - name: 'Regression test: Init a Manifest and Add some dependencies'
         shell: bash
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
