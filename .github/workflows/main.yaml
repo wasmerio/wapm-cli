@@ -143,6 +143,7 @@ jobs:
     needs: [setup, test]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Install Wasmer
         run: |
           curl https://get.wasmer.io -sSfL | sh
