@@ -107,7 +107,7 @@ jobs:
           cargo check --features "telemetry update-notifications"
       - name: Build binary
         run: |
-          make build-wapm
+          make release
       - name: Upload Artifacts (Unix)
         uses: actions/upload-artifact@v2
         if: matrix.os != 'windows-latest'
