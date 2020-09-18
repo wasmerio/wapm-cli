@@ -135,7 +135,7 @@ jobs:
 #          restore-keys: |
 #            ${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('Cargo.lock') }}
       - name: Release to crates.io
-        if: needs.setup.outputs.DOING_RELEASE == '1' && matrix.os = 'ubuntu-latest'
+        if: needs.setup.outputs.DOING_RELEASE == '1' && matrix.os /= 'ubuntu-latest'
         run: |
           cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
