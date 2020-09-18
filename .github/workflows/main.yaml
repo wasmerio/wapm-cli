@@ -160,10 +160,10 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $WASMER_DIR/.wax_index.toml
+          rm -f $WASMER_DIR/.wax_index.toml
           # TODO force clear cache
-          rm wapm.toml
-          rm wapm.lock
+          rm -f wapm.toml
+          rm -f wapm.lock
           chmod +x end-to-end-tests/direct_execute.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt
@@ -185,11 +185,11 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $WASMER_DIR/wapm.sqlite
-          rm $WASMER_DIR/globals/wapm.lock
+          rm -f $WASMER_DIR/wapm.sqlite
+          rm -f $WASMER_DIR/globals/wapm.lock
           rm -rf wapm_packages
-          rm wapm.toml
-          rm wapm.lock
+          rm -f wapm.toml
+          rm -f wapm.lock
           chmod +x end-to-end-tests/install.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/install.sh &> /tmp/install-out.txt
@@ -211,11 +211,11 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $WASMER_DIR/wapm.sqlite
-          rm $WASMER_DIR/globals/wapm.lock
+          rm -f $WASMER_DIR/wapm.sqlite
+          rm -f $WASMER_DIR/globals/wapm.lock
           rm -rf wapm_packages
-          rm wapm.toml
-          rm wapm.lock
+          rm -f wapm.toml
+          rm -f wapm.lock
           chmod +x end-to-end-tests/verification.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/verification.sh &> /tmp/verification-out.txt
@@ -237,11 +237,11 @@ jobs:
 #          export PATH=$PATH:$HOME/.cargo/bin
 #          export PATH=$PATH:$HOME/.wasmer/bin
 #          export WAPM_DISABLE_COLOR=true
-#          rm $HOME/.wasmer/wapm.sqlite
-#          rm $HOME/.wasmer/globals/wapm.lock
+#          rm -f $HOME/.wasmer/wapm.sqlite
+#          rm -f $HOME/.wasmer/globals/wapm.lock
 #          rm -rf wapm_packages
-#          rm wapm.toml
-#          rm wapm.lock
+#          rm -f wapm.toml
+#          rm -f wapm.lock
 #          chmod +x end-to-end-tests/package-fs-mapping.sh
 #          echo "RUNNING SCRIPT..."
 #          ./end-to-end-tests/package-fs-mapping.sh &> /tmp/package-fs-mapping-out.txt
@@ -266,10 +266,10 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $HOME/.wasmer/wapm.sqlite
-          rm $HOME/.wasmer/globals/wapm.lock
-          rm wapm.lock
-          rm wapm.toml
+          rm -f $HOME/.wasmer/wapm.sqlite
+          rm -f $HOME/.wasmer/globals/wapm.lock
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
           chmod +x end-to-end-tests/manifest-validation.sh
           echo "RUNNING SCRIPT..."
@@ -293,10 +293,10 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $HOME/.wasmer/wapm.sqlite
-          rm $HOME/.wasmer/globals/wapm.lock
-          rm wapm.lock
-          rm wapm.toml
+          rm -f $HOME/.wasmer/wapm.sqlite
+          rm -f $HOME/.wasmer/globals/wapm.lock
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
           chmod +x end-to-end-tests/validate-global.sh
           echo "RUNNING SCRIPT..."
@@ -320,11 +320,11 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           export PATH=$PATH:$HOME/.wasmer/bin
           export WAPM_DISABLE_COLOR=true
-          rm $WASMER_DIR/wapm.sqlite
-          rm $WASMER_DIR/globals/wapm.lock
+          rm -f $WASMER_DIR/wapm.sqlite
+          rm -f $WASMER_DIR/globals/wapm.lock
           rm -rf wapm_packages
-          rm wapm.toml
-          rm wapm.lock
+          rm -f wapm.toml
+          rm -f wapm.lock
           chmod +x end-to-end-tests/init-and-add.sh
           echo "RUNNING SCRIPT..."
           ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
