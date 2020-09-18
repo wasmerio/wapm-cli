@@ -140,6 +140,8 @@ jobs:
           cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
   regression_tests:
+    strategy:
+      fail-fast: false
     needs: [setup, test]
     runs-on: ubuntu-latest
     steps:
@@ -174,10 +176,10 @@ jobs:
           diff -Bba end-to-end-tests/direct_execute.txt /tmp/direct_execute.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/direct_execute.txt
+          rm -f /tmp/direct_execute.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
       - name: 'Regression test: Install, Uninstall, Run, and List'
@@ -200,10 +202,10 @@ jobs:
           diff -Bba end-to-end-tests/install.txt /tmp/install-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/install-out.txt
+          rm -f /tmp/install-out.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
       - name: 'Regression test: verification and public key management'
@@ -226,10 +228,10 @@ jobs:
           diff -Bba end-to-end-tests/verification.txt /tmp/verification-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/verification-out.txt
+          rm -f /tmp/verification-out.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
 #      - name: 'Regression test: pkg_fs works globally and when installed locally'
@@ -254,11 +256,11 @@ jobs:
 #          diff -Bba end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
 #          export OUT=$?
 #          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-#          rm wapm.lock
-#          rm wapm.toml
+#          rm -f wapm.lock
+#          rm -f wapm.toml
 #          rm -rf wapm_packages
-#          rm /tmp/package-fs-mapping-out.txt
-#          rm $HOME/.wasmer/wapm.sqlite
+#          rm -f /tmp/package-fs-mapping-out.txt
+#          rm -f $HOME/.wasmer/wapm.sqlite
 #          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
 #          exit $OUT
       - name: 'Regression test: manifest validation rejects invalid manifests'
@@ -281,11 +283,11 @@ jobs:
           diff -Bba end-to-end-tests/manifest-validation.txt /tmp/manifest-validation-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/manifest-validation-out.txt
-          rm $HOME/.wasmer/wapm.sqlite
+          rm -f /tmp/manifest-validation-out.txt
+          rm -f $HOME/.wasmer/wapm.sqlite
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
       - name: 'Regression test: package fs and command rename'
@@ -308,11 +310,11 @@ jobs:
           diff -Bba end-to-end-tests/validate-global.txt /tmp/validate-global-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/validate-global-out.txt
-          rm $HOME/.wasmer/wapm.sqlite
+          rm -f /tmp/validate-global-out.txt
+          rm -f $HOME/.wasmer/wapm.sqlite
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
       - name: 'Regression test: Init a Manifest and Add some dependencies'
@@ -340,10 +342,10 @@ jobs:
           diff -Bba end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
           export OUT=$?
           if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm wapm.lock
-          rm wapm.toml
+          rm -f wapm.lock
+          rm -f wapm.toml
           rm -rf wapm_packages
-          rm /tmp/init-and-add-out.txt
+          rm -f /tmp/init-and-add-out.txt
           if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
           exit $OUT
 
