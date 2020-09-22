@@ -159,195 +159,38 @@ jobs:
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
-          # TODO: move these steps into files
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $WASMER_DIR/.wax_index.toml
-          # TODO force clear cache
-          rm -f wapm.toml
-          rm -f wapm.lock
-          chmod +x end-to-end-tests/direct_execute.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/direct_execute.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/direct_execute.txt /tmp/direct_execute.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/direct_execute.txt
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/direct-execution.sh
+          ./end-to-end-tests/ci/direct-execution.sh
       - name: 'Regression test: Install, Uninstall, Run, and List'
         shell: bash
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $WASMER_DIR/wapm.sqlite
-          rm -f $WASMER_DIR/globals/wapm.lock
-          rm -rf wapm_packages
-          rm -f wapm.toml
-          rm -f wapm.lock
-          chmod +x end-to-end-tests/install.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/install.sh &> /tmp/install-out.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/install-out.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/install.txt /tmp/install-out.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/install-out.txt
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/install.sh
+          ./end-to-end-tests/ci/install.sh
       - name: 'Regression test: verification and public key management'
         shell: bash
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $WASMER_DIR/wapm.sqlite
-          rm -f $WASMER_DIR/globals/wapm.lock
-          rm -rf wapm_packages
-          rm -f wapm.toml
-          rm -f wapm.lock
-          chmod +x end-to-end-tests/verification.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/verification.sh &> /tmp/verification-out.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/verification-out.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/verification.txt /tmp/verification-out.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/verification-out.txt
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/verification.sh
+          ./end-to-end-tests/ci/verification.sh
 #      - name: 'Regression test: pkg_fs works globally and when installed locally'
 #        shell: bash
 #        run: |
-#          export PATH=$PATH:$HOME/.cargo/bin
-#          export PATH=$PATH:$HOME/.wasmer/bin
-#          export WAPM_DISABLE_COLOR=true
-#          rm -f $HOME/.wasmer/wapm.sqlite
-#          rm -f $HOME/.wasmer/globals/wapm.lock
-#          rm -rf wapm_packages
-#          rm -f wapm.toml
-#          rm -f wapm.lock
-#          chmod +x end-to-end-tests/package-fs-mapping.sh
-#          echo "RUNNING SCRIPT..."
-#          ./end-to-end-tests/package-fs-mapping.sh &> /tmp/package-fs-mapping-out.txt
-#          echo "GENERATED OUTPUT:"
-#          cat /tmp/package-fs-mapping-out.txt
-#          echo "COMPARING..."
-#          ## hack to get the current directory in the expected output
-#          #sed -i.bak "s/{{CURRENT_DIR}}/$(pwd | sed 's/\//\\\//g')/g" end-to-end-tests/package-fs-mapping.txt
-#          diff -Bba end-to-end-tests/package-fs-mapping.txt /tmp/package-fs-mapping-out.txt
-#          export OUT=$?
-#          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-#          rm -f wapm.lock
-#          rm -f wapm.toml
-#          rm -rf wapm_packages
-#          rm -f /tmp/package-fs-mapping-out.txt
-#          rm -f $HOME/.wasmer/wapm.sqlite
-#          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-#          exit $OUT
+#          chmod +x end-to-end-tests/ci/package-fs-mapping.sh
+#          ./end-to-end-tests/ci/package-fs-mapping.sh
       - name: 'Regression test: manifest validation rejects invalid manifests'
         shell: bash
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $HOME/.wasmer/wapm.sqlite
-          rm -f $HOME/.wasmer/globals/wapm.lock
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          chmod +x end-to-end-tests/manifest-validation.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/manifest-validation.sh &> /tmp/manifest-validation-out.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/manifest-validation-out.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/manifest-validation.txt /tmp/manifest-validation-out.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/manifest-validation-out.txt
-          rm -f $HOME/.wasmer/wapm.sqlite
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/manifest-validation.sh
+          ./end-to-end-tests/ci/manifest-validation.sh
       - name: 'Regression test: package fs and command rename'
         shell: bash
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $HOME/.wasmer/wapm.sqlite
-          rm -f $HOME/.wasmer/globals/wapm.lock
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          chmod +x end-to-end-tests/validate-global.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/validate-global-out.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/validate-global.txt /tmp/validate-global-out.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/validate-global-out.txt
-          rm -f $HOME/.wasmer/wapm.sqlite
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/validate-global.sh
+          ./end-to-end-tests/ci/validate-global.sh
       - name: 'Regression test: Init a Manifest and Add some dependencies'
         shell: bash
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          export PATH=$PATH:$HOME/.wasmer/bin
-          export WAPM_DISABLE_COLOR=true
-          rm -f $WASMER_DIR/wapm.sqlite
-          rm -f $WASMER_DIR/globals/wapm.lock
-          rm -rf wapm_packages
-          rm -f wapm.toml
-          rm -f wapm.lock
-          chmod +x end-to-end-tests/init-and-add.sh
-          echo "RUNNING SCRIPT..."
-          ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
-          echo "GENERATED OUTPUT:"
-          cat /tmp/init-and-add-out.txt
-          echo "ADJUSTING OUTPUT"
-          # removes the absolute path
-          tail -n +3 /tmp/init-and-add-out.txt > /tmp/init-and-add-out2.txt
-          cat /tmp/init-and-add-out2.txt
-          mv /tmp/init-and-add-out2.txt /tmp/init-and-add-out.txt
-          echo "COMPARING..."
-          diff -Bba end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
-          export OUT=$?
-          if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
-          rm -f wapm.lock
-          rm -f wapm.toml
-          rm -rf wapm_packages
-          rm -f /tmp/init-and-add-out.txt
-          if ( [ $OUT -ne 0 ] ) then { cat $HOME/.wasmer/wapm.log; } fi
-          exit $OUT
+          chmod +x end-to-end-tests/ci/init-and-add.sh
+          ./end-to-end-tests/ci/init-and-add.sh
 
   release:
     needs: [setup, test, regression_tests]
