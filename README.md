@@ -5,9 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://dev.azure.com/wasmerio/wapm-cli/_build?definitionId=2">
-    <img src="https://dev.azure.com/wasmerio/wapm-cli/_apis/build/status/wasmerio.wapm-cli?branchName=master" alt="Build Status">
-  </a>
+    ![core tests](https://github.com/wasmerio/wapm-cli/workflows/core%20tests/badge.svg?branch=master)
   <a href="https://github.com/wasmerio/wasmer/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/wasmerio/wasmer.svg" alt="License">
   </a>
