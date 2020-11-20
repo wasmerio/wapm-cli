@@ -2,6 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use thiserror::Error;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
@@ -161,7 +162,7 @@ impl Config {
 
     /// Save the config to a file
     #[cfg(not(feature = "integration_tests"))]
-    pub fn save(self: &Self) -> Result<(), failure::Error> {
+    pub fn save(self: &Self) -> anyhow::Result<()> {
         let path = Self::get_file_location()?;
         let config_serialized = toml::to_string(&self)?;
         let mut file = File::create(path)?;
@@ -171,7 +172,7 @@ impl Config {
 
     /// A mocked version of the standard function for integration tests
     #[cfg(feature = "integration_tests")]
-    pub fn save(self: &Self) -> Result<(), failure::Error> {
+    pub fn save(self: &Self) -> anyhow::Result<()> {
         let config_serialized = toml::to_string(&self)?;
         crate::integration_tests::data::RAW_CONFIG_DATA.with(|rcd| {
             *rcd.borrow_mut() = Some(config_serialized);
@@ -199,27 +200,27 @@ impl Registry {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum GlobalConfigError {
-    #[fail(display = "Error while reading config: [{}]", _0)]
+    #[error("Error while reading config: [{0}]")]
     Io(std::io::Error),
-    #[fail(display = "Error while reading config: [{}]", _0)]
+    #[error("Error while reading config: [{0}]")]
     Toml(toml::de::Error),
-    #[fail(
-        display = "While falling back to the default location for WASMER_DIR, could not resolve the user's home directory"
+    #[error(
+        "While falling back to the default location for WASMER_DIR, could not resolve the user's home directory"
     )]
     CannotFindHomeDirectory,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ConfigError {
-    #[fail(display = "Key not found: {}", key)]
+    #[error("Key not found: {key}")]
     KeyNotFound { key: String },
-    #[fail(display = "Failed to parse value `{}` for key `{}`", value, key)]
+    #[error("Failed to parse value `{value}` for key `{key}`")]
     CanNotParse { value: String, key: String },
 }
 
-pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failure::Error> {
+pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()> {
     match key.as_ref() {
         "registry.url" => {
             if config.registry.url != value {
@@ -257,7 +258,7 @@ pub fn set(config: &mut Config, key: String, value: String) -> Result<(), failur
     Ok(())
 }
 
-pub fn get(config: &mut Config, key: String) -> Result<String, failure::Error> {
+pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
     let value = match key.as_ref() {
         "registry.url" => config.registry.url.clone(),
         "registry.token" => {

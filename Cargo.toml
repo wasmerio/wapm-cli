@@ -13,7 +13,8 @@ billboard = { version = "0.1.0", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = { version = "1.8", optional = true }
 dirs = "1"
-failure = "*"
+anyhow = "*"
+thiserror = "1.0"
 fern = {version = "0.6", features = ["colored"]}
 flate2 = "1.0.7"
 graphql_client = "0.8.0"
@@ -26,9 +27,9 @@ prettytable-rs = "0.8.0"
 regex = "1"
 reqwest = {version = "0.10", features = ["native-tls-vendored", "blocking", "json", "gzip"]}
 rpassword = "4"
-rusqlite = {version = "0.21", features = ["bundled"]}
+rusqlite = {version = "0.24", features = []}
 semver = { version = "0.9", features = ["serde"] }
-sentry = {version = "0.15", optional = true, features = ["with_failure", "with_panic", "with_backtrace"]}
+sentry = {version = "0.21", optional = true, features = ["anyhow", "panic", "backtrace"]}
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

@@ -7,7 +7,7 @@ pub fn interface_exists(
     conn: &mut Connection,
     interface_name: &str,
     version: &str,
-) -> Result<bool, failure::Error> {
+) -> anyhow::Result<bool> {
     let mut stmt = conn.prepare(sql::WASM_INTERFACE_EXISTENCE_CHECK)?;
     Ok(stmt.exists(params![interface_name, version])?)
 }
@@ -16,13 +16,13 @@ pub fn load_interface_from_db(
     conn: &mut Connection,
     interface_name: &str,
     version: &str,
-) -> Result<wasm_interface::Interface, failure::Error> {
+) -> anyhow::Result<wasm_interface::Interface> {
     let mut stmt = conn.prepare(sql::GET_WASM_INTERFACE)?;
     let interface_string: String =
         stmt.query_row(params![interface_name, version], |row| Ok(row.get(0)?))?;
 
     wasm_interface::parser::parse_interface(&interface_string).map_err(|e| {
-        format_err!(
+        anyhow!(
             "Failed to parse interface {} version {} in database: {}",
             interface_name,
             version,
@@ -36,14 +36,14 @@ pub fn import_interface(
     interface_name: &str,
     version: &str,
     content: &str,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     // fail if we already have this interface
     {
         let mut key_check = conn.prepare(sql::WASM_INTERFACE_EXISTENCE_CHECK)?;
         let result = key_check.exists(params![interface_name, version])?;
 
         if result {
-            return Err(format_err!(
+            return Err(anyhow!(
                 "Interface {}, version {} already exists",
                 interface_name,
                 version

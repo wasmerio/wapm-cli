@@ -7,6 +7,7 @@ use crate::util;
 use rusqlite::{params, Connection, TransactionBehavior};
 use std::{fs, path::PathBuf};
 use time::Timespec;
+use thiserror::Error;
 
 const MINISIGN_TAG_LENGTH: usize = 16;
 
@@ -56,7 +57,7 @@ pub struct WapmPackageSignature {
 /// Gets the user's keys from the database
 pub fn get_personal_keys_from_database(
     conn: &Connection,
-) -> Result<Vec<PersonalKey>, failure::Error> {
+) -> anyhow::Result<Vec<PersonalKey>> {
     let mut stmt = conn.prepare(sql::GET_PERSONAL_KEYS)?;
 
     let result = stmt.query_map(params![], |row| {
@@ -81,7 +82,7 @@ pub fn get_personal_keys_from_database(
 /// Gets all public keys the user has seen from WAPM from the database
 pub fn get_wapm_public_keys_from_database(
     conn: &Connection,
-) -> Result<Vec<WapmPublicKey>, failure::Error> {
+) -> anyhow::Result<Vec<WapmPublicKey>> {
     let mut stmt = conn.prepare(sql::GET_WAPM_PUBLIC_KEYS)?;
     let result = stmt.query_map(params![], |row| {
         Ok(WapmPublicKey {
@@ -105,19 +106,19 @@ pub fn get_wapm_public_keys_from_database(
 pub fn get_full_personal_public_key_by_id(
     conn: &Connection,
     public_key_id: String,
-) -> Result<String, failure::Error> {
+) -> anyhow::Result<String> {
     let mut stmt =
         conn.prepare(
             "SELECT public_key_value FROM personal_keys WHERE public_key_id = (?1) ORDER BY date_added LIMIT 1",
         )?;
     let result = stmt
         .query_row(params![public_key_id], |row| Ok(row.get(0)?))
-        .map_err(|_| format_err!("No public key matching pattern {} found", &public_key_id))?;
+        .map_err(|_| anyhow!("No public key matching pattern {} found", &public_key_id))?;
 
     Ok(result)
 }
 
-pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure::Error> {
+pub fn get_active_personal_key(conn: &Connection) -> anyhow::Result<PersonalKey> {
     let mut stmt = conn.prepare(
         "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier, public_key_id FROM personal_keys 
          where active = 1",
@@ -144,25 +145,25 @@ pub fn get_active_personal_key(conn: &Connection) -> Result<PersonalKey, failure
     if let Some(res) = result {
         Ok(res?)
     } else {
-        Err(format_err!("No active key found"))
+        Err(anyhow!("No active key found"))
     }
 }
 
-pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> Result<(), failure::Error> {
+pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> anyhow::Result<()> {
     conn.execute(sql::DELETE_PERSONAL_KEY_PAIR, params![public_key])?;
     Ok(())
 }
 
 /// This function takes the raw output from Minisign and returns the key's tag
 /// and the key's value in base64
-pub fn normalize_public_key(pk: String) -> Result<(String, String), failure::Error> {
+pub fn normalize_public_key(pk: String) -> anyhow::Result<(String, String)> {
     let mut lines = pk.lines();
     let first_line = lines
         .next()
-        .ok_or_else(|| format_err!("Empty public key value"))?;
+        .ok_or_else(|| anyhow!("Empty public key value"))?;
     let second_line = lines
         .next()
-        .ok_or_else(|| format_err!("Public key value must have two lines"))?;
+        .ok_or_else(|| anyhow!("Public key value must have two lines"))?;
 
     let tag = first_line
         .trim()
@@ -185,10 +186,10 @@ pub fn add_personal_key_pair_to_database(
     conn: &mut Connection,
     public_key_location: String,
     private_key_location: String,
-) -> Result<(String, String, rusqlite::Transaction), failure::Error> {
+) -> anyhow::Result<(String, String, rusqlite::Transaction)> {
     let (public_key_id, public_key_value) = normalize_public_key(
         fs::read_to_string(&public_key_location)
-            .map_err(|e| format_err!("Could not read public key: {}", e))?,
+            .map_err(|e| anyhow!("Could not read public key: {}", e))?,
     )?;
     info!("Adding public key {:?} to local database", public_key_id);
     let private_key_path = PathBuf::from(&private_key_location).canonicalize()?;
@@ -200,7 +201,7 @@ pub fn add_personal_key_pair_to_database(
                 &private_key_location
             );
             if !util::prompt_user_for_yes("Would you like to add the key anyway?")? {
-                return Err(format_err!(
+                return Err(anyhow!(
                     "Private key file not found at path: {}",
                     &private_key_location
                 ));
@@ -265,7 +266,7 @@ pub fn import_public_key(
     public_key_id: &str,
     public_key_value: &str,
     user_name: String,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     // fail if we already have the key
     {
         let mut key_check = conn.prepare(sql::WAPM_PUBLIC_KEY_EXISTENCE_CHECK)?;
@@ -313,7 +314,7 @@ pub fn import_public_key(
 pub fn get_latest_public_key_for_user(
     conn: &Connection,
     user_name: &str,
-) -> Result<Option<WapmPublicKey>, failure::Error> {
+) -> anyhow::Result<Option<WapmPublicKey>> {
     let mut stmt = conn.prepare(sql::GET_LATEST_PUBLIC_KEY_FOR_USER)?;
 
     match stmt.query_row(params![user_name], |row| {
@@ -332,7 +333,7 @@ pub fn get_latest_public_key_for_user(
     }) {
         Ok(v) => Ok(v),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(format_err!("Internal database error: {}", e)),
+        Err(e) => Err(anyhow!("Internal database error: {}", e)),
     }
 }
 
@@ -340,7 +341,7 @@ pub fn get_latest_public_key_for_user(
     conn: &Connection,
     user_name: String,
     key_history: Vec<(String, Option<String>)>,
-) -> Result<WapmPublicKey, failure::Error> {
+) -> anyhow::Result<WapmPublicKey> {
     let mut stmt = conn.prepare(
         "SELECT public_key_value
 FROM wapm_public_keys
@@ -367,25 +368,22 @@ WHERE public_key_id = (?1)
     conn
 }*/
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum PersonalKeyError {
-    #[fail(
-        display = "A public key matching {:?} already exists in the local database",
-        _0
+    #[error(
+        "A public key matching {0:?} already exists in the local database",
     )]
     PublicKeyAlreadyExists(String),
-    #[fail(
-        display = "The private key at {:?} is already assoicated with public key {:?} in the local database",
-        _0, _1
+    #[error(
+        "The private key at {0:?} is already assoicated with public key {1:?} in the local database",
     )]
     PrivateKeyAlreadyRegistered(String, String),
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum WapmPublicKeyError {
-    #[fail(
-        display = "A public key matching {:?} already exists on user {:?} in the local database",
-        _0, _1
+    #[error(
+        "A public key matching {0:?} already exists on user {1:?} in the local database",
     )]
     PublicKeyAlreadyExists(String, String),
 }

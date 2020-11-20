@@ -10,12 +10,12 @@ pub struct ValidateOpt {
     package: String,
 }
 
-pub fn validate(validate_opts: ValidateOpt) -> Result<(), failure::Error> {
+pub fn validate(validate_opts: ValidateOpt) -> anyhow::Result<()> {
     let pkg_path = PathBuf::from(&validate_opts.package);
     validate_manifest_and_modules(pkg_path)
 }
 
-pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::Error> {
+pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> anyhow::Result<()> {
     if pkg_path.is_dir() {
         validate_directory(pkg_path)
     } else {
@@ -35,10 +35,10 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
         let mut gz = GzDecoder::new(&compressed_archive_data[..]);
         let mut archive_data = Vec::new();
         gz.read_to_end(&mut archive_data)
-            .map_err(|e| format_err!("Failed to read archive data: {}", e.to_string()))?;
+            .map_err(|e| anyhow!("Failed to read archive data: {}", e.to_string()))?;
 
         let temp_out_dir = tempfile::TempDir::new()
-            .map_err(|e| format_err!("Could not create temporary directory: {}", e.to_string()))?;
+            .map_err(|e| anyhow!("Could not create temporary directory: {}", e.to_string()))?;
         let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());
         // TODO: consider doing this entirely in memory with multiple passes
@@ -54,7 +54,7 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> Result<(), failure::E
             let archive_folder_name = pkg_path
                 .file_name()
                 .and_then(|file_name| file_name.to_str())
-                .ok_or_else(|| format_err!("Failed to get archive folder name"))?
+                .ok_or_else(|| anyhow!("Failed to get archive folder name"))?
                 .replace(".tar.gz", "");
             ar_path.push(archive_folder_name);
             ar_path

@@ -6,16 +6,16 @@ use semver::{Version, VersionReq};
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not parse manifest because {}.", _0)]
+    #[error("Could not parse manifest because {0}.")]
     ManifestTomlParseError(String),
-    #[fail(display = "Could not parse manifest because {}.", _0)]
+    #[error("Could not parse manifest because {0}.")]
     IoError(String),
-    #[fail(
-        display = "Version {} for package {} must be a semantic version or a semantic version requirement.",
-        _0, _1
+    #[error(
+        "Version {0} for package {1} must be a semantic version or a semantic version requirement.",
     )]
     SemVerError(String, String),
 }

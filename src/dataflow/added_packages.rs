@@ -1,12 +1,12 @@
 use crate::dataflow::{normalize_global_namespace, PackageKey};
 use semver::Version;
 use std::collections::HashSet;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(
-        display = "Package must have version that follows semantic versioning. {}",
-        _0
+    #[error(
+        "Package must have version that follows semantic versioning. {0}",
     )]
     SemVerError(String),
 }

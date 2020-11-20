@@ -12,7 +12,7 @@ static LOCKFILE_HEADER: &str = r#"# Lockfile v4
 use crate::data::manifest::MANIFEST_FILE_NAME;
 use std::path::Path;
 
-pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> Result<bool, failure::Error> {
+pub fn is_lockfile_out_of_date<P: AsRef<Path>>(directory: P) -> anyhow::Result<bool> {
     use std::fs;
     let wapm_lock_metadata = fs::metadata(directory.as_ref().join(LOCKFILE_NAME))?;
     let wapm_toml_metadata = fs::metadata(directory.as_ref().join(MANIFEST_FILE_NAME))?;

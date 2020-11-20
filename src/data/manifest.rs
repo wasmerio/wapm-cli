@@ -4,6 +4,7 @@ use semver::Version;
 use std::collections::hash_map::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 /// The name of the manifest file. This is hard-coded for now.
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
@@ -151,7 +152,7 @@ impl Manifest {
         dependencies.remove(dependency_name)
     }
 
-    pub fn to_string(&self) -> Result<String, failure::Error> {
+    pub fn to_string(&self) -> anyhow::Result<String> {
         Ok(toml::to_string(self)?)
     }
 
@@ -161,7 +162,7 @@ impl Manifest {
 
     /// Write the manifest to permanent storage
     #[cfg(not(feature = "integration_tests"))]
-    pub fn save(&self) -> Result<(), failure::Error> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
         fs::write(manifest_path, &manifest_string)
@@ -171,7 +172,7 @@ impl Manifest {
 
     /// Mock version of `save`
     #[cfg(feature = "integration_tests")]
-    pub fn save(&self) -> Result<(), failure::Error> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         crate::integration_tests::data::RAW_MANIFEST_DATA.with(|rmd| {
             *rmd.borrow_mut() = Some(manifest_string);
@@ -198,33 +199,31 @@ impl Manifest {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ManifestError {
-    #[fail(display = "Manifest file not found at {}", _0)]
+    #[error("Manifest file not found at {0}")]
     MissingManifest(String),
-    #[fail(display = "Could not save manifest file: {}.", _0)]
+    #[error("Could not save manifest file: {0}.")]
     CannotSaveManifest(String),
-    #[fail(display = "Could not parse manifest because {}.", _0)]
+    #[error("Could not parse manifest because {0}.")]
     TomlParseError(String),
-    #[fail(display = "Dependency version must be a string. Package name: {}.", _0)]
+    #[error("Dependency version must be a string. Package name: {0}.")]
     DependencyVersionMustBeString(String),
-    #[fail(
-        display = "Package must have version that follows semantic versioning. {}",
-        _0
+    #[error(
+        "Package must have version that follows semantic versioning. {0}",
     )]
     SemVerError(String),
-    #[fail(display = "There was an error validating the manifest: {}", _0)]
+    #[error("There was an error validating the manifest: {0}")]
     ValidationError(ValidationError),
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ValidationError {
-    #[fail(
-        display = "missing ABI field on module {} used by command {}; an ABI of `wasi` or `emscripten` is required",
-        _1, _0
+    #[error(
+        "missing ABI field on module {0} used by command {1}; an ABI of `wasi` or `emscripten` is required",
     )]
     MissingABI(String, String),
-    #[fail(display = "missing module {} in manifest used by command {}", _1, _0)]
+    #[error("missing module {0} in manifest used by command {1}")]
     MissingModuleForCommand(String, String),
 }
 

@@ -4,6 +4,7 @@ use regex::Regex;
 use std::path::Path;
 use std::path::PathBuf;
 use tar::Builder;
+use thiserror::Error;
 
 /// The section name that is to be used when constructing `CustomSection`.
 static ASSETS_CUSTOM_SECTION_NAME: &str = "wasmer:fs";
@@ -25,7 +26,7 @@ impl Assets {
         &mut self,
         local_path: &Path,
         virtual_file_path: &str,
-    ) -> Result<(), failure::Error> {
+    ) -> anyhow::Result<()> {
         if local_path.is_file() {
             let ar = self.0.get_or_insert(Builder::new(vec![]));
             ar.append_path_with_name(local_path, virtual_file_path)
@@ -50,7 +51,7 @@ impl Assets {
         &mut self,
         base_path: &Path,
         cli_arg_patterns: Vec<String>,
-    ) -> Result<(), failure::Error> {
+    ) -> anyhow::Result<()> {
         // a lazy regex that matches the command line args e.g C:/foo.txt:/foo.txt
         lazy_static! {
             static ref RE: Regex =
@@ -90,9 +91,9 @@ impl Assets {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum AssetsError {
-    #[fail(display = "Path is not directory or file: \"{}\"", _0)]
+    #[error("Path is not directory or file: \"{0}\"")]
     InvalidAsset(String),
 }
 

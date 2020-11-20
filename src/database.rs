@@ -14,6 +14,7 @@
 use crate::config::Config;
 use crate::constants::*;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
+use thiserror::Error;
 
 /// The current version of the database.  Update this to perform a migration
 pub const CURRENT_DATA_VERSION: i32 = 3;
@@ -25,7 +26,7 @@ pub fn get_current_time_in_format() -> Option<String> {
 }
 
 /// Opens an exclusive read/write connection to the database, creating it if it does not exist
-pub fn open_db() -> Result<Connection, failure::Error> {
+pub fn open_db() -> anyhow::Result<Connection> {
     let db_path = Config::get_database_file_path()?;
     let mut conn = Connection::open_with_flags(
         db_path,
@@ -39,7 +40,7 @@ pub fn open_db() -> Result<Connection, failure::Error> {
 }
 
 /// Applies migrations to the database
-pub fn apply_migrations(conn: &mut Connection) -> Result<(), failure::Error> {
+pub fn apply_migrations(conn: &mut Connection) -> anyhow::Result<()> {
     let user_version = conn.pragma_query_value(None, "user_version", |val| val.get(0))?;
     for data_version in user_version..CURRENT_DATA_VERSION {
         debug!("Applying migration {}", data_version);
@@ -48,21 +49,18 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum MigrationError {
-    #[fail(
-        display = "Critical internal error: the data version {} is not handleded; current data version: {}",
-        _0, _1
+    #[error(
+        "Critical internal error: the data version {0} is not handleded; current data version: {1}",
     )]
     MigrationNumberDoesNotExist(i32, i32),
-    #[fail(
-        display = "Critical internal error: failed to commit trasaction migrating to data version {}",
-        _0
+    #[error(
+    "Critical internal error: failed to commit trasaction migrating to data version {0}",
     )]
     CommitFailed(i32),
-    #[fail(
-        display = "Critical internal error: transaction failed on migration number {}: {}",
-        _0, _1
+    #[error(
+        "Critical internal error: transaction failed on migration number {0}: {1}",
     )]
     TransactionFailed(i32, String),
 }

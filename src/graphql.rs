@@ -1,17 +1,17 @@
 use crate::proxy;
-use failure;
 use graphql_client::{QueryBody, Response};
 use reqwest::blocking::multipart;
 use reqwest::blocking::Client;
 use reqwest::header::USER_AGENT;
 use serde;
 use std::string::ToString;
+use thiserror::Error;
 
 use super::config::Config;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum GraphQLError {
-    #[fail(display = "{}", message)]
+    #[error("{message}")]
     Error { message: String },
 }
 
@@ -21,7 +21,7 @@ pub type DateTime = String;
 pub fn execute_query_modifier<R, V, F>(
     query: &QueryBody<V>,
     form_modifier: F,
-) -> Result<R, failure::Error>
+) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
@@ -74,7 +74,7 @@ where
     Ok(response_body.data.expect("missing response data"))
 }
 
-pub fn execute_query<R, V>(query: &QueryBody<V>) -> Result<R, failure::Error>
+pub fn execute_query<R, V>(query: &QueryBody<V>) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,

@@ -11,6 +11,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -24,7 +25,7 @@ pub struct RunOpt {
     args: Vec<OsString>,
 }
 
-pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
+pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = env::current_dir()?;
@@ -47,7 +48,7 @@ pub fn run(run_options: RunOpt) -> Result<(), failure::Error> {
     } = match get_command_from_anywhere(command_name) {
         Err(find_command_result::Error::CommandNotFound(command)) => {
             let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
-            return Err(format_err!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
+            return Err(anyhow!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
                   &package_info.command,
                   &package_info.namespaced_package_name,
                   &package_info.version,
@@ -87,7 +88,7 @@ pub(crate) fn do_run(
     pre_opened_directories: &[String],
     args: &[OsString],
     prehashed_cache_key: Option<String>,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     debug!(
         "Running module located at {:?}",
         &run_dir.join(&source_path_buf)
@@ -169,12 +170,8 @@ pub(crate) fn do_run(
         .args(&runtime_args)
         .args(&command_vec)
         .spawn()
-        .map_err(|e| -> failure::Error {
-            RunError::ProcessFailed {
-                runtime: runtime,
-                error: format!("{:?}", e),
-            }
-            .into()
+        .map_err(|e| -> RunError {
+            RunError::ProcessFailed(runtime, format!("{:?}", e))
         })?;
 
     child.wait()?;
@@ -189,7 +186,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     wasm_file_path: P2,
     override_command_name: Option<String>,
     prehashed_cache_key: Option<String>,
-) -> Result<Vec<OsString>, failure::Error> {
+) -> anyhow::Result<Vec<OsString>> {
     let mut path = PathBuf::new();
     path.push(directory);
     path.push(wasm_file_path);
@@ -253,15 +250,14 @@ mod test {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum RunError {
-    #[fail(display = "Failed to run command \"{}\". {}", _0, _1)]
+    #[error("Failed to run command \"{0}\". {1}")]
     CannotRegenLockfile(String, dataflow::Error),
-    #[fail(
-        display = "The command \"{}\" for module \"{}\" is defined but the source at \"{}\" does not exist.",
-        _0, _1, _2
+    #[error(
+        "The command \"{0}\" for module \"{1}\" is defined but the source at \"{2}\" does not exist.",
     )]
     SourceForCommandNotFound(String, String, String),
-    #[fail(display = "Failed to run {}: {}", runtime, error)]
-    ProcessFailed { runtime: String, error: String },
+    #[error("Failed to run {0}: {1}")]
+    ProcessFailed(String, String),
 }

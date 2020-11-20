@@ -6,6 +6,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use std::fs;
 use std::io;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use thiserror::Error;
 
 static STDOUT_LINE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -37,7 +38,7 @@ pub(crate) fn clear_stdout() -> io::Result<()> {
 }
 
 /// Subroutine to instantiate the loggers
-pub fn set_up_logging(count_lines: bool) -> Result<(), failure::Error> {
+pub fn set_up_logging(count_lines: bool) -> anyhow::Result<()> {
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
@@ -152,10 +153,10 @@ pub fn set_up_logging(count_lines: bool) -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum LoggingError {
-    #[fail(display = "Failed to open logging file in WASMER_DIR: {}", _0)]
+    #[error("Failed to open logging file in WASMER_DIR: {0}")]
     FailedToOpenLoggingFile(String),
-    #[fail(display = "Something went wrong setting up logging: {}", _0)]
+    #[error("Something went wrong setting up logging: {0}")]
     FailedToInstantiateLogger(String),
 }

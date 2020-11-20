@@ -27,7 +27,7 @@ type DateTime = String;
 struct SearchQuery;
 
 /// Run the search command
-pub fn search(options: SearchOpt) -> Result<(), failure::Error> {
+pub fn search(options: SearchOpt) -> anyhow::Result<()> {
     let query = options.query;
     let q = SearchQuery::build_query(search_query::Variables {
         query: query.to_string(),

@@ -2,10 +2,9 @@
 
 use crate::commands::*;
 use crate::data::manifest::{Manifest, ManifestError};
-use failure;
 
 /// Runs `wapm config set registry.url https://registry.wapm.dev`
-pub fn set_registry_to_dev() -> Result<(), failure::Error> {
+pub fn set_registry_to_dev() -> anyhow::Result<()> {
     config(ConfigOpt::set(
         "registry.url".to_string(),
         "https://registry.wapm.dev".to_string(),
@@ -22,17 +21,17 @@ pub fn set_test_dir_to_new_temp_dir() -> tempfile::TempDir {
 }
 
 /// Runs `wapm init`
-pub fn init_manifest() -> Result<(), failure::Error> {
+pub fn init_manifest() -> anyhow::Result<()> {
     init(InitOpt::new(true))
 }
 
 /// Runs `wapm add`
-pub fn add_dependencies(deps: &[&str]) -> Result<(), failure::Error> {
+pub fn add_dependencies(deps: &[&str]) -> anyhow::Result<()> {
     add(AddOpt::new(deps.iter().map(|s| s.to_string()).collect()))
 }
 
 /// Runs `wapm remove`
-pub fn remove_dependencies(deps: &[&str]) -> Result<(), failure::Error> {
+pub fn remove_dependencies(deps: &[&str]) -> anyhow::Result<()> {
     remove(RemoveOpt::new(deps.iter().map(|s| s.to_string()).collect()))
 }
 

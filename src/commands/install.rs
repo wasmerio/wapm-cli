@@ -11,6 +11,7 @@ use std::borrow::Cow;
 use std::env;
 use std::path::Path;
 use structopt::StructOpt;
+use thiserror::Error;
 
 /// Options for the `install` subcommand
 #[derive(StructOpt, Debug)]
@@ -24,26 +25,26 @@ pub struct InstallOpt {
     force_yes: bool,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum InstallError {
-    #[fail(display = "Package not found in the registry: {}", name)]
+    #[error("Package not found in the registry: {name}")]
     PackageNotFound { name: String },
 
-    #[fail(display = "No package versions available for package {}", name)]
+    #[error("No package versions available for package {name}")]
     NoVersionsAvailable { name: String },
 
-    #[fail(display = "Failed to install packages. {}", _0)]
+    #[error("Failed to install packages. {0}")]
     CannotRegenLockFile(dataflow::Error),
 
-    #[fail(display = "Failed to install packages in manifest. {}", _0)]
+    #[error("Failed to install packages in manifest. {0}")]
     FailureInstallingPackages(dataflow::Error),
 
-    #[fail(
-        display = "Failed to install package because package identifier {} is invalid, expected <name>@<version> or <name>",
+    #[error(
+        "Failed to install package because package identifier {0} is invalid, expected <name>@<version> or <name>",
         name
     )]
     InvalidPackageIdentifier { name: String },
-    #[fail(display = "Must supply package names to install command when using --global/-g flag.")]
+    #[error("Must supply package names to install command when using --global/-g flag.")]
     MustSupplyPackagesWithGlobalFlag,
 }
 
@@ -67,7 +68,7 @@ mod package_args {
 }
 
 /// Run the install command
-pub fn install(options: InstallOpt) -> Result<(), failure::Error> {
+pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     let current_directory = env::current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(

@@ -30,30 +30,30 @@ pub mod removed_lockfile_packages;
 pub mod removed_packages;
 pub mod resolved_packages;
 pub mod retained_lockfile_packages;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not open manifest. {}", _0)]
+    #[error("Could not open manifest. {0}")]
     ManifestError(manifest_packages::Error),
-    #[fail(display = "Could not open lockfile. {}", _0)]
+    #[error("Could not open lockfile. {0}")]
     LockfileError(LockfileError),
-    #[fail(display = "Could generate lockfile. {}", _0)]
+    #[error("Could generate lockfile. {0}")]
     GenerateLockfileError(merged_lockfile_packages::Error),
-    #[fail(display = "Could not install package(s). {}", _0)]
+    #[error("Could not install package(s). {0}")]
     InstallError(installed_packages::Error),
-    #[fail(display = "Could not resolve package(s). {}", _0)]
+    #[error("Could not resolve package(s). {0}")]
     ResolveError(resolved_packages::Error),
-    #[fail(display = "Could not save manifest file because {}.", _0)]
+    #[error("Could not save manifest file because {0}.")]
     SaveError(String),
-    #[fail(display = "Could not install new packages. {}", _0)]
+    #[error("Could not install new packages. {0}")]
     AddError(added_packages::Error),
-    #[fail(display = "Could not operate on local package data. {}", _0)]
+    #[error("Could not operate on local package data. {0}")]
     LocalPackageError(local_package::Error),
-    #[fail(display = "Could not cleanup old artifacts. {}", _0)]
+    #[error("Could not cleanup old artifacts. {0}")]
     CleanupError(removed_lockfile_packages::Error),
-    #[fail(
-        display = "Attempting to install multiple versions of package {} ({} and {})",
-        _0, _1, _2
+    #[error(
+        "Attempting to install multiple versions of package {0} ({1} and {2})",
     )]
     DuplicatePackage(String, String, String),
 }

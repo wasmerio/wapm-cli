@@ -9,7 +9,7 @@ pub struct InitOpt {
     force_yes: bool,
 }
 
-pub fn init(opt: InitOpt) -> Result<(), failure::Error> {
+pub fn init(opt: InitOpt) -> anyhow::Result<()> {
     let current_directory = env::current_dir()?;
     init::init(current_directory, opt.force_yes)
 }

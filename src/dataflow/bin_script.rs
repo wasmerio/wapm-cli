@@ -2,14 +2,15 @@ use crate::data::manifest::PACKAGES_DIR_NAME;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use thiserror::Error;
 
 pub const BIN_DIR_NAME: &str = ".bin";
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not save script file for command \"{}\". {}", _0, _1)]
+    #[error("Could not save script file for command \"{0}\". {1}")]
     SaveError(String, String),
-    #[fail(display = "Could not create file at \"{}\". {}", _0, _1)]
+    #[error("Could not create file at \"{0}\". {1}")]
     FileCreationError(String, String),
 }
 

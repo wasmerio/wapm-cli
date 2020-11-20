@@ -10,6 +10,7 @@ use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use structopt::StructOpt;
 use tar::Builder;
+use thiserror::Error;
 
 use std::env;
 use std::fs;
@@ -47,7 +48,7 @@ fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
     out
 }
 
-pub fn publish(publish_opts: PublishOpt) -> Result<(), failure::Error> {
+pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let mut builder = Builder::new(Vec::new());
     let cwd = env::current_dir()?;
 
@@ -170,7 +171,7 @@ pub fn publish(publish_opts: PublishOpt) -> Result<(), failure::Error> {
             execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
                 |e| {
                     #[cfg(feature = "telemetry")]
-                    sentry::integrations::failure::capture_error(&e);
+                    sentry::integrations::anyhow::capture_anyhow(&e);
                     e
                 },
             )?;
@@ -189,22 +190,20 @@ pub fn publish(publish_opts: PublishOpt) -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum PublishError {
-    #[fail(display = "Cannot publish without a module.")]
+    #[error("Cannot publish without a module.")]
     NoModule,
-    #[fail(display = "Module \"{}\" must have a source that is a file.", _0)]
+    #[error("Module \"{0}\" must have a source that is a file.")]
     SourceMustBeFile(String),
-    #[fail(display = "Error building package when parsing module \"{}\".", _0)]
+    #[error("Error building package when parsing module \"{0}\".")]
     ErrorBuildingPackage(String),
-    #[fail(
-        display = "Path \"{}\", specified in the manifest as part of the package file system does not exist.",
-        _0
+    #[error(
+        "Path \"{0}\", specified in the manifest as part of the package file system does not exist.",
     )]
     MissingManifestFsPath(String),
-    #[fail(
-        display = "When processing the package filesystem, found path \"{}\" which is not a directory",
-        _0
+    #[error(
+        "When processing the package filesystem, found path \"{0}\" which is not a directory",
     )]
     PackageFileSystemEntryMustBeDirectory(String),
 }
@@ -222,7 +221,7 @@ pub enum SignArchiveResult {
 /// returns the public key id used to sign it and the signature string itself
 pub fn sign_compressed_archive(
     compressed_archive: &mut fs::File,
-) -> Result<SignArchiveResult, failure::Error> {
+) -> anyhow::Result<SignArchiveResult> {
     let key_db = database::open_db()?;
     let personal_key = if let Ok(v) = keys::get_active_personal_key(&key_db) {
         v
@@ -248,7 +247,7 @@ pub fn sign_compressed_archive(
     } else {
         // TODO: add more info about why this might have happened and what the user can do about it
         warn!("Active key does not have a private key location registered with it!");
-        return Err(format_err!("Cannot sign package, no private key"));
+        return Err(anyhow!("Cannot sign package, no private key"));
     };
     Ok(SignArchiveResult::Ok {
         public_key_id: personal_key.public_key_id,

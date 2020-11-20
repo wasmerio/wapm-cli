@@ -6,10 +6,11 @@ use crate::dataflow::{bin_script, PackageKey, WapmPackageKey};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not cleanup uninstalled command \"{}\". {}", _0, _1)]
+    #[error("Could not cleanup uninstalled command \"{0}\". {1}")]
     CommandCleanupError(String, bin_script::Error),
 }
 

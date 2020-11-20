@@ -104,7 +104,6 @@ fn main() {
         let telemetry_is_enabled = wapm_cli::util::telemetry_is_enabled();
         if telemetry_is_enabled {
             let _guard = sentry::init("https://aea870c3a5e54439999d8fed773bd8a5@sentry.io/1441509");
-            sentry::integrations::panic::register_panic_handler();
             Some(_guard)
         } else {
             None
