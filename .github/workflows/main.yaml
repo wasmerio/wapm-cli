@@ -64,7 +64,7 @@ jobs:
         # that are needed during the build process. Additionally, this works
         # around a bug in the 'cache' action that causes directories outside of
         # the workspace dir to be saved/restored incorrectly.
-        run: echo "::set-env name=CARGO_HOME::$(pwd)/.cargo_home"
+        run: echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
 #      - name: Install sccache
 #        run: |
 #          echo "::add-path::${{ runner.tool_cache }}/cargo-sccache/bin"
@@ -96,9 +96,10 @@ jobs:
       - name: Tests
         run: |
           cargo test --verbose --features "update-notifications" -- --test-threads=1
-      - name: Integration Tests
-        run: |
-          make integration-tests
+      # TODO: re-enable integration tests once registry.wapm.dev works
+      # - name: Integration Tests
+      #   run: |
+      #     make integration-tests
       - name: Tests (Wasm Interface)
         run: |
           cargo test --manifest-path lib/wasm-interface/Cargo.toml
