@@ -5,6 +5,7 @@ use crate::dataflow::lockfile_packages::LockfileResult;
 use crate::dataflow::manifest_packages::ManifestResult;
 use std::env;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 use crate::graphql::execute_query;
 use graphql_client::*;
@@ -27,18 +28,18 @@ pub struct PackageInfoFromCommand {
 impl PackageInfoFromCommand {
     fn get_response(
         command_name: String,
-    ) -> Result<get_package_by_command_query::ResponseData, failure::Error> {
+    ) -> anyhow::Result<get_package_by_command_query::ResponseData> {
         let q = GetPackageByCommandQuery::build_query(get_package_by_command_query::Variables {
             command_name,
         });
         execute_query(&q)
     }
 
-    pub fn get(command_name: String) -> Result<Self, failure::Error> {
+    pub fn get(command_name: String) -> anyhow::Result<Self> {
         let response = Self::get_response(command_name)?;
         let response_val = response
             .get_command
-            .ok_or_else(|| format_err!("Error getting packages for given command from server"))?;
+            .ok_or_else(|| anyhow!("Error getting packages for given command from server"))?;
         Ok(Self {
             command: response_val.command,
             version: response_val.package_version.version,
@@ -47,31 +48,26 @@ impl PackageInfoFromCommand {
     }
 }
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(
-        display = "Command \"{}\" was not found in the local directory or the global install directory.",
-        _0
+    #[error(
+        "Command \"{0}\" was not found in the local directory or the global install directory.",
     )]
     CommandNotFound(String),
-    #[fail(
-        display = "Command \"{}\" was not found in the local directory. There was an error parsing the global lockfile. {}",
-        _0, _1
+    #[error(
+        "Command \"{0}\" was not found in the local directory. There was an error parsing the global lockfile. {1}",
     )]
     CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory(String, String),
-    #[fail(
-        display = "Could not get command \"{}\" because there was a problem with the local package. {}",
-        _0, _1
+    #[error(
+        "Could not get command \"{0}\" because there was a problem with the local package. {1}",
     )]
     ErrorReadingLocalDirectory(String, String),
-    #[fail(
-        display = "Command \"{}\" exists in lockfile, but corresponding module \"{}\" not found in lockfile.",
-        _0, _1
+    #[error(
+        "Command \"{0}\" exists in lockfile, but corresponding module \"{}\" not found in lockfile.",
     )]
     CommandFoundButCorrespondingModuleIsMissing(String, String),
-    #[fail(
-        display = "Failed to get command \"{}\" because there was an error opening the global installation directory. {}",
-        _0, _1
+    #[error(
+        "Failed to get command \"{0}\" because there was an error opening the global installation directory. {}",
     )]
     CouldNotOpenGlobalsDirectory(String, String),
 }
@@ -86,7 +82,7 @@ pub enum FindCommandResult {
         module_name: String,
         prehashed_cache_key: Option<String>,
     },
-    Error(failure::Error),
+    Error(anyhow::Error),
 }
 
 impl From<LockfileError> for FindCommandResult {

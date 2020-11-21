@@ -2,10 +2,11 @@ use crate::config::Config;
 use crate::dataflow;
 use std::env;
 use structopt::StructOpt;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Packages may only be uninstalled by the package name.")]
+    #[error("Packages may only be uninstalled by the package name.")]
     NoAtSignAllowed,
 }
 
@@ -17,7 +18,7 @@ pub struct UninstallOpt {
     pub global: bool,
 }
 
-pub fn uninstall(options: UninstallOpt) -> Result<(), failure::Error> {
+pub fn uninstall(options: UninstallOpt) -> anyhow::Result<()> {
     let dir = match options.global {
         true => Config::get_globals_directory()?,
         false => env::current_dir()?,

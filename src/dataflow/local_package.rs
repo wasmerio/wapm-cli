@@ -5,10 +5,11 @@ use crate::data::manifest::Manifest;
 use crate::dataflow::lockfile_packages::{LockfilePackage, LockfilePackages};
 use crate::dataflow::PackageKey;
 use std::collections::hash_map::HashMap;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not extract commands from manifest. {}", _0)]
+    #[error("Could not extract commands from manifest. {0}")]
     CouldNotExtractCommandsFromManifest(lockfile_command::Error),
 }
 

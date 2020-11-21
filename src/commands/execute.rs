@@ -13,6 +13,7 @@ use crate::dataflow::WapmPackageKey;
 use crate::graphql::{execute_query, DateTime};
 //use crate::keys;
 use crate::util;
+use thiserror::Error;
 
 use graphql_client::*;
 
@@ -99,46 +100,43 @@ impl ExecuteOptInner {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum ExecuteError {
-    #[fail(
-        display = "Command `{}` not found in the registry or in the current directory",
+    #[error(
+        "Command `{0}` not found in the registry or in the current directory",
         name
     )]
     CommandNotFound { name: String },
-    #[fail(
-        display = "The command `{}` is using the Emscripten ABI which may be implmented in a way that is partially unsandbooxed. To opt-in to executing Emscripten Wasm modules run the command again with the `--emscripten` flag",
+    #[error(
+        "The command `{0}` is using the Emscripten ABI which may be implmented in a way that is partially unsandbooxed. To opt-in to executing Emscripten Wasm modules run the command again with the `--emscripten` flag",
         name
     )]
     EmscriptenDisabled { name: String },
-    #[fail(display = "Error with the Wax index: {}", _0)]
+    #[error("Error with the Wax index: {0}")]
     WaxIndexError(wax_index::WaxIndexError),
-    #[fail(display = "Error parsing data from register: {}", _0)]
+    #[error("Error parsing data from register: {0}")]
     ErrorInDataFromRegistry(String),
-    #[fail(display = "An error occured during installation: {}", _0)]
+    #[error("An error occured during installation: {0}")]
     InstallationError(String),
-    #[fail(display = "Please specify a command to run.")]
+    #[error("Please specify a command to run.")]
     NoCommandGiven,
-    #[fail(
-        display = "The command `{}` was not found.\nIf you are offline you will need to reconnect to the Internet for this command to succeed.\nOtherwise there may be an error with the wapm registry that you're connected to: run `wapm config get registry.url` to print the URL that we tried to connect to.",
-        _0
+    #[error(
+        "The command `{0}` was not found.\nIf you are offline you will need to reconnect to the Internet for this command to succeed.\nOtherwise there may be an error with the wapm registry that you're connected to: run `wapm config get registry.url` to print the URL that we tried to connect to.",
     )]
     CommandNotFoundOfflineMode(String),
-    #[fail(
-        display = "The command `{}` was not found.\nPlease try to run this command again without the `--offline` flag.",
-        _0
+    #[error(
+        "The command `{0}` was not found.\nPlease try to run this command again without the `--offline` flag.",
     )]
     CommandNotFoundOfflineModeOfflineFlag(String),
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum ExecuteArgParsingError {
-    #[fail(
-        display = "Argument `{}` expects a value `{}` but none was found.",
-        arg_name, expected
+    #[error(
+        "Argument `{arg_name}` expects a value `{expected}` but none was found.",
     )]
     MissingValue { arg_name: String, expected: String },
-    #[fail(display = "Unrecognized argument `{}`", arg_name)]
+    #[error("Unrecognized argument `{arg_name}`")]
     UnrecognizedArgument { arg_name: String },
 }
 
@@ -225,7 +223,7 @@ fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgPa
     Ok(out)
 }
 
-pub fn execute(opt: ExecuteOpt) -> Result<(), failure::Error> {
+pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     let mut opt = transform_args(opt.args())?;
     if !opt.no_default_preopen {
         opt.pre_opened_directories.push(".".into());
@@ -522,7 +520,7 @@ fn run(
     location: PathBuf,
     pre_opened_directories: &[String],
     args: &[OsString],
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     match FindCommandResult::find_command_in_directory(&location, command_name) {
         FindCommandResult::CommandNotFound(s) => {
             // this should only happen if the package is deleted immediately
@@ -558,7 +556,7 @@ fn run(
     };
 }
 
-fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> Result<(), failure::Error> {
+fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> anyhow::Result<()> {
     let mut wax_index = wax_index::WaxIndex::open()?;
     if let Ok((package_name, version, _)) = wax_index.search_for_entry(command_name.to_string()) {
         let package_version_str = format!("{}@{}", &package_name, &version);

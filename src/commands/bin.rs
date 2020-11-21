@@ -3,6 +3,7 @@ use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::dataflow::bin_script::BIN_DIR_NAME;
 use std::env;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt, Debug)]
 pub struct BinOpt {
@@ -11,13 +12,13 @@ pub struct BinOpt {
     pub global: bool,
 }
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum BinError {
-    #[fail(display = "The directory \"{}\" does not contain wapm packages.", _0)]
+    #[error("The directory \"{0}\" does not contain wapm packages.")]
     NotWapmProjectDir(String),
 }
 
-pub fn bin(options: BinOpt) -> Result<(), failure::Error> {
+pub fn bin(options: BinOpt) -> anyhow::Result<()> {
     let mut root_dir = match options.global {
         true => Config::get_globals_directory()?,
         false => env::current_dir()?,

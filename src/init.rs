@@ -68,7 +68,7 @@ pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameE
         .collect()
 }
 
-pub fn init(dir: PathBuf, force_yes: bool) -> Result<(), failure::Error> {
+pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
     let manifest_location = {
         let mut dir = dir.clone();
         dir.push(MANIFEST_FILE_NAME);
@@ -268,7 +268,7 @@ Press ^C at any time to quit."
     Ok(())
 }
 
-pub fn init_gitignore(mut dir: PathBuf) -> Result<(), failure::Error> {
+pub fn init_gitignore(mut dir: PathBuf) -> anyhow::Result<()> {
     let gitignore = {
         dir.push(".gitignore");
         dir

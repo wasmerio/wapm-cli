@@ -92,7 +92,7 @@ fn add_key_pair_from_fs_to_database(
     key_db: &mut Connection,
     public_key_location: String,
     private_key_location: String,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     let (pk_id, pk_v, tx) = add_personal_key_pair_to_database(
         key_db,
         public_key_location.clone(),
@@ -108,7 +108,7 @@ fn add_key_pair_from_fs_to_database(
     match response_or_err {
         Ok(_) => {
             tx.commit().map_err(|e| {
-                format_err!(
+                anyhow!(
                     "Failed to store key pair in local database: {}",
                     e.to_string()
                 )
@@ -118,13 +118,13 @@ fn add_key_pair_from_fs_to_database(
         Err(e) => {
             error!("Failed to upload public key to server: {}", e);
             #[cfg(feature = "telemetry")]
-            sentry::integrations::failure::capture_error(&e);
+            sentry::integrations::anyhow::capture_anyhow(&e);
         }
     };
     Ok(())
 }
 
-pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
+pub fn keys(options: KeyOpt) -> anyhow::Result<()> {
     let mut key_db = database::open_db()?;
     match options {
         KeyOpt::List(List { all }) => {
@@ -195,21 +195,21 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
             let public_key_path = key_path.join("minisign.pub");
 
             if !key_path.exists() {
-                return Err(format_err!(
+                return Err(anyhow!(
                     "Path {} does not exist!",
                     &key_path.as_os_str().to_string_lossy()
                 ));
             }
             if !force {
                 if private_key_path.exists() {
-                    return Err(format_err!(
+                    return Err(anyhow!(
                         "Private key file, {}, exists",
                         &private_key_path.as_os_str().to_string_lossy()
                     ));
                 }
 
                 if public_key_path.exists() {
-                    return Err(format_err!(
+                    return Err(anyhow!(
                         "Public key file, {}, exists",
                         &public_key_path.as_os_str().to_string_lossy()
                     ));
@@ -247,7 +247,7 @@ pub fn keys(options: KeyOpt) -> Result<(), failure::Error> {
     Ok(())
 }
 
-pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failure::Error> {
+pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> anyhow::Result<String> {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
     table.add_row(row![
@@ -269,7 +269,7 @@ pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> Result<String, failu
     Ok(format!("{}", table))
 }
 
-pub fn create_wapm_public_key_table(keys: Vec<WapmPublicKey>) -> Result<String, failure::Error> {
+pub fn create_wapm_public_key_table(keys: Vec<WapmPublicKey>) -> anyhow::Result<String> {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
     table.add_row(row!["USER", "TAG", "KEY", "DATE ADDED"]);

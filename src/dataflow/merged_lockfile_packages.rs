@@ -6,10 +6,11 @@ use crate::dataflow::{PackageKey, WapmPackageKey};
 use std::collections::btree_map::BTreeMap;
 use std::collections::hash_map::HashMap;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "Could not save generated lockfile because {}.", _0)]
+    #[error("Could not save generated lockfile because {0}.")]
     FailedToSaveLockfile(String),
 }
 

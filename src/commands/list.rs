@@ -18,7 +18,7 @@ pub struct ListOpt {
     all: bool,
 }
 
-pub fn list(options: ListOpt) -> Result<(), failure::Error> {
+pub fn list(options: ListOpt) -> anyhow::Result<()> {
     let mut local = false;
     let mut global = false;
     match (options.global, options.all) {
@@ -64,7 +64,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                 local = false;
             }
             LockfileResult::LockfileError(e) => {
-                return Err(format_err!(
+                return Err(anyhow!(
                     "Failed to read lock file in current directory: {}",
                     e
                 ));
@@ -104,7 +104,7 @@ pub fn list(options: ListOpt) -> Result<(), failure::Error> {
                 global = false;
             }
             LockfileResult::LockfileError(e) => {
-                return Err(format_err!(
+                return Err(anyhow!(
                     "Failed to read lock file in current directory: {}",
                     e
                 ));

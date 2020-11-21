@@ -3,6 +3,7 @@
 
 use crate::graphql::execute_query;
 use graphql_client::*;
+use thiserror::Error;
 
 use crate::data::manifest::Manifest;
 use structopt::StructOpt;
@@ -21,20 +22,20 @@ pub struct AddOpt {
 )]
 struct GetPackageVersionQuery;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum AddError {
-    #[fail(display = "There were problems adding packages")]
+    #[error("There were problems adding packages")]
     GenericError,
-    #[fail(
-        display = "Could not find a manifest in the current directory, try running `wapm init`"
+    #[error(
+        "Could not find a manifest in the current directory, try running `wapm init`"
     )]
     NoManifest,
-    #[fail(display = "No packages listed to add")]
+    #[error("No packages listed to add")]
     ArgumentsRequired,
 }
 
 /// Run the add command
-pub fn add(options: AddOpt) -> Result<(), failure::Error> {
+pub fn add(options: AddOpt) -> anyhow::Result<()> {
     let mut error = false;
     let mut manifest: Manifest = {
         let cur_dir = std::env::current_dir()?;

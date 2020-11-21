@@ -3,6 +3,7 @@
 
 use crate::data::manifest::Manifest;
 use structopt::StructOpt;
+use thiserror::Error;
 
 /// Options for the `remove` subcommand
 #[derive(StructOpt, Debug)]
@@ -10,18 +11,18 @@ pub struct RemoveOpt {
     packages: Vec<String>,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 enum RemoveError {
-    #[fail(display = "There were problems removing packages")]
+    #[error("There were problems removing packages")]
     GenericError,
-    #[fail(display = "No packages to remove; could not find a manifest in the current directory")]
+    #[error("No packages to remove; could not find a manifest in the current directory")]
     NoManifest,
-    #[fail(display = "No packages listed to remove")]
+    #[error("No packages listed to remove")]
     ArgumentsRequired,
 }
 
 /// Run the remove command
-pub fn remove(options: RemoveOpt) -> Result<(), failure::Error> {
+pub fn remove(options: RemoveOpt) -> anyhow::Result<()> {
     let mut error = false;
     let mut manifest: Manifest = {
         let cur_dir = std::env::current_dir()?;

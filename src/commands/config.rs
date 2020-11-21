@@ -27,7 +27,7 @@ pub struct ConfigKey {
     key: String,
 }
 
-pub fn config(config_opt: ConfigOpt) -> Result<(), failure::Error> {
+pub fn config(config_opt: ConfigOpt) -> anyhow::Result<()> {
     let mut config = Config::from_file()?;
     match config_opt {
         ConfigOpt::Set(ConfigKeyValue { key, value }) => set(&mut config, key, value),

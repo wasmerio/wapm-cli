@@ -8,6 +8,7 @@ use semver::Version;
 use std::borrow::Cow::Owned;
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
+use thiserror::Error;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -17,9 +18,9 @@ use std::collections::hash_set::HashSet;
 )]
 struct GetPackagesQuery;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "There was a problem resolve dependencies. {}", _0)]
+    #[error("There was a problem resolve dependencies. {0}")]
     CouldNotResolvePackages(String),
 }
 

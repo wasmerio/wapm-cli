@@ -13,7 +13,7 @@ use graphql_client::*;
 )]
 struct LoginMutation;
 
-pub fn login() -> Result<(), failure::Error> {
+pub fn login() -> anyhow::Result<()> {
     print!("Username: ");
     stdout().flush().ok().expect("Could not flush stdout");
 

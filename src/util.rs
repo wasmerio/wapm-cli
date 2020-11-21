@@ -6,19 +6,18 @@ use license_exprs;
 use semver::Version;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
+use thiserror::Error;
 
 pub static MAX_NAME_LENGTH: usize = 50;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum NameError {
-    #[fail(
-        display = "The name \"{}\" is too long. It must be {} characters or fewer",
-        _0, _1
+    #[error(
+        "The name \"{0}\" is too long. It must be {} characters or fewer",
     )]
     NameTooLong(String, usize),
-    #[fail(
-        display = "The name \"{}\" contains invalid characters. Please use alpha-numeric characters, '-', and '_'",
-        _0
+    #[error(
+        "The name \"{0}\" contains invalid characters. Please use alpha-numeric characters, '-', and '_'",
     )]
     InvalidCharacters(String),
 }
@@ -38,11 +37,11 @@ pub fn validate_name(name: &str) -> Result<String, NameError> {
     Ok(name.to_owned())
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum LicenseError {
-    #[fail(display = "\"{}\" is not a valid SPDX license", _0)]
+    #[error("\"{0}\" is not a valid SPDX license")]
     UnknownLicenseId(String),
-    #[fail(display = "License should be a valid SPDX license expression (without \"LicenseRef\")")]
+    #[error("License should be a valid SPDX license expression (without \"LicenseRef\")")]
     InvalidStructure(),
 }
 
@@ -67,7 +66,7 @@ pub fn validate_license(license: &str) -> Result<String, LicenseError> {
 )]
 struct WhoAmIQuery;
 
-pub fn get_username() -> Result<Option<String>, failure::Error> {
+pub fn get_username() -> anyhow::Result<Option<String>> {
     let q = WhoAmIQuery::build_query(who_am_i_query::Variables {});
     let response: who_am_i_query::ResponseData = execute_query(&q)?;
     Ok(response.viewer.map(|viewer| viewer.username))
@@ -91,7 +90,7 @@ pub fn telemetry_is_enabled() -> bool {
 }
 
 #[inline]
-pub fn get_package_namespace_and_name(package_name: &str) -> Result<(&str, &str), failure::Error> {
+pub fn get_package_namespace_and_name(package_name: &str) -> anyhow::Result<(&str, &str)> {
     let split: Vec<&str> = package_name.split('/').collect();
     match &split[..] {
         [namespace, name] => Ok((*namespace, *name)),
@@ -182,7 +181,7 @@ pub fn set_wapm_should_accept_all_prompts(val: bool) -> Option<()> {
 
 /// Asks the user to confirm something. Returns a boolean indicating if the user consented
 /// or if the `WAPM_FORCE_YES_TO_PROMPTS` variable is set
-pub fn prompt_user_for_yes(prompt: &str) -> Result<bool, failure::Error> {
+pub fn prompt_user_for_yes(prompt: &str) -> anyhow::Result<bool> {
     use std::io::Write;
 
     print!("{}\n[y/n] ", prompt);

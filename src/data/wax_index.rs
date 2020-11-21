@@ -9,6 +9,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 use std::collections::HashMap;
 
@@ -150,20 +151,19 @@ impl WaxIndex {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum WaxIndexError {
-    #[fail(display = "Error finding Wax Index: {}", _0)]
+    #[error("Error finding Wax Index: {0}")]
     ConfigError(config::GlobalConfigError),
-    #[fail(display = "Failed to operate on Wax index file: `{}`", _0)]
+    #[error("Failed to operate on Wax index file: `{0}`")]
     IoError(io::Error),
-    #[fail(
-        display = "Failed to parse WaxIndex from JSON or convert WaxIndex to JSON: `{}`",
-        _0
+    #[error(
+        "Failed to parse WaxIndex from JSON or convert WaxIndex to JSON: `{0}`",
     )]
     SerdeError(serde_json::error::Error),
-    #[fail(display = "Entry `{}` not found", entry)]
+    #[error("Entry `{entry}` not found")]
     EntryNotFound { entry: String },
-    #[fail(display = "Entry `{}` found but was corrupt", entry)]
+    #[error("Entry `{entry}` found but was corrupt")]
     EntryCorrupt { entry: String },
 }
 

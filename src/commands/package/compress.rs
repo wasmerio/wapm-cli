@@ -3,7 +3,7 @@ use crate::commands::package::header::CompressionType;
 /// A general way to talk about compression algorithms. This allows wapm package to use different
 /// kinds of compression when storing assets in the wasm.
 pub trait Compress {
-    fn compress(uncompressed_data: Vec<u8>) -> Result<Vec<u8>, failure::Error>;
+    fn compress(uncompressed_data: Vec<u8>) -> anyhow::Result<Vec<u8>>;
     fn compression_type() -> CompressionType;
 }
 
@@ -16,7 +16,7 @@ pub struct ZStdCompression {
 }
 
 impl Compress for ZStdCompression {
-    fn compress(uncompressed_data: Vec<u8>) -> Result<Vec<u8>, failure::Error> {
+    fn compress(uncompressed_data: Vec<u8>) -> anyhow::Result<Vec<u8>> {
         zstd::stream::encode_all(&uncompressed_data[..], ZSTD_COMPRESSION_LEVEL)
             .map_err(|e| e.into())
     }
@@ -35,7 +35,7 @@ pub struct NoCompression {
 
 #[cfg(test)]
 impl Compress for NoCompression {
-    fn compress(uncompressed_data: Vec<u8>) -> Result<Vec<u8>, failure::Error> {
+    fn compress(uncompressed_data: Vec<u8>) -> anyhow::Result<Vec<u8>> {
         Ok(uncompressed_data)
     }
 

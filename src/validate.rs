@@ -3,8 +3,9 @@ use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::Manife
 use crate::interfaces;
 use std::{fs, io::Read, path::PathBuf};
 use wasm_interface::{validate, Interface};
+use thiserror::Error;
 
-pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
+pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
     // validate as dir
     let manifest = match ManifestResult::find_in_directory(&pkg_path) {
         ManifestResult::NoManifest => return Ok(()),
@@ -63,7 +64,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
                     &interface_version,
                 )?;
                 interface = interface.merge(sub_interface).map_err(|e| {
-                    format_err!("Failed to merge interface {}: {}", &interface_name, e)
+                    anyhow!("Failed to merge interface {}: {}", &interface_name, e)
                 })?;
             }
             validate::validate_wasm_and_report_errors(&wasm_buffer, &interface).map_err(|e| {
@@ -79,18 +80,17 @@ pub fn validate_directory(pkg_path: PathBuf) -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ValidationError {
-    #[fail(
-        display = "WASM file \"{}\" detected as invalid because {}",
-        file, error
+    #[error(
+        "WASM file \"{file}\" detected as invalid because {error}",
     )]
     InvalidWasm { file: String, error: String },
-    #[fail(display = "Could not find file {}", file)]
+    #[error("Could not find file {file}")]
     MissingFile { file: String },
-    #[fail(display = "Failed to read file {}; {}", file, error)]
+    #[error("Failed to read file {file}; {error}")]
     MiscCannotRead { file: String, error: String },
-    #[fail(display = "Failed to unpack archive \"{}\"! {}", file, error)]
+    #[error("Failed to unpack archive \"{file}\"! {error}")]
     CannotUnpackArchive { file: String, error: String },
 }
 
@@ -98,7 +98,7 @@ pub enum ValidationError {
 pub fn validate_wasm_and_report_errors_old(
     wasm: &[u8],
     file_name: String,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     use wasmparser::WasmDecoder;
     let mut parser = wasmparser::ValidatingParser::new(wasm, None);
     loop {

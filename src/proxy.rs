@@ -1,9 +1,10 @@
 //! Code for dealing with setting things up to proxy network requests
+use thiserror::Error;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ProxyError {
-    #[fail(
-        display = "Failed to parse URL from {}: {}",
+    #[error(
+        "Failed to parse URL from {}: {}",
         url_location, error_message
     )]
     UrlParseError {
@@ -11,7 +12,7 @@ pub enum ProxyError {
         error_message: String,
     },
 
-    #[fail(display = "Could not connect to proxy: {}", _0)]
+    #[error("Could not connect to proxy: {0}")]
     ConnectionError(String),
 }
 
@@ -27,7 +28,7 @@ pub enum ProxyError {
 /// A return value of `Ok(None)` means that there was no attempt to set up a proxy,
 /// `Ok(Some(proxy))` means that the proxy was set up successfully, and `Err(e)` that
 /// there was a failure while attempting to set up the proxy.
-pub fn maybe_set_up_proxy() -> Result<Option<reqwest::Proxy>, failure::Error> {
+pub fn maybe_set_up_proxy() -> anyhow::Result<Option<reqwest::Proxy>> {
     use std::env;
     let maybe_proxy_url = crate::config::Config::from_file()
         .ok()

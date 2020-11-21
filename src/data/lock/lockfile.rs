@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
+use thiserror::Error;
 
 pub type ModuleMapV2 = BTreeMap<String, BTreeMap<Version, BTreeMap<String, LockfileModuleV2>>>;
 pub type CommandMapV2 = BTreeMap<String, LockfileCommand>;
@@ -47,7 +48,7 @@ pub type CommandMapV4 = CommandMap;
 
 impl<'a> Lockfile {
     /// Save the lockfile to the directory.
-    pub fn save<P: AsRef<Path>>(&self, directory: P) -> Result<(), failure::Error> {
+    pub fn save<P: AsRef<Path>>(&self, directory: P) -> anyhow::Result<()> {
         let lockfile_string = toml::to_string(self)?;
         let lockfile_string = format!("{}\n{}", LOCKFILE_HEADER, lockfile_string);
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
@@ -79,8 +80,8 @@ impl<'a> Lockfile {
         package_name: &str,
         package_version: &Version,
         module_name: &str,
-    ) -> Result<&LockfileModule, failure::Error> {
-        let version_map = self.modules.get(package_name).ok_or::<failure::Error>(
+    ) -> anyhow::Result<&LockfileModule> {
+        let version_map = self.modules.get(package_name).ok_or::<anyhow::Error>(
             LockfileError::PackageWithVersionNotFoundWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -88,7 +89,7 @@ impl<'a> Lockfile {
             )
             .into(),
         )?;
-        let module_map = version_map.get(package_version).ok_or::<failure::Error>(
+        let module_map = version_map.get(package_version).ok_or::<anyhow::Error>(
             LockfileError::VersionNotFoundForPackageWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -96,7 +97,7 @@ impl<'a> Lockfile {
             )
             .into(),
         )?;
-        let module = module_map.get(module_name).ok_or::<failure::Error>(
+        let module = module_map.get(module_name).ok_or::<anyhow::Error>(
             LockfileError::ModuleForPackageVersionNotFound(
                 package_name.to_string(),
                 package_version.to_string(),
@@ -108,29 +109,26 @@ impl<'a> Lockfile {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum LockfileError {
-    #[fail(display = "Command not found: {}", _0)]
+    #[error("Command not found: {0}")]
     CommandNotFound(String),
-    #[fail(display = "module {} in package \"{} {}\" was not found", _2, _0, _1)]
+    #[error("module {2} in package \"{0} {1}\" was not found")]
     ModuleForPackageVersionNotFound(String, String, String),
-    #[fail(
-        display = "Module \"{}\" with package name \"{}\" and version \"{}\" was not found.",
-        _2, _0, _1
+    #[error(
+        "Module \"{2}\" with package name \"{0}\" and version \"{1}\" was not found.",
     )]
     PackageWithVersionNotFoundWhenFindingModule(String, String, String),
-    #[fail(
-        display = "version \"{}\" for package \"{}\" was not found when searching for module \"{}\".",
-        _1, _0, _2
+    #[error(
+        "version \"{1}\" for package \"{0}\" was not found when searching for module \"{2}\".",
     )]
     VersionNotFoundForPackageWhenFindingModule(String, String, String),
-    #[fail(display = "Lockfile file not found.")]
+    #[error("Lockfile file not found.")]
     MissingLockfile,
-    #[fail(display = "File I/O error reading lockfile. I/O error: {:?}", _0)]
+    #[error("File I/O error reading lockfile. I/O error: {0:?}")]
     FileIoErrorReadingLockfile(io::Error),
-    #[fail(
-        display = "Failed to parse lockfile toml. Did you modify the generated lockfile? Toml error: {:?}",
-        _0
+    #[error(
+        "Failed to parse lockfile toml. Did you modify the generated lockfile? Toml error: {0:?}",
     )]
     TomlParseError(toml::de::Error),
 }

@@ -1,5 +1,6 @@
 use crate::data::manifest::Command;
 use semver::Version;
+use thiserror::Error;
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -54,13 +55,12 @@ impl<'a> LockfileCommand {
     }
 }
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(display = "The module for this command does not exist. Did you modify the wapm.lock?")]
+    #[error("The module for this command does not exist. Did you modify the wapm.lock?")]
     ModuleForCommandDoesNotExist,
-    #[fail(
-        display = "Could not parse the package name and version \"{}\" for the command \"{}\".",
-        _0, _1
+    #[error(
+        "Could not parse the package name and version \"{0}\" for the command \"{}\".",
     )]
     CouldNotParsePackageVersionForCommand(String, String),
 }

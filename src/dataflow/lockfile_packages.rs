@@ -12,22 +12,22 @@ use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 use std::fs;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum LockfileError {
-    #[fail(display = "Could not parse lockfile because {}.", _0)]
+    #[error("Could not parse lockfile because {0}.")]
     LockfileTomlParseError(String),
-    #[fail(display = "Could not parse lockfile because {}.", _0)]
+    #[error("Could not parse lockfile because {0}.")]
     IoError(String),
-    #[fail(
-        display = "Could not parse lockfile because of issue parsing command. {}",
-        _0
+    #[error(
+        "Could not parse lockfile because of issue parsing command. {0}",
     )]
     CommandPackageVersionParseError(Error),
-    #[fail(display = "Lockfile version is missing or invalid. Delete `wapm.lock`.")]
+    #[error("Lockfile version is missing or invalid. Delete `wapm.lock`.")]
     InvalidOrMissingVersion,
-    #[fail(
-        display = "Lockfile version is too high, update wapm or delete `wapm.lock` and try again."
+    #[error(
+        "Lockfile version is too high, update wapm or delete `wapm.lock` and try again."
     )]
     VersionTooHigh,
 }

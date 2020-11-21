@@ -16,49 +16,43 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use tar::Archive;
+use thiserror::Error;
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[fail(
-        display = "There was a problem opening the manifest for installed package \"{}\". {}",
-        _0, _1
+    #[error(
+        "There was a problem opening the manifest for installed package \"{0}\". {}",
     )]
     InstalledDependencyIsMissingManifest(String, String),
-    #[fail(
-        display = "There was a problem decompressing the package data for \"{}\". {}",
-        _0, _1
+    #[error(
+        "There was a problem decompressing the package data for \"{0}\". {}",
     )]
     DecompressionError(String, String),
-    #[fail(
-        display = "There was a problem parsing the package name for \"{}\". {}",
-        _0, _1
+    #[error(
+        "There was a problem parsing the package name for \"{0}\". {}",
     )]
     FailedToParsePackageName(String, String),
-    #[fail(
-        display = "There was an IO error creating the wapm_packages directory for package \"{}\". {}",
-        _0, _1
+    #[error(
+        "There was an IO error creating the wapm_packages directory for package \"{0}\". {}",
     )]
     IoErrorCreatingDirectory(String, String),
-    #[fail(
-        display = "There was an IO error copying package data for package \"{}\". {}",
-        _0, _1
+    #[error(
+        "There was an IO error copying package data for package \"{0}\". {}",
     )]
     IoCopyError(String, String),
-    #[fail(
-        display = "Error downloading package data for package \"{}\". {}",
-        _0, _1
+    #[error(
+        "Error downloading package data for package \"{0}\". {}",
     )]
     DownloadError(String, String),
-    #[fail(display = "Install aborted: {}", _0)]
+    #[error("Install aborted: {0}")]
     InstallAborted(String),
-    #[fail(
-        display = "There was an error storing keys for package \"{}\" during installation: {}",
-        _0, _1
+    #[error(
+        "There was an error storing keys for package \"{0}\" during installation: {}",
     )]
     KeyManagementError(String, String),
-    #[fail(display = "Failed during network connection: {}", _0)]
+    #[error("Failed during network connection: {0}")]
     IoConnectionError(String),
-    #[fail(display = "Failed to validate package {} with key {}: {}", _0, _1, _2)]
+    #[error("Failed to validate package {0} with key {1}: {2}")]
     FailedToValidateSignature(String, String, String),
 }
 
@@ -136,7 +130,7 @@ impl RegistryInstaller {
         mut compressed_archive: F,
         pkg_name: P,
         key: &WapmPackageKey,
-    ) -> Result<(), failure::Error> {
+    ) -> anyhow::Result<()> {
         compressed_archive.seek(SeekFrom::Start(0))?;
         let gz = GzDecoder::new(compressed_archive);
         let mut archive = Archive::new(gz);
@@ -338,7 +332,7 @@ impl<'a> Install<'a> for RegistryInstaller {
                 #[cfg(feature = "telemetry")]
                 {
                     let e = e.into();
-                    sentry::integrations::failure::capture_error(&e);
+                    sentry::integrations::anyhow::capture_anyhow(&e);
                 }
                 Error::DownloadError(key.to_string(), error_message)
             })?;
@@ -417,14 +411,14 @@ fn verify_signature_on_package(
     pkv: &str,
     signature_to_use: &str,
     dest: &mut fs::File,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     dest.seek(SeekFrom::Start(0))?;
     // TODO: refactor to remove extra bit of info here
     let public_key = minisign::PublicKey::from_base64(&pkv)
-        .map_err(|e| format_err!("Invalid key: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("Invalid key: {}", e.to_string()))?;
     let sig_box = minisign::SignatureBox::from_string(&signature_to_use)
-        .map_err(|e| format_err!("Error with downloaded signature: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("Error with downloaded signature: {}", e.to_string()))?;
 
     minisign::verify(&public_key, &sig_box, dest, true, false)
-        .map_err(|e| format_err!("Could not validate signature: {}", e.to_string()))
+        .map_err(|e| anyhow!("Could not validate signature: {}", e.to_string()))
 }

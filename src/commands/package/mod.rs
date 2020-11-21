@@ -9,8 +9,9 @@ pub use crate::commands::package::options::PackageOpt;
 use crate::manifest::Manifest;
 use std::env;
 use std::path::PathBuf;
+use thiserror::Error;
 
-pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
+pub fn package(package_options: PackageOpt) -> anyhow::Result<()> {
     let (manifest, base_path) = match package_options.manifest_file_path {
         Some(manifest_path) => {
             let manifest = Manifest::open(&manifest_path)?;
@@ -66,10 +67,10 @@ pub fn package(package_options: PackageOpt) -> Result<(), failure::Error> {
     module.emit_wasm_file(module_path)
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum PackageError {
-    #[fail(display = "Missing source.")]
+    #[error("Missing source.")]
     MissingSource,
-    #[fail(display = "Cannot package without a module.")]
+    #[error("Cannot package without a module.")]
     NoModule,
 }
