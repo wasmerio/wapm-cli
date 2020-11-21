@@ -8,6 +8,10 @@ description = "WebAssembly Package Manager CLI"
 license = "MIT"
 
 [patch.crates-io]
+# We use a patched version of backtrace, because the one required
+# by the dependencies (graphql-parser 0.2.3) depends on libbacktrace
+# which can't cross-compile for arm64 for some reason.
+# Once that's fixed, we should be good to remove this patch.
 backtrace = { git = "https://github.com/syrusakbary/backtrace-rs.git", branch = "patch-1" }
 
 [dependencies]
