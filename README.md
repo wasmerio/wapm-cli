@@ -5,7 +5,10 @@
 </p>
 
 <p align="center">
-    ![core tests](https://github.com/wasmerio/wapm-cli/workflows/core%20tests/badge.svg?branch=master)
+  <a href="https://github.com/wasmerio/wapm-cli/actions?query=workflow%3A%22core+tests%22">
+    <img src="https://github.com/wasmerio/wapm-cli/workflows/core%20tests/badge.svg?branch=master" alt="tests">
+  </a>
+
   <a href="https://github.com/wasmerio/wasmer/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/wasmerio/wasmer.svg" alt="License">
   </a>
