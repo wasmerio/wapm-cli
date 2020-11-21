@@ -1,6 +1,5 @@
 #!/bin/sh
 
-alias wapm=target/debug/wapm
 wapm config set registry.url "https://registry.wapm.dev"
 
 # test that the command name is overriden by default
