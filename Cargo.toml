@@ -59,8 +59,8 @@ members = [
 ]
 
 [features]
-default = ["packagesigning"]
-bundled-sqlite = ["rusqlite/bundled"]
+default = ["packagesigning", "sqlite-bundled"]
+sqlite-bundled = ["rusqlite/bundled"]
 telemetry = ["sentry"]
 update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
