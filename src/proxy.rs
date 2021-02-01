@@ -50,7 +50,7 @@ pub fn maybe_set_up_proxy() -> anyhow::Result<Option<reqwest::Proxy>> {
                     error_message: e.to_string(),
                 })
                 .map(|url| {
-                    if  !(url.username().is_empty()) && url.password().is_some()  {
+                    if !(url.username().is_empty()) && url.password().is_some() {
                         proxy.basic_auth(url.username(), url.password().unwrap_or_default())
                     } else {
                         proxy
