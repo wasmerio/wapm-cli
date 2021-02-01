@@ -3,10 +3,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ProxyError {
-    #[error(
-        "Failed to parse URL from {}: {}",
-        url_location, error_message
-    )]
+    #[error("Failed to parse URL from {}: {}", url_location, error_message)]
     UrlParseError {
         url_location: String,
         error_message: String,
@@ -52,7 +49,13 @@ pub fn maybe_set_up_proxy() -> anyhow::Result<Option<reqwest::Proxy>> {
                     url_location: url_location.to_string(),
                     error_message: e.to_string(),
                 })
-                .map(|url| proxy.basic_auth(url.username(), url.password().unwrap_or_default()))
+                .map(|url| {
+                    if  !(url.username().is_empty()) && url.password().is_some()  {
+                        proxy.basic_auth(url.username(), url.password().unwrap_or_default())
+                    } else {
+                        proxy
+                    }
+                })
         },
     )?;
 
