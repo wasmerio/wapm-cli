@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **[Unreleased]**
 
+## [0.5.1] - 2021-03-30
+### Changed
+- Minor updates and dependency updates
+
 ## [0.5.0] - 2020-03-10
 ### Added
 - Added support for any WebAssembly runtime via `WAPM_RUNTIME` (so you can use it like `WAPM_RUNTIME=wasmer-js wapm run python`)

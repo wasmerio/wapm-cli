@@ -1,18 +1,11 @@
 [package]
 name = "wapm-cli"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
 repository = "https://github.com/wasmerio/wapm-cli"
 description = "WebAssembly Package Manager CLI"
 license = "MIT"
-
-[patch.crates-io]
-# We use a patched version of backtrace, because the one required
-# by the dependencies (graphql-parser 0.2.3) depends on libbacktrace
-# which can't cross-compile for arm64 for some reason.
-# Once that's fixed, we should be good to remove this patch.
-backtrace = { git = "https://github.com/syrusakbary/backtrace-rs.git", branch = "patch-1" }
 
 [dependencies]
 atty = "0.2"
@@ -20,7 +13,7 @@ billboard = { version = "0.1.0", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = { version = "1.8", optional = true }
 dirs = "1"
-anyhow = "*"
+anyhow = "1"
 thiserror = "1.0"
 fern = {version = "0.6", features = ["colored"]}
 flate2 = "1.0.7"
@@ -35,8 +28,8 @@ regex = "1"
 reqwest = {version = "0.10", features = ["native-tls-vendored", "blocking", "json", "gzip"]}
 rpassword = "4"
 rusqlite = "0.24"
-semver = { version = "0.9", features = ["serde"] }
-sentry = {version = "0.21", optional = true, features = ["anyhow", "panic", "backtrace"]}
+semver = { version = "0.11", features = ["serde"] }
+sentry = {version = "0.22", optional = true, features = ["anyhow", "panic", "backtrace"]}
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
