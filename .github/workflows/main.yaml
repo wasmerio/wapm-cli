@@ -96,10 +96,9 @@ jobs:
       - name: Tests
         run: |
           cargo test --verbose --features "update-notifications" -- --test-threads=1
-      # TODO: re-enable integration tests once registry.wapm.dev works
-      # - name: Integration Tests
-      #   run: |
-      #     make integration-tests
+      - name: Integration Tests
+        run: |
+          make integration-tests
       - name: Tests (Wasm Interface)
         run: |
           cargo test --manifest-path lib/wasm-interface/Cargo.toml
