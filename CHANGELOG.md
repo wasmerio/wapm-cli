@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **[Unreleased]**
 
 ## [0.5.1] - 2021-03-30
+### Added
+- Added support for SOCKS proxies
+
 ### Changed
 - Minor updates and dependency updates
 
