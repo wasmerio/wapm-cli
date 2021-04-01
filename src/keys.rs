@@ -6,8 +6,8 @@ use crate::sql;
 use crate::util;
 use rusqlite::{params, Connection, TransactionBehavior};
 use std::{fs, path::PathBuf};
-use time::Timespec;
 use thiserror::Error;
+use time::Timespec;
 
 const MINISIGN_TAG_LENGTH: usize = 16;
 
@@ -55,9 +55,7 @@ pub struct WapmPackageSignature {
 }
 
 /// Gets the user's keys from the database
-pub fn get_personal_keys_from_database(
-    conn: &Connection,
-) -> anyhow::Result<Vec<PersonalKey>> {
+pub fn get_personal_keys_from_database(conn: &Connection) -> anyhow::Result<Vec<PersonalKey>> {
     let mut stmt = conn.prepare(sql::GET_PERSONAL_KEYS)?;
 
     let result = stmt.query_map(params![], |row| {
@@ -80,9 +78,7 @@ pub fn get_personal_keys_from_database(
 }
 
 /// Gets all public keys the user has seen from WAPM from the database
-pub fn get_wapm_public_keys_from_database(
-    conn: &Connection,
-) -> anyhow::Result<Vec<WapmPublicKey>> {
+pub fn get_wapm_public_keys_from_database(conn: &Connection) -> anyhow::Result<Vec<WapmPublicKey>> {
     let mut stmt = conn.prepare(sql::GET_WAPM_PUBLIC_KEYS)?;
     let result = stmt.query_map(params![], |row| {
         Ok(WapmPublicKey {
@@ -370,9 +366,7 @@ WHERE public_key_id = (?1)
 
 #[derive(Debug, Error)]
 pub enum PersonalKeyError {
-    #[error(
-        "A public key matching {0:?} already exists in the local database",
-    )]
+    #[error("A public key matching {0:?} already exists in the local database")]
     PublicKeyAlreadyExists(String),
     #[error(
         "The private key at {0:?} is already assoicated with public key {1:?} in the local database",
@@ -382,8 +376,6 @@ pub enum PersonalKeyError {
 
 #[derive(Debug, Error)]
 pub enum WapmPublicKeyError {
-    #[error(
-        "A public key matching {0:?} already exists on user {1:?} in the local database",
-    )]
+    #[error("A public key matching {0:?} already exists on user {1:?} in the local database")]
     PublicKeyAlreadyExists(String, String),
 }

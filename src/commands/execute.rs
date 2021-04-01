@@ -132,9 +132,7 @@ enum ExecuteError {
 
 #[derive(Debug, Error)]
 enum ExecuteArgParsingError {
-    #[error(
-        "Argument `{arg_name}` expects a value `{expected}` but none was found.",
-    )]
+    #[error("Argument `{arg_name}` expects a value `{expected}` but none was found.")]
     MissingValue { arg_name: String, expected: String },
     #[error("Unrecognized argument `{arg_name}`")]
     UnrecognizedArgument { arg_name: String },

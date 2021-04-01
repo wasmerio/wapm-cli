@@ -16,12 +16,12 @@ pub fn load_interface_from_db(
     conn: &mut Connection,
     interface_name: &str,
     version: &str,
-) -> anyhow::Result<wasm_interface::Interface> {
+) -> anyhow::Result<wasmer_wasm_interface::Interface> {
     let mut stmt = conn.prepare(sql::GET_WASM_INTERFACE)?;
     let interface_string: String =
         stmt.query_row(params![interface_name, version], |row| Ok(row.get(0)?))?;
 
-    wasm_interface::parser::parse_interface(&interface_string).map_err(|e| {
+    wasmer_wasm_interface::parser::parse_interface(&interface_string).map_err(|e| {
         anyhow!(
             "Failed to parse interface {} version {} in database: {}",
             interface_name,

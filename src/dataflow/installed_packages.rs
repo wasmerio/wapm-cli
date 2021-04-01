@@ -20,35 +20,21 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[error(
-        "There was a problem opening the manifest for installed package \"{0}\". {}",
-    )]
+    #[error("There was a problem opening the manifest for installed package \"{0}\". {}")]
     InstalledDependencyIsMissingManifest(String, String),
-    #[error(
-        "There was a problem decompressing the package data for \"{0}\". {}",
-    )]
+    #[error("There was a problem decompressing the package data for \"{0}\". {}")]
     DecompressionError(String, String),
-    #[error(
-        "There was a problem parsing the package name for \"{0}\". {}",
-    )]
+    #[error("There was a problem parsing the package name for \"{0}\". {}")]
     FailedToParsePackageName(String, String),
-    #[error(
-        "There was an IO error creating the wapm_packages directory for package \"{0}\". {}",
-    )]
+    #[error("There was an IO error creating the wapm_packages directory for package \"{0}\". {}")]
     IoErrorCreatingDirectory(String, String),
-    #[error(
-        "There was an IO error copying package data for package \"{0}\". {}",
-    )]
+    #[error("There was an IO error copying package data for package \"{0}\". {}")]
     IoCopyError(String, String),
-    #[error(
-        "Error downloading package data for package \"{0}\". {}",
-    )]
+    #[error("Error downloading package data for package \"{0}\". {}")]
     DownloadError(String, String),
     #[error("Install aborted: {0}")]
     InstallAborted(String),
-    #[error(
-        "There was an error storing keys for package \"{0}\" during installation: {}",
-    )]
+    #[error("There was an error storing keys for package \"{0}\" during installation: {}")]
     KeyManagementError(String, String),
     #[error("Failed during network connection: {0}")]
     IoConnectionError(String),

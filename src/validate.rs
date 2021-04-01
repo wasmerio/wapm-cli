@@ -2,8 +2,8 @@ use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
 use crate::interfaces;
 use std::{fs, io::Read, path::PathBuf};
-use wasm_interface::{validate, Interface};
 use thiserror::Error;
+use wasmer_wasm_interface::{validate, Interface};
 
 pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
     // validate as dir
@@ -63,9 +63,9 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
                     &interface_name,
                     &interface_version,
                 )?;
-                interface = interface.merge(sub_interface).map_err(|e| {
-                    anyhow!("Failed to merge interface {}: {}", &interface_name, e)
-                })?;
+                interface = interface
+                    .merge(sub_interface)
+                    .map_err(|e| anyhow!("Failed to merge interface {}: {}", &interface_name, e))?;
             }
             validate::validate_wasm_and_report_errors(&wasm_buffer, &interface).map_err(|e| {
                 ValidationError::InvalidWasm {
@@ -82,9 +82,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
 
 #[derive(Debug, Error)]
 pub enum ValidationError {
-    #[error(
-        "WASM file \"{file}\" detected as invalid because {error}",
-    )]
+    #[error("WASM file \"{file}\" detected as invalid because {error}")]
     InvalidWasm { file: String, error: String },
     #[error("Could not find file {file}")]
     MissingFile { file: String },
@@ -95,10 +93,7 @@ pub enum ValidationError {
 }
 
 // legacy function, validates wasm.  TODO: clean up
-pub fn validate_wasm_and_report_errors_old(
-    wasm: &[u8],
-    file_name: String,
-) -> anyhow::Result<()> {
+pub fn validate_wasm_and_report_errors_old(wasm: &[u8], file_name: String) -> anyhow::Result<()> {
     use wasmparser::WasmDecoder;
     let mut parser = wasmparser::ValidatingParser::new(wasm, None);
     loop {

@@ -115,12 +115,10 @@ pub enum LockfileError {
     CommandNotFound(String),
     #[error("module {2} in package \"{0} {1}\" was not found")]
     ModuleForPackageVersionNotFound(String, String, String),
-    #[error(
-        "Module \"{2}\" with package name \"{0}\" and version \"{1}\" was not found.",
-    )]
+    #[error("Module \"{2}\" with package name \"{0}\" and version \"{1}\" was not found.")]
     PackageWithVersionNotFoundWhenFindingModule(String, String, String),
     #[error(
-        "version \"{1}\" for package \"{0}\" was not found when searching for module \"{2}\".",
+        "version \"{1}\" for package \"{0}\" was not found when searching for module \"{2}\"."
     )]
     VersionNotFoundForPackageWhenFindingModule(String, String, String),
     #[error("Lockfile file not found.")]
@@ -128,7 +126,7 @@ pub enum LockfileError {
     #[error("File I/O error reading lockfile. I/O error: {0:?}")]
     FileIoErrorReadingLockfile(io::Error),
     #[error(
-        "Failed to parse lockfile toml. Did you modify the generated lockfile? Toml error: {0:?}",
+        "Failed to parse lockfile toml. Did you modify the generated lockfile? Toml error: {0:?}"
     )]
     TomlParseError(toml::de::Error),
 }

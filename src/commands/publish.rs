@@ -202,9 +202,7 @@ enum PublishError {
         "Path \"{0}\", specified in the manifest as part of the package file system does not exist.",
     )]
     MissingManifestFsPath(String),
-    #[error(
-        "When processing the package filesystem, found path \"{0}\" which is not a directory",
-    )]
+    #[error("When processing the package filesystem, found path \"{0}\" which is not a directory")]
     PackageFileSystemEntryMustBeDirectory(String),
 }
 

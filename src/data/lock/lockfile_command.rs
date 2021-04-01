@@ -59,8 +59,6 @@ impl<'a> LockfileCommand {
 pub enum Error {
     #[error("The module for this command does not exist. Did you modify the wapm.lock?")]
     ModuleForCommandDoesNotExist,
-    #[error(
-        "Could not parse the package name and version \"{0}\" for the command \"{}\".",
-    )]
+    #[error("Could not parse the package name and version \"{0}\" for the command \"{}\".")]
     CouldNotParsePackageVersionForCommand(String, String),
 }

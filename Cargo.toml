@@ -39,7 +39,7 @@ tempfile = "3"
 time = "0.1"
 toml = "0.5.6"
 url = "2"
-wasm-interface = { path = "lib/wasm-interface" }
+wasmer-wasm-interface = { path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
 whoami = "0.5"
 dialoguer = "0.4.0"

@@ -209,9 +209,7 @@ pub enum ManifestError {
     TomlParseError(String),
     #[error("Dependency version must be a string. Package name: {0}.")]
     DependencyVersionMustBeString(String),
-    #[error(
-        "Package must have version that follows semantic versioning. {0}",
-    )]
+    #[error("Package must have version that follows semantic versioning. {0}")]
     SemVerError(String),
     #[error("There was an error validating the manifest: {0}")]
     ValidationError(ValidationError),

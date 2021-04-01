@@ -52,16 +52,12 @@ pub fn apply_migrations(conn: &mut Connection) -> anyhow::Result<()> {
 #[derive(Debug, Error)]
 pub enum MigrationError {
     #[error(
-        "Critical internal error: the data version {0} is not handleded; current data version: {1}",
+        "Critical internal error: the data version {0} is not handleded; current data version: {1}"
     )]
     MigrationNumberDoesNotExist(i32, i32),
-    #[error(
-    "Critical internal error: failed to commit trasaction migrating to data version {0}",
-    )]
+    #[error("Critical internal error: failed to commit trasaction migrating to data version {0}")]
     CommitFailed(i32),
-    #[error(
-        "Critical internal error: transaction failed on migration number {0}: {1}",
-    )]
+    #[error("Critical internal error: transaction failed on migration number {0}: {1}")]
     TransactionFailed(i32, String),
 }
 

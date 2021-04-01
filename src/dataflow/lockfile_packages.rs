@@ -20,15 +20,11 @@ pub enum LockfileError {
     LockfileTomlParseError(String),
     #[error("Could not parse lockfile because {0}.")]
     IoError(String),
-    #[error(
-        "Could not parse lockfile because of issue parsing command. {0}",
-    )]
+    #[error("Could not parse lockfile because of issue parsing command. {0}")]
     CommandPackageVersionParseError(Error),
     #[error("Lockfile version is missing or invalid. Delete `wapm.lock`.")]
     InvalidOrMissingVersion,
-    #[error(
-        "Lockfile version is too high, update wapm or delete `wapm.lock` and try again."
-    )]
+    #[error("Lockfile version is too high, update wapm or delete `wapm.lock` and try again.")]
     VersionTooHigh,
 }
 
