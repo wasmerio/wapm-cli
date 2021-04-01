@@ -2,7 +2,7 @@ use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
 use crate::interfaces;
 use std::{fs, io::Read, path::PathBuf};
-use wasm_interface::{validate, Interface};
+use wasmer_wasm_interface::{validate, Interface};
 use thiserror::Error;
 
 pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
