@@ -12,9 +12,7 @@ pub static MAX_NAME_LENGTH: usize = 50;
 
 #[derive(Debug, Error)]
 pub enum NameError {
-    #[error(
-        "The name \"{0}\" is too long. It must be {} characters or fewer",
-    )]
+    #[error("The name \"{0}\" is too long. It must be {} characters or fewer")]
     NameTooLong(String, usize),
     #[error(
         "The name \"{0}\" contains invalid characters. Please use alpha-numeric characters, '-', and '_'",

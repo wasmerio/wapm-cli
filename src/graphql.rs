@@ -18,10 +18,7 @@ enum GraphQLError {
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub type DateTime = String;
 
-pub fn execute_query_modifier<R, V, F>(
-    query: &QueryBody<V>,
-    form_modifier: F,
-) -> anyhow::Result<R>
+pub fn execute_query_modifier<R, V, F>(query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,

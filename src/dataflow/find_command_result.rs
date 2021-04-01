@@ -51,7 +51,7 @@ impl PackageInfoFromCommand {
 #[derive(Clone, Debug, Error)]
 pub enum Error {
     #[error(
-        "Command \"{0}\" was not found in the local directory or the global install directory.",
+        "Command \"{0}\" was not found in the local directory or the global install directory."
     )]
     CommandNotFound(String),
     #[error(
@@ -59,7 +59,7 @@ pub enum Error {
     )]
     CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory(String, String),
     #[error(
-        "Could not get command \"{0}\" because there was a problem with the local package. {1}",
+        "Could not get command \"{0}\" because there was a problem with the local package. {1}"
     )]
     ErrorReadingLocalDirectory(String, String),
     #[error(

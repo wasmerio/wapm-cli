@@ -5,9 +5,7 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[error(
-        "Package must have version that follows semantic versioning. {0}",
-    )]
+    #[error("Package must have version that follows semantic versioning. {0}")]
     SemVerError(String),
 }
 

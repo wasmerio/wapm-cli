@@ -157,9 +157,7 @@ pub enum WaxIndexError {
     ConfigError(config::GlobalConfigError),
     #[error("Failed to operate on Wax index file: `{0}`")]
     IoError(io::Error),
-    #[error(
-        "Failed to parse WaxIndex from JSON or convert WaxIndex to JSON: `{0}`",
-    )]
+    #[error("Failed to parse WaxIndex from JSON or convert WaxIndex to JSON: `{0}`")]
     SerdeError(serde_json::error::Error),
     #[error("Entry `{entry}` not found")]
     EntryNotFound { entry: String },

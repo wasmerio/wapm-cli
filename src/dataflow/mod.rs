@@ -52,9 +52,7 @@ pub enum Error {
     LocalPackageError(local_package::Error),
     #[error("Could not cleanup old artifacts. {0}")]
     CleanupError(removed_lockfile_packages::Error),
-    #[error(
-        "Attempting to install multiple versions of package {0} ({1} and {2})",
-    )]
+    #[error("Attempting to install multiple versions of package {0} ({1} and {2})")]
     DuplicatePackage(String, String, String),
 }
 

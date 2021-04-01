@@ -26,9 +26,7 @@ struct GetPackageVersionQuery;
 enum AddError {
     #[error("There were problems adding packages")]
     GenericError,
-    #[error(
-        "Could not find a manifest in the current directory, try running `wapm init`"
-    )]
+    #[error("Could not find a manifest in the current directory, try running `wapm init`")]
     NoManifest,
     #[error("No packages listed to add")]
     ArgumentsRequired,

@@ -170,9 +170,7 @@ pub(crate) fn do_run(
         .args(&runtime_args)
         .args(&command_vec)
         .spawn()
-        .map_err(|e| -> RunError {
-            RunError::ProcessFailed(runtime, format!("{:?}", e))
-        })?;
+        .map_err(|e| -> RunError { RunError::ProcessFailed(runtime, format!("{:?}", e)) })?;
 
     child.wait()?;
     Ok(())

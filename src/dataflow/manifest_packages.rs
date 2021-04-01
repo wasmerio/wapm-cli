@@ -15,7 +15,7 @@ pub enum Error {
     #[error("Could not parse manifest because {0}.")]
     IoError(String),
     #[error(
-        "Version {0} for package {1} must be a semantic version or a semantic version requirement.",
+        "Version {0} for package {1} must be a semantic version or a semantic version requirement."
     )]
     SemVerError(String, String),
 }
