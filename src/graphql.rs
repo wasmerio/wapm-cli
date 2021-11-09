@@ -50,7 +50,7 @@ where
         "wapm/{} {} {}",
         VERSION,
         whoami::platform(),
-        whoami::os().to_lowercase(),
+        whoami::distro().to_lowercase(),
     );
 
     let res = client

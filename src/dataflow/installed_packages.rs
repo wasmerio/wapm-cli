@@ -307,7 +307,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             "wapm/{} {} {}",
             VERSION,
             whoami::platform(),
-            whoami::os().to_lowercase(),
+            whoami::distro().to_lowercase(),
         );
         let mut response = client
             .get(download_url)
