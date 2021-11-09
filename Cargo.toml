@@ -49,7 +49,7 @@ atty = "0.2"
 reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-wasi-net = { version = "0.1", path = "../ate/wasi-net" }
+wasi-net = { version = "0.1" }
 getrandom = "0.2.3"
 
 [dev-dependencies]
