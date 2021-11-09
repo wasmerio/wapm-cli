@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::graphql::execute_query;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
+use rpassword_wasi as rpassword;
 
 use graphql_client::*;
 
@@ -22,7 +23,7 @@ pub fn login() -> anyhow::Result<()> {
     let username = buffer.trim_end();
 
     let password =
-        rpassword::read_password_from_tty(Some("Password: ")).expect("Can't get password");
+        rpassword::prompt_password("Password: ").expect("Can't get password");
 
     let q = LoginMutation::build_query(login_mutation::Variables {
         username: username.to_string(),

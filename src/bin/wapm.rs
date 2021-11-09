@@ -2,19 +2,23 @@ use std::{env, path};
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
 use wapm_cli::update_notifier;
+#[allow(unused_imports)]
 use wapm_cli::{commands, logging};
 
 #[derive(StructOpt, Debug)]
 #[structopt(global_settings = &[AppSettings::VersionlessSubcommands, AppSettings::ColorAuto, AppSettings::ColoredHelp])]
 enum Command {
+    #[cfg(feature = "full")]
     #[structopt(name = "whoami")]
     /// Prints the current user (if authed) in the stdout
     WhoAmI,
 
+    #[cfg(feature = "full")]
     #[structopt(name = "login")]
     /// Logins into wapm, saving the token locally for future commands
     Login,
 
+    #[cfg(feature = "full")]
     #[structopt(name = "logout")]
     /// Remove the token for the registry
     Logout,
@@ -27,6 +31,7 @@ enum Command {
     /// Install a package
     Install(commands::InstallOpt),
 
+    #[cfg(feature = "full")]
     #[structopt(name = "publish")]
     /// Publish a package
     Publish(commands::PublishOpt),
@@ -38,12 +43,13 @@ enum Command {
     /// Run a command from the package or one of the dependencies
     Run(commands::RunOpt),
 
+    #[cfg(feature = "full")]
     #[structopt(name = "search")]
     /// Search packages
     Search(commands::SearchOpt),
 
     #[cfg(feature = "package")]
-    #[structopt(name = "package", raw(aliases = r#"&["p", "pkg"]"#))]
+    #[structopt(name = "package", aliases = r#"&["p", "pkg"]"#)]
     /// Create a wasm package with bundled assets
     Package(commands::PackageOpt),
 
@@ -59,10 +65,12 @@ enum Command {
     /// Set up current directory for use with wapm
     Init(commands::InitOpt),
 
+    #[cfg(feature = "full")]
     #[structopt(name = "list")]
     /// List the currently installed packages and their commands
     List(commands::ListOpt),
 
+    #[cfg(feature = "full")]
     #[cfg(feature = "packagesigning")]
     #[structopt(name = "keys")]
     /// Manage minisign keys for verifying packages
@@ -94,9 +102,19 @@ enum Command {
 }
 
 fn main() {
-    let is_atty = atty::is(atty::Stream::Stdout);
-    if let Err(e) = logging::set_up_logging(is_atty) {
-        eprintln!("Error: {}", e);
+    #[cfg(not(target_os = "wasi"))]
+    {
+        let is_atty = atty::is(atty::Stream::Stdout);
+        if let Err(e) = logging::set_up_logging(is_atty) {
+            eprintln!("Error: {}", e);
+        }
+    }
+
+    //#[cfg(target_os = "wasi")]
+    {
+        if let Err(e) = logging::set_up_logging(true) {
+            eprintln!("Error: {}", e);
+        }
     }
 
     #[cfg(feature = "telemetry")]
@@ -151,22 +169,29 @@ fn main() {
     };
 
     let result = match args {
+        #[cfg(feature = "full")]
         Command::WhoAmI => commands::whoami(),
+        #[cfg(feature = "full")]
         Command::Login => commands::login(),
+        #[cfg(feature = "full")]
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
         Command::Add(add_options) => commands::add(add_options),
         Command::Remove(remove_options) => commands::remove(remove_options),
+        #[cfg(feature = "full")]
         Command::Publish(publish_options) => commands::publish(publish_options),
         Command::Run(run_options) => commands::run(run_options),
         Command::Execute(execute_options) => commands::execute(execute_options),
+        #[cfg(feature = "full")]
         Command::Search(search_options) => commands::search(search_options),
         #[cfg(feature = "package")]
         Command::Package(package_options) => commands::package(package_options),
         Command::Validate(validate_options) => commands::validate(validate_options),
         Command::Init(init_options) => commands::init(init_options),
+        #[cfg(feature = "full")]
         Command::List(list_options) => commands::list(list_options),
+        #[cfg(feature = "full")]
         #[cfg(feature = "packagesigning")]
         Command::Keys(key_options) => commands::keys(key_options),
         Command::Completions(completion_options) => {

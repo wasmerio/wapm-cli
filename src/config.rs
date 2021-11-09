@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -107,10 +108,15 @@ impl Config {
             {
                 PathBuf::from(folder_str)
             } else {
+                #[cfg(feature = "dirs")]
                 let home_dir =
                     dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
+                #[cfg(not(feature = "dirs"))]
+                let home_dir =    
+                    std::env::var("HOME").ok().unwrap_or_else(|| String::from("/"));
                 let mut folder = PathBuf::from(home_dir);
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
+                std::fs::create_dir_all(folder.clone()).map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
                 folder
             },
         )
@@ -210,6 +216,8 @@ pub enum GlobalConfigError {
         "While falling back to the default location for WASMER_DIR, could not resolve the user's home directory"
     )]
     CannotFindHomeDirectory,
+    #[error("Error while creating config directory: [{0}]")]
+    CannotCreateConfigDirectory(std::io::Error),
 }
 
 #[derive(Debug, Error)]
@@ -289,6 +297,7 @@ mod test {
     use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME, GLOBAL_CONFIG_FOLDER_ENV_VAR};
     use std::fs::*;
     use std::io::Write;
+    use crate::util::create_temp_dir;
 
     #[test]
     fn get_config_and_wasmer_dir_does_not_exist() {
@@ -303,11 +312,11 @@ mod test {
 
     #[test]
     fn get_non_existent_config() {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
+        let tmp_dir = create_temp_dir().unwrap();
         // set the env var to our temp dir
         std::env::set_var(
             GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.path().display().to_string(),
+            tmp_dir.display().to_string(),
         );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
@@ -321,8 +330,8 @@ mod test {
 
     #[test]
     fn get_global_config() {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(GLOBAL_CONFIG_FILE_NAME);
+        let tmp_dir = create_temp_dir().unwrap();
+        let manifest_absolute_path = tmp_dir.join(GLOBAL_CONFIG_FILE_NAME);
         let mut file = File::create(&manifest_absolute_path).unwrap();
         let config = Config::default();
         let config_string = toml::to_string(&config).unwrap();
@@ -330,7 +339,7 @@ mod test {
         // set the env var to our temp dir
         std::env::set_var(
             GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.path().display().to_string(),
+            tmp_dir.display().to_string(),
         );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");

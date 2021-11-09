@@ -1,8 +1,18 @@
-use crate::proxy;
 use graphql_client::{QueryBody, Response};
-use reqwest::blocking::multipart;
-use reqwest::blocking::Client;
-use reqwest::header::USER_AGENT;
+#[cfg(not(target_os = "wasi"))]
+use {
+    crate::proxy,
+    reqwest:: {
+        blocking:: { multipart, Client },
+        header:: { USER_AGENT }
+    }
+};
+#[cfg(target_os = "wasi")]
+use {
+    wasi_net::*,
+    wasi_net::multipart,
+    wasi_net::header::*,
+};
 use serde;
 use std::string::ToString;
 use thiserror::Error;
@@ -27,6 +37,7 @@ where
     let client = {
         let builder = Client::builder();
 
+        #[cfg(not(target_os = "wasi"))]
         let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()? {
             builder.proxy(proxy)
         } else {

@@ -1,10 +1,14 @@
+#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#[cfg(feature = "full")]
 use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
+#[cfg(feature = "full")]
 use crate::interfaces;
 use std::{fs, io::Read, path::PathBuf};
 use thiserror::Error;
 use wasmer_wasm_interface::{validate, Interface};
 
+#[cfg(feature = "full")]
 pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
     // validate as dir
     let manifest = match ManifestResult::find_in_directory(&pkg_path) {
@@ -77,6 +81,11 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
     }
     debug!("package at path {:#?} validated", &pkg_path);
 
+    Ok(())
+}
+
+#[cfg(not(feature = "full"))]
+pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 

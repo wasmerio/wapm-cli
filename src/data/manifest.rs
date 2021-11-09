@@ -280,13 +280,14 @@ mod command_tests {
 #[cfg(test)]
 mod dependency_tests {
     use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
+    use crate::util::create_temp_dir;
     use std::fs::File;
     use std::io::Write;
 
     #[test]
     fn add_new_dependency() {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let manifest_path = tmp_dir.path().join(MANIFEST_FILE_NAME);
+        let tmp_dir = create_temp_dir().unwrap();
+        let manifest_path = tmp_dir.join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
             [package]
@@ -300,7 +301,7 @@ mod dependency_tests {
         };
         let toml_string = toml::to_string(&wapm_toml).unwrap();
         file.write_all(toml_string.as_bytes()).unwrap();
-        let mut manifest = Manifest::find_in_directory(tmp_dir.as_ref()).unwrap();
+        let mut manifest = Manifest::find_in_directory(tmp_dir).unwrap();
 
         let dependency_name = "dep_pkg";
         let dependency_version = semver::Version::new(0, 1, 0);

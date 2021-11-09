@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
 pub const GET_PERSONAL_KEYS: &str = include_str!("queries/get_personal_keys.sql");
 pub const GET_WAPM_PUBLIC_KEYS: &str = include_str!("queries/get_wapm_public_keys.sql");
 pub const DELETE_PERSONAL_KEY_PAIR: &str = include_str!("queries/delete_personal_key_pair.sql");
@@ -18,6 +19,7 @@ pub const WASM_INTERFACE_EXISTENCE_CHECK: &str =
 pub const INSERT_WASM_INTERFACE: &str = include_str!("queries/insert_interface.sql");
 pub const GET_WASM_INTERFACE: &str = include_str!("queries/get_interface.sql");
 
+#[cfg(feature = "full")]
 #[cfg(test)]
 mod test {
     use super::*;

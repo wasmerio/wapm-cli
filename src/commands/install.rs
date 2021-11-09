@@ -36,6 +36,9 @@ enum InstallError {
     #[error("Failed to install packages. {0}")]
     CannotRegenLockFile(dataflow::Error),
 
+    #[error("Failed to create the install directory. {0}")]
+    CannotCreateInstallDirectory(std::io::Error),
+
     #[error("Failed to install packages in manifest. {0}")]
     FailureInstallingPackages(dataflow::Error),
 
@@ -137,6 +140,7 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                 }
                 false => Cow::Borrowed(&current_directory),
             };
+            std::fs::create_dir_all(install_directory.clone()).map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
 
             let changes_applied = dataflow::update(installed_packages, vec![], install_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(err))?;

@@ -2,6 +2,7 @@
 
 use crate::commands::*;
 use crate::data::manifest::{Manifest, ManifestError};
+use crate::util::create_temp_dir;
 
 /// Runs `wapm config set registry.url https://registry.wapm.dev`
 pub fn set_registry_to_dev() -> anyhow::Result<()> {
@@ -12,8 +13,8 @@ pub fn set_registry_to_dev() -> anyhow::Result<()> {
 }
 
 pub fn set_test_dir_to_new_temp_dir() -> tempfile::TempDir {
-    let new_dir = tempfile::TempDir::new().expect("Could not create temp dir");
-    let new_cur_dir = new_dir.path().join("integration_test");
+    let new_dir = create_temp_dir().expect("Could not create temp dir");
+    let new_cur_dir = new_dir.join("integration_test");
     std::fs::create_dir(&new_cur_dir).expect("Could not create subdir");
     std::env::set_current_dir(new_cur_dir)
         .expect("Could not set current directory to temporary directory");

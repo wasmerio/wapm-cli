@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
 use crate::graphql::execute_query;
 use graphql_client::*;
 

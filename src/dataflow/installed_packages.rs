@@ -1,16 +1,29 @@
+#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
 use crate::data::manifest::Manifest;
+#[cfg(feature = "full")]
 use crate::database;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::dataflow::resolved_packages::ResolvedPackages;
 use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
+#[allow(unused_imports)]
 use crate::keys;
-use crate::proxy;
+#[allow(unused_imports)]
 use crate::util::{
-    self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name,
+    self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name, create_temp_dir
 };
 use flate2::read::GzDecoder;
-use reqwest::blocking::ClientBuilder;
+#[cfg(not(target_os = "wasi"))]
+use {
+    crate::proxy,
+    reqwest::blocking::ClientBuilder,
+    reqwest::header
+};
+#[cfg(target_os = "wasi")]
+use {
+    wasi_net::ClientBuilder,
+    wasi_net::header,
+};
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
@@ -20,21 +33,21 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {
-    #[error("There was a problem opening the manifest for installed package \"{0}\". {}")]
+    #[error("There was a problem opening the manifest for installed package \"{0}\". {1}")]
     InstalledDependencyIsMissingManifest(String, String),
-    #[error("There was a problem decompressing the package data for \"{0}\". {}")]
+    #[error("There was a problem decompressing the package data for \"{0}\". {1}")]
     DecompressionError(String, String),
-    #[error("There was a problem parsing the package name for \"{0}\". {}")]
+    #[error("There was a problem parsing the package name for \"{0}\". {1}")]
     FailedToParsePackageName(String, String),
-    #[error("There was an IO error creating the wapm_packages directory for package \"{0}\". {}")]
+    #[error("There was an IO error creating the wapm_packages directory for package \"{0}\". {1}")]
     IoErrorCreatingDirectory(String, String),
-    #[error("There was an IO error copying package data for package \"{0}\". {}")]
+    #[error("There was an IO error copying package data for package \"{0}\". {1}")]
     IoCopyError(String, String),
-    #[error("Error downloading package data for package \"{0}\". {}")]
+    #[error("Error downloading package data for package \"{0}\". {1}")]
     DownloadError(String, String),
     #[error("Install aborted: {0}")]
     InstallAborted(String),
-    #[error("There was an error storing keys for package \"{0}\" during installation: {}")]
+    #[error("There was an error storing keys for package \"{0}\" during installation: {1}")]
     KeyManagementError(String, String),
     #[error("Failed during network connection: {0}")]
     IoConnectionError(String),
@@ -65,7 +78,8 @@ impl<'a> InstalledPackages<'a> {
                     Installer::install_package(
                         &directory,
                         key,
-                        &download_url,
+                        download_url.as_str(),
+                        #[cfg(feature = "full")]
                         signature,
                         force_insecure_install,
                     )
@@ -104,6 +118,7 @@ pub trait Install<'a> {
         directory: &Path,
         key: WapmPackageKey<'a>,
         download_url: &str,
+        #[cfg(feature = "full")]
         signature: Option<keys::WapmPackageSignature>,
         force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error>;
@@ -115,14 +130,14 @@ impl RegistryInstaller {
     fn decompress_and_extract_archive<P: AsRef<Path>, F: io::Seek + io::Read>(
         mut compressed_archive: F,
         pkg_name: P,
-        key: &WapmPackageKey,
+        _key: &WapmPackageKey,
     ) -> anyhow::Result<()> {
         compressed_archive.seek(SeekFrom::Start(0))?;
         let gz = GzDecoder::new(compressed_archive);
         let mut archive = Archive::new(gz);
+
         archive
-            .unpack(&pkg_name)
-            .map_err(|err| Error::DecompressionError(key.to_string(), format!("{}", err)))?;
+            .unpack(&pkg_name)?;
         Ok(())
     }
 }
@@ -134,9 +149,11 @@ struct PackageSignatureVerificationData {
     signature_to_use: Option<String>,
 }
 
+#[cfg(feature = "full")]
 fn verify_integrity_of_package(
     namespace: &str,
     fully_qualified_package_name: String,
+    #[cfg(feature = "full")]
     signature: Option<keys::WapmPackageSignature>,
 ) -> Result<PackageSignatureVerificationData, Error> {
     let mut keys_db = database::open_db().map_err(|e| {
@@ -282,6 +299,7 @@ impl<'a> Install<'a> for RegistryInstaller {
         directory: &Path,
         key: WapmPackageKey<'a>,
         download_url: &str,
+        #[cfg(feature = "full")]
         signature: Option<keys::WapmPackageSignature>,
         force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error> {
@@ -293,6 +311,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
         let client = {
             let builder = ClientBuilder::new().gzip(false);
+            #[cfg(not(target_os = "wasi"))]
             let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()
                 .map_err(|e| Error::IoConnectionError(format!("{}", e)))?
             {
@@ -311,7 +330,7 @@ impl<'a> Install<'a> for RegistryInstaller {
         );
         let mut response = client
             .get(download_url)
-            .header(reqwest::header::USER_AGENT, user_agent)
+            .header(header::USER_AGENT, user_agent)
             .send()
             .map_err(|e| {
                 let error_message = e.to_string();
@@ -325,6 +344,7 @@ impl<'a> Install<'a> for RegistryInstaller {
 
         // step to perform after package is decompressed: may be a no-op or may
         // execute side effects such as logging to the user.
+        #[cfg(feature = "full")]
         let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
             if !force_insecure_install {
                 let PackageSignatureVerificationData {
@@ -367,12 +387,16 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Box::new(|_dest| Ok(()))
             };
 
-        let temp_dir = tempfile::TempDir::new()
+        #[cfg(not(feature = "full"))]
+        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
+            Box::new(|_dest| Ok(()));
+
+            
+        let temp_dir = create_temp_dir()
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-        fs::create_dir(temp_dir.path().join("wapm_package_install"))
+        fs::create_dir(temp_dir.join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
         let temp_tar_gz_path = temp_dir
-            .path()
             .join("wapm_package_install")
             .join("package.tar.gz");
         let mut dest = OpenOptions::new()
@@ -381,6 +405,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             .create(true)
             .open(&temp_tar_gz_path)
             .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
+
         io::copy(&mut response, &mut dest)
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
 

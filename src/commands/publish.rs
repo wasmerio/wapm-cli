@@ -5,12 +5,14 @@ use crate::database;
 use crate::graphql::execute_query_modifier;
 use crate::keys;
 use crate::validate;
+use crate::util::create_temp_dir;
 
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
+use rpassword_wasi as rpassword;
 
 use std::env;
 use std::fs;
@@ -117,10 +119,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
                                                         // TODO:
                                                         PublishError::NoModule)?;
     let archive_name = "package.tar.gz".to_string();
-    let archive_dir = tempfile::TempDir::new()?;
-    fs::create_dir(archive_dir.path().join("wapm_package"))?;
+    let archive_dir = create_temp_dir()?;
+    fs::create_dir(archive_dir.join("wapm_package"))?;
     let archive_path = archive_dir
-        .as_ref()
         .join("wapm_package")
         .join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
@@ -226,7 +227,7 @@ pub fn sign_compressed_archive(
     } else {
         return Ok(SignArchiveResult::NoKeyRegistered);
     };
-    let password = rpassword::prompt_password_stdout(&format!(
+    let password = rpassword::prompt_password(&format!(
         "Please enter your password for the key pair {}:",
         &personal_key.public_key_id
     ))

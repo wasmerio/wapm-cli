@@ -294,6 +294,20 @@ pub fn get_runtime_with_args() -> (String, Vec<String>) {
     split_runtime_and_args(get_runtime())
 }
 
+#[cfg(not(target_os = "wasi"))]
+pub fn create_temp_dir() -> Result<std::path::PathBuf, std::io::Error> {
+    Ok(tempfile::TempDir::new()?.path().to_path_buf())
+}
+
+#[cfg(target_os = "wasi")]
+pub fn create_temp_dir() -> Result<std::path::PathBuf, std::io::Error> {
+    let mut buf = [0u8; 4];
+    getrandom::getrandom(&mut buf)?;
+    let path = format!("/tmp/{:#10x}", u32::from_be_bytes(buf));
+    let ret: std::path::PathBuf = path.into();
+    Ok(ret)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

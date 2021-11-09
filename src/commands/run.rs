@@ -216,6 +216,7 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
 mod test {
     use crate::commands::run::create_run_command;
     use crate::data::manifest::PACKAGES_DIR_NAME;
+    use crate::util::create_temp_dir;
     use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
@@ -223,8 +224,8 @@ mod test {
     #[test]
     fn create_run_command_vec() {
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let dir = tmp_dir.path();
+        let tmp_dir = create_temp_dir().unwrap();
+        let dir = tmp_dir.clone();
         let wapm_module_dir = dir.join(
             [PACKAGES_DIR_NAME, "_", "foo@1.0.2"]
                 .iter()
