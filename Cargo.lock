@@ -231,9 +231,9 @@ checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cfg-if"
@@ -2139,6 +2139,7 @@ dependencies = [
 [[package]]
 name = "tar"
 version = "0.4.37"
+source = "git+https://github.com/john-sharratt/tar-rs.git#e0af6ff356f0e8291bc4bab4115d5334a1ab798d"
 dependencies = [
  "filetime",
  "libc",
@@ -2621,9 +2622,12 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 
 [[package]]
 name = "wasi-net"
-version = "0.1.1"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f4862817171cd1c63555b516e855a20f5d1d3671992fc2ebd2639836ec05576"
 dependencies = [
  "base64 0.13.0",
+ "bincode",
  "bytes",
  "formdata",
  "futures-core",
@@ -2635,7 +2639,6 @@ dependencies = [
  "pin-project-lite",
  "rand 0.8.4",
  "serde",
- "serde_derive",
  "serde_json",
  "url 2.2.2",
  "urlencoding",
