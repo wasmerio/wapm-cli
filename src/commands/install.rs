@@ -150,16 +150,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                     println!("Global package installed successfully!");
                 } else {
                     println!("Package installed successfully to wapm_packages!");
-                    #[cfg(target_os = "wasi")]
-                    {
-                        println!("");
-                        for (package, _) in installed_packages.iter() {
-                            let package = if package.starts_with("_/") {
-                                &package[2..]
-                            } else { package };
-                            println!("Type '{}' to run the package", package);
-                        }
-                    }
                 }
             } else {
                 println!("No packages to install")
