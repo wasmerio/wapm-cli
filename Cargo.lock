@@ -2139,6 +2139,7 @@ dependencies = [
 [[package]]
 name = "tar"
 version = "0.4.37"
+source = "git+https://github.com/john-sharratt/tar-rs.git#3bca7afcd967e5100f329b1b76b1c2512ac1f541"
 dependencies = [
  "filetime",
  "libc",
@@ -2622,6 +2623,8 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 [[package]]
 name = "wasi-net"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11cbe79486aa19e20435b5d3283cedf363f2d48ce57cb98c473018d8f3edf429"
 dependencies = [
  "base64 0.13.0",
  "bincode",

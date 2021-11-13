@@ -1,3 +1,4 @@
+#![cfg_attr(target_os = "wasi", allow(unused_variables))]
 use std::{env, path};
 use structopt::{clap::AppSettings, StructOpt};
 #[cfg(feature = "update-notifications")]
@@ -36,6 +37,7 @@ enum Command {
     /// Publish a package
     Publish(commands::PublishOpt),
 
+    #[cfg(feature = "full")]
     #[structopt(
         name = "run",
         settings = &[AppSettings::TrailingVarArg, AppSettings::AllowLeadingHyphen],
@@ -97,6 +99,7 @@ enum Command {
     /// Remove packages from the manifest
     Remove(commands::RemoveOpt),
 
+    #[cfg(feature = "full")]
     /// Execute a command, installing it temporarily if necessary
     Execute(commands::ExecuteOpt),
 }
@@ -139,6 +142,7 @@ fn main() {
         .expect("Could not parse argv[0] as a path")
         .to_string_lossy();
 
+    #[cfg(feature = "full")]
     let args = if prog_name == "wax" {
         Command::Execute(commands::ExecuteOpt::ExecArgs(
             env::args().skip(1).collect(),
@@ -150,6 +154,9 @@ fn main() {
     } else {
         Command::from_args()
     };
+
+    #[cfg(not(feature = "full"))]
+    let args = Command::from_args();
 
     #[cfg(feature = "update-notifications")]
     // Only show the async check on certain commands
@@ -181,7 +188,9 @@ fn main() {
         Command::Remove(remove_options) => commands::remove(remove_options),
         #[cfg(feature = "full")]
         Command::Publish(publish_options) => commands::publish(publish_options),
+        #[cfg(feature = "full")]
         Command::Run(run_options) => commands::run(run_options),
+        #[cfg(feature = "full")]
         Command::Execute(execute_options) => commands::execute(execute_options),
         #[cfg(feature = "full")]
         Command::Search(search_options) => commands::search(search_options),

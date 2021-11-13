@@ -142,7 +142,7 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             };
             std::fs::create_dir_all(install_directory.clone()).map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
 
-            let changes_applied = dataflow::update(installed_packages, vec![], install_directory)
+            let changes_applied = dataflow::update(installed_packages.clone(), vec![], install_directory)
                 .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
             if changes_applied {
@@ -150,6 +150,16 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                     println!("Global package installed successfully!");
                 } else {
                     println!("Package installed successfully to wapm_packages!");
+                    #[cfg(target_os = "wasi")]
+                    {
+                        println!("");
+                        for (package, _) in installed_packages.iter() {
+                            let package = if package.starts_with("_/") {
+                                &package[2..]
+                            } else { package };
+                            println!("Type '{}' to run the package", package);
+                        }
+                    }
                 }
             } else {
                 println!("No packages to install")
