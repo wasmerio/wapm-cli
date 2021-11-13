@@ -54,20 +54,23 @@ impl<'a> MergedLockfilePackages<'a> {
         let mut commands: CommandMap = BTreeMap::new();
         for (key, package) in self.packages {
             match key {
-                PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
-                    let versions = modules.entry(name.to_owned().to_string()).or_default();
-                    let modules = versions.entry(version).or_default();
+                PackageKey::WapmPackage(WapmPackageKey { name: package_name, version: package_version }) => {
+                    let versions = modules.entry(package_name.to_owned().to_string()).or_default();
+                    let modules = versions.entry(package_version).or_default();
                     for module in package.modules {
                         let name = module.name.clone();
                         modules.insert(name, module);
                     }
                     for command in package.commands {
-                        let name = command.name.clone();
-                        let script_name = command.name.clone();
-                        commands.insert(name, command);
-                        // save the bin script to execute this command from the terminal
-                        save_bin_script(directory, script_name)
-                            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
+                        if let Some(module) = modules.get(&command.module) {
+                            let name = command.name.clone();
+                            let script_name = command.name.clone();
+                            let module_path = format!("{}/{}", module.package_path, module.source);
+                            commands.insert(name, command);
+                            // save the bin script to execute this command from the terminal
+                            save_bin_script(directory, script_name, module_path)
+                                .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
+                        }
                     }
                 }
                 PackageKey::WapmPackageRange(_) => {

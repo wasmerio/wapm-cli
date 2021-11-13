@@ -82,6 +82,7 @@ enum Command {
     /// Uninstall a package
     Uninstall(commands::UninstallOpt),
 
+    #[cfg(feature = "full")]
     #[structopt(name = "bin")]
     /// Get the .bin dir path
     Bin(commands::BinOpt),
@@ -212,6 +213,7 @@ fn main() {
             Ok(())
         }
         Command::Uninstall(uninstall_options) => commands::uninstall(uninstall_options),
+        #[cfg(feature = "full")]
         Command::Bin(bin_options) => commands::bin(bin_options),
         #[cfg(feature = "update-notifications")]
         Command::BackgroundUpdateCheck => {
