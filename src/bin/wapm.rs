@@ -9,17 +9,14 @@ use wapm_cli::{commands, logging};
 #[derive(StructOpt, Debug)]
 #[structopt(global_settings = &[AppSettings::VersionlessSubcommands, AppSettings::ColorAuto, AppSettings::ColoredHelp])]
 enum Command {
-    #[cfg(feature = "full")]
     #[structopt(name = "whoami")]
     /// Prints the current user (if authed) in the stdout
     WhoAmI,
 
-    #[cfg(feature = "full")]
     #[structopt(name = "login")]
     /// Logins into wapm, saving the token locally for future commands
     Login,
 
-    #[cfg(feature = "full")]
     #[structopt(name = "logout")]
     /// Remove the token for the registry
     Logout,
@@ -177,11 +174,8 @@ fn main() {
     };
 
     let result = match args {
-        #[cfg(feature = "full")]
         Command::WhoAmI => commands::whoami(),
-        #[cfg(feature = "full")]
         Command::Login => commands::login(),
-        #[cfg(feature = "full")]
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),

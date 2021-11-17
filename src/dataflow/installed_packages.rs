@@ -8,6 +8,7 @@ use crate::dataflow::WapmPackageKey;
 use crate::graphql::VERSION;
 #[allow(unused_imports)]
 use crate::keys;
+use crate::util::whoami_distro;
 #[allow(unused_imports)]
 use crate::util::{
     self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name, create_temp_dir
@@ -326,7 +327,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             "wapm/{} {} {}",
             VERSION,
             whoami::platform(),
-            whoami::distro().to_lowercase(),
+            whoami_distro(),
         );
         let mut response = client
             .get(download_url)

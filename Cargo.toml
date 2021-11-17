@@ -39,16 +39,17 @@ toml = "0.5.6"
 url = "2"
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
-whoami = "1.1.5"
 dialoguer = "0.4.0"
 hex = { version = "0.4", optional = true }
 blake3 = { version = "0.3.1", optional = true }
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
+whoami = "1.1.5"
 atty = "0.2"
 reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
+whoami = "0.5"
 wasi-net = { version = "0.3" }
 getrandom = "0.2.3"
 
@@ -67,6 +68,6 @@ sqlite-bundled = ["rusqlite/bundled"]
 telemetry = ["sentry"]
 update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
-packagesigning = []
+packagesigning = []#[cfg(feature = "full")]
 integration_tests = ["maplit"]
 full = [ "dirs", "rusqlite", "prettytable-rs" ]

@@ -17,6 +17,8 @@ use serde;
 use std::string::ToString;
 use thiserror::Error;
 
+use crate::util::whoami_distro;
+
 use super::config::Config;
 
 #[derive(Debug, Error)]
@@ -61,7 +63,7 @@ where
         "wapm/{} {} {}",
         VERSION,
         whoami::platform(),
-        whoami::distro().to_lowercase(),
+        whoami_distro(),
     );
 
     let res = client

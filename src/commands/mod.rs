@@ -11,9 +11,7 @@ mod install;
 mod keys;
 #[cfg(feature = "full")]
 mod list;
-#[cfg(feature = "full")]
 mod login;
-#[cfg(feature = "full")]
 mod logout;
 #[cfg(feature = "full")]
 mod publish;
@@ -23,7 +21,6 @@ mod run;
 mod search;
 mod uninstall;
 mod validate;
-#[cfg(feature = "full")]
 mod whoami;
 
 pub use self::add::{add, AddOpt};
@@ -37,9 +34,7 @@ pub use self::install::{install, InstallOpt};
 pub use self::keys::{keys, KeyOpt};
 #[cfg(feature = "full")]
 pub use self::list::{list, ListOpt};
-#[cfg(feature = "full")]
 pub use self::login::login;
-#[cfg(feature = "full")]
 pub use self::logout::logout;
 #[cfg(feature = "full")]
 pub use self::publish::{publish, PublishOpt};
@@ -49,5 +44,4 @@ pub use self::run::{run, RunOpt};
 pub use self::search::{search, SearchOpt};
 pub use self::uninstall::{uninstall, UninstallOpt};
 pub use self::validate::{validate, ValidateOpt};
-#[cfg(feature = "full")]
 pub use self::whoami::whoami;

@@ -5,7 +5,12 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use thiserror::Error;
 
-pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
+pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os="wasi") {
+    "/.private/wapm.toml"
+} else {
+    "wapm.toml"
+};
+
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
 pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.json";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
