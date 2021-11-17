@@ -39,7 +39,7 @@ pub fn save_bin_script<P: AsRef<Path>>(directory: P, command_name: String, _modu
 
 #[cfg(target_os = "windows")]
 pub fn save_bin_script<P: AsRef<Path>>(directory: P, command_name: String, _module_path: String) -> Result<(), Error> {
-    let data = format!("wapm run {} %*\n", command_name);
+    let data = format!("@\"wapm\" run {} %*\n", command_name);
     let file_name = format!("{}.cmd", command_name);
     save(data, directory, file_name)
 }
