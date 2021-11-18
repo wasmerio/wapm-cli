@@ -3,15 +3,17 @@ use graphql_client::{QueryBody, Response};
 use {
     crate::proxy,
     reqwest:: {
-        blocking:: { multipart, Client },
+        blocking:: {
+            multipart::Form,
+            Client
+        },
         header:: { USER_AGENT }
     }
 };
 #[cfg(target_os = "wasi")]
 use {
-    wasi_net::*,
-    wasi_net::multipart,
-    wasi_net::header::*,
+    wasi_net::reqwest::*,
+    wasi_net::reqwest::header::*,
 };
 use serde;
 use std::string::ToString;
@@ -34,7 +36,7 @@ pub fn execute_query_modifier<R, V, F>(query: &QueryBody<V>, form_modifier: F) -
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
-    F: FnOnce(multipart::Form) -> multipart::Form,
+    F: FnOnce(Form) -> Form,
 {
     let client = {
         let builder = Client::builder();
@@ -52,7 +54,7 @@ where
     let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();
 
-    let form = multipart::Form::new()
+    let form = Form::new()
         .text("query", query.query.to_string())
         .text("operationName", query.operation_name.to_string())
         .text("variables", vars);

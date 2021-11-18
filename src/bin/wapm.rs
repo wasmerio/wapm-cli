@@ -34,7 +34,6 @@ enum Command {
     /// Publish a package
     Publish(commands::PublishOpt),
 
-    #[cfg(feature = "full")]
     #[structopt(
         name = "run",
         settings = &[AppSettings::TrailingVarArg, AppSettings::AllowLeadingHyphen],
@@ -183,7 +182,6 @@ fn main() {
         Command::Remove(remove_options) => commands::remove(remove_options),
         #[cfg(feature = "full")]
         Command::Publish(publish_options) => commands::publish(publish_options),
-        #[cfg(feature = "full")]
         Command::Run(run_options) => commands::run(run_options),
         #[cfg(feature = "full")]
         Command::Execute(execute_options) => commands::execute(execute_options),

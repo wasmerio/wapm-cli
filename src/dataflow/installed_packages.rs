@@ -22,8 +22,8 @@ use {
 };
 #[cfg(target_os = "wasi")]
 use {
-    wasi_net::ClientBuilder,
-    wasi_net::header,
+    wasi_net::reqwest::ClientBuilder,
+    wasi_net::reqwest::header,
 };
 use std::fs::{self, OpenOptions};
 use std::io;

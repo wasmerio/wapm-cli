@@ -9,7 +9,10 @@ use crate::util::get_runtime_with_args;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+#[cfg(not(target_os = "wasi"))]
 use std::process::Command;
+#[cfg(target_os = "wasi")]
+use wasi_net::process::Command;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -146,32 +149,41 @@ pub(crate) fn do_run(
 
     let (runtime, runtime_args) = get_runtime_with_args();
 
-    // avoid `wasmer-js`, allow other wasmers
-    let using_default_runtime = Path::new(&runtime)
-        .file_name()
-        .map(|file_name| file_name.to_string_lossy().ends_with(DEFAULT_RUNTIME))
-        .unwrap_or(false);
-    let command_override_name = if !using_default_runtime || disable_command_rename {
-        None
+    let mut cmd;
+    if cfg!(target_os = "wasi") {
+        debug!("Running wapm process: {:?}", source_path_buf);
+        cmd = Command::new(source_path_buf.to_string_lossy().as_ref());
+        cmd.args(args);
     } else {
-        Some(command_name.to_string())
+        // avoid `wasmer-js`, allow other wasmers
+        let using_default_runtime = Path::new(&runtime)
+            .file_name()
+            .map(|file_name| file_name.to_string_lossy().ends_with(DEFAULT_RUNTIME))
+            .unwrap_or(false);
+        let command_override_name = if !using_default_runtime || disable_command_rename {
+            None
+        } else {
+            Some(command_name.to_string())
+        };
+        let command_vec = create_run_command(
+            args,
+            wasmer_extra_flags,
+            wasi_preopened_dir_flags,
+            &run_dir,
+            source_path_buf,
+            command_override_name,
+            prehashed_cache_key,
+        )?;
+        debug!("Running command with args: {:?}", command_vec);
+        cmd = Command::new(&runtime);
+        cmd.args(&runtime_args);
+        cmd.args(&command_vec);
     };
-    let command_vec = create_run_command(
-        args,
-        wasmer_extra_flags,
-        wasi_preopened_dir_flags,
-        &run_dir,
-        source_path_buf,
-        command_override_name,
-        prehashed_cache_key,
-    )?;
-    debug!("Running command with args: {:?}", command_vec);
-    let mut child = Command::new(&runtime)
-        .args(&runtime_args)
-        .args(&command_vec)
+
+    let mut child = cmd
         .spawn()
         .map_err(|e| -> RunError { RunError::ProcessFailed(runtime, format!("{:?}", e)) })?;
-
+    
     child.wait()?;
     Ok(())
 }
