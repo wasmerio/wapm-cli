@@ -154,6 +154,14 @@ pub(crate) fn do_run(
         debug!("Running wapm process: {:?}", source_path_buf);
         cmd = Command::new(source_path_buf.to_string_lossy().as_ref());
         cmd.args(args);
+        #[cfg(target_os = "wasi")]
+        for preopen in wasi_preopened_dir_flags
+            .iter()
+            .map(|a| a.to_string_lossy())
+            .filter_map(|a| a.split_once("=").map(|a| a.1.replace("\"", "")))
+        {
+            cmd.pre_open(preopen.to_string());
+        }
     } else {
         // avoid `wasmer-js`, allow other wasmers
         let using_default_runtime = Path::new(&runtime)
