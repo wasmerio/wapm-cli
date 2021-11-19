@@ -11,10 +11,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "wasi"))]
 use std::process::Command;
-#[cfg(target_os = "wasi")]
-use wasi_net::process::Command;
 use structopt::StructOpt;
 use thiserror::Error;
+#[cfg(target_os = "wasi")]
+use wasi_net::process::Command;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -191,7 +191,7 @@ pub(crate) fn do_run(
     let mut child = cmd
         .spawn()
         .map_err(|e| -> RunError { RunError::ProcessFailed(runtime, format!("{:?}", e)) })?;
-    
+
     child.wait()?;
     Ok(())
 }

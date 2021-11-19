@@ -1,5 +1,8 @@
 //! Functions for dealing with package verification keys
-#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 use crate::constants::*;
 #[cfg(feature = "full")]
 use crate::database::*;

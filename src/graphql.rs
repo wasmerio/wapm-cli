@@ -1,23 +1,17 @@
 use graphql_client::{QueryBody, Response};
-#[cfg(not(target_os = "wasi"))]
-use {
-    crate::proxy,
-    reqwest:: {
-        blocking:: {
-            multipart::Form,
-            Client
-        },
-        header:: { USER_AGENT }
-    }
-};
-#[cfg(target_os = "wasi")]
-use {
-    wasi_net::reqwest::*,
-    wasi_net::reqwest::header::*,
-};
 use serde;
 use std::string::ToString;
 use thiserror::Error;
+#[cfg(not(target_os = "wasi"))]
+use {
+    crate::proxy,
+    reqwest::{
+        blocking::{multipart::Form, Client},
+        header::USER_AGENT,
+    },
+};
+#[cfg(target_os = "wasi")]
+use {wasi_net::reqwest::header::*, wasi_net::reqwest::*};
 
 use crate::util::whoami_distro;
 

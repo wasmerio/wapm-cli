@@ -1,4 +1,7 @@
-#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 #[cfg(feature = "full")]
 use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};

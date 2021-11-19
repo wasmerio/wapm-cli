@@ -1,4 +1,7 @@
-#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 pub const GET_PERSONAL_KEYS: &str = include_str!("queries/get_personal_keys.sql");
 pub const GET_WAPM_PUBLIC_KEYS: &str = include_str!("queries/get_wapm_public_keys.sql");
 pub const DELETE_PERSONAL_KEY_PAIR: &str = include_str!("queries/delete_personal_key_pair.sql");

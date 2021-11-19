@@ -1,5 +1,5 @@
-use crate::validate::*;
 use crate::util::create_temp_dir;
+use crate::validate::*;
 use flate2::read::GzDecoder;
 use std::{fs, io::Read, path::PathBuf};
 use structopt::StructOpt;

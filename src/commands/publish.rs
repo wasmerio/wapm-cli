@@ -4,15 +4,15 @@ use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
 use crate::database;
 use crate::graphql::execute_query_modifier;
 use crate::keys;
-use crate::validate;
 use crate::util::create_temp_dir;
+use crate::validate;
 
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
+use rpassword_wasi as rpassword;
 use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
-use rpassword_wasi as rpassword;
 
 use std::env;
 use std::fs;
@@ -121,9 +121,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let archive_name = "package.tar.gz".to_string();
     let archive_dir = create_temp_dir()?;
     fs::create_dir(archive_dir.join("wapm_package"))?;
-    let archive_path = archive_dir
-        .join("wapm_package")
-        .join(&archive_name);
+    let archive_path = archive_dir.join("wapm_package").join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 

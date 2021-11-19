@@ -1,4 +1,7 @@
-#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 use crate::data::manifest::Manifest;
 #[cfg(feature = "full")]
 use crate::database;
@@ -11,26 +14,20 @@ use crate::keys;
 use crate::util::whoami_distro;
 #[allow(unused_imports)]
 use crate::util::{
-    self, create_package_dir, fully_qualified_package_display_name, get_package_namespace_and_name, create_temp_dir
+    self, create_package_dir, create_temp_dir, fully_qualified_package_display_name,
+    get_package_namespace_and_name,
 };
 use flate2::read::GzDecoder;
-#[cfg(not(target_os = "wasi"))]
-use {
-    crate::proxy,
-    reqwest::blocking::ClientBuilder,
-    reqwest::header
-};
-#[cfg(target_os = "wasi")]
-use {
-    wasi_net::reqwest::ClientBuilder,
-    wasi_net::reqwest::header,
-};
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use tar::Archive;
 use thiserror::Error;
+#[cfg(not(target_os = "wasi"))]
+use {crate::proxy, reqwest::blocking::ClientBuilder, reqwest::header};
+#[cfg(target_os = "wasi")]
+use {wasi_net::reqwest::header, wasi_net::reqwest::ClientBuilder};
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {
@@ -119,8 +116,7 @@ pub trait Install<'a> {
         directory: &Path,
         key: WapmPackageKey<'a>,
         download_url: &str,
-        #[cfg(feature = "full")]
-        signature: Option<keys::WapmPackageSignature>,
+        #[cfg(feature = "full")] signature: Option<keys::WapmPackageSignature>,
         force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error>;
 }
@@ -137,8 +133,7 @@ impl RegistryInstaller {
         let gz = GzDecoder::new(compressed_archive);
         let mut archive = Archive::new(gz);
 
-        archive
-            .unpack(&pkg_name)?;
+        archive.unpack(&pkg_name)?;
         Ok(())
     }
 }
@@ -154,8 +149,7 @@ struct PackageSignatureVerificationData {
 fn verify_integrity_of_package(
     namespace: &str,
     fully_qualified_package_name: String,
-    #[cfg(feature = "full")]
-    signature: Option<keys::WapmPackageSignature>,
+    #[cfg(feature = "full")] signature: Option<keys::WapmPackageSignature>,
 ) -> Result<PackageSignatureVerificationData, Error> {
     let mut keys_db = database::open_db().map_err(|e| {
         Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
@@ -300,8 +294,7 @@ impl<'a> Install<'a> for RegistryInstaller {
         directory: &Path,
         key: WapmPackageKey<'a>,
         download_url: &str,
-        #[cfg(feature = "full")]
-        signature: Option<keys::WapmPackageSignature>,
+        #[cfg(feature = "full")] signature: Option<keys::WapmPackageSignature>,
         force_insecure_install: bool,
     ) -> Result<(WapmPackageKey<'a>, PathBuf, String), Error> {
         let (namespace, pkg_name) = get_package_namespace_and_name(&key.name)
@@ -392,14 +385,11 @@ impl<'a> Install<'a> for RegistryInstaller {
         let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
             Box::new(|_dest| Ok(()));
 
-            
-        let temp_dir = create_temp_dir()
-            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+        let temp_dir =
+            create_temp_dir().map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
         fs::create_dir(temp_dir.join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
-        let temp_tar_gz_path = temp_dir
-            .join("wapm_package_install")
-            .join("package.tar.gz");
+        let temp_tar_gz_path = temp_dir.join("wapm_package_install").join("package.tar.gz");
         let mut dest = OpenOptions::new()
             .read(true)
             .write(true)

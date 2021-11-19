@@ -1,11 +1,14 @@
-#![cfg_attr(not(feature = "full"), allow(dead_code, unused_imports, unused_variables))]
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use thiserror::Error;
 
-pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os="wasi") {
+pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os = "wasi") {
     "/.private/wapm.toml"
 } else {
     "wapm.toml"
@@ -117,11 +120,13 @@ impl Config {
                 let home_dir =
                     dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
                 #[cfg(not(feature = "dirs"))]
-                let home_dir =    
-                    std::env::var("HOME").ok().unwrap_or_else(|| String::from("/"));
+                let home_dir = std::env::var("HOME")
+                    .ok()
+                    .unwrap_or_else(|| String::from("/"));
                 let mut folder = PathBuf::from(home_dir);
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
-                std::fs::create_dir_all(folder.clone()).map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                std::fs::create_dir_all(folder.clone())
+                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
                 folder
             },
         )
@@ -300,9 +305,9 @@ pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
 #[cfg(test)]
 mod test {
     use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME, GLOBAL_CONFIG_FOLDER_ENV_VAR};
+    use crate::util::create_temp_dir;
     use std::fs::*;
     use std::io::Write;
-    use crate::util::create_temp_dir;
 
     #[test]
     fn get_config_and_wasmer_dir_does_not_exist() {
@@ -319,10 +324,7 @@ mod test {
     fn get_non_existent_config() {
         let tmp_dir = create_temp_dir().unwrap();
         // set the env var to our temp dir
-        std::env::set_var(
-            GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.display().to_string(),
-        );
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
         let actual_config = config_result.unwrap();
@@ -342,10 +344,7 @@ mod test {
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
         // set the env var to our temp dir
-        std::env::set_var(
-            GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.display().to_string(),
-        );
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");
     }

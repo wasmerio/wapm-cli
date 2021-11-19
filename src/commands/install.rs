@@ -140,10 +140,12 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                 }
                 false => Cow::Borrowed(&current_directory),
             };
-            std::fs::create_dir_all(install_directory.clone()).map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
+            std::fs::create_dir_all(install_directory.clone())
+                .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
 
-            let changes_applied = dataflow::update(installed_packages.clone(), vec![], install_directory)
-                .map_err(|err| InstallError::CannotRegenLockFile(err))?;
+            let changes_applied =
+                dataflow::update(installed_packages.clone(), vec![], install_directory)
+                    .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
             if changes_applied {
                 if options.global {

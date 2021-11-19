@@ -54,8 +54,13 @@ impl<'a> MergedLockfilePackages<'a> {
         let mut commands: CommandMap = BTreeMap::new();
         for (key, package) in self.packages {
             match key {
-                PackageKey::WapmPackage(WapmPackageKey { name: package_name, version: package_version }) => {
-                    let versions = modules.entry(package_name.to_owned().to_string()).or_default();
+                PackageKey::WapmPackage(WapmPackageKey {
+                    name: package_name,
+                    version: package_version,
+                }) => {
+                    let versions = modules
+                        .entry(package_name.to_owned().to_string())
+                        .or_default();
                     let modules = versions.entry(package_version).or_default();
                     for module in package.modules {
                         let name = module.name.clone();
