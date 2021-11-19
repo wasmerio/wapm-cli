@@ -32,7 +32,6 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 structopt = { version = "0.3", features = ["color"] }
-tar = { version = "0.4", git = "https://github.com/john-sharratt/tar-rs.git" }
 tempfile = "3"
 time = "0.1"
 toml = "0.5.6"
@@ -47,11 +46,13 @@ blake3 = { version = "0.3.1", optional = true }
 whoami = "1.1.5"
 atty = "0.2"
 reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"] }
+tar = { version = "0.4" }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
 whoami = "0.5"
 wasi-net = { version = "0.4" }
 getrandom = "0.2.3"
+tar-wasi = { version = "0.4" }
 
 [dev-dependencies]
 tempfile = "3"
