@@ -22,7 +22,7 @@ use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use tar::Archive;
+use tar_wasi::Archive;
 use thiserror::Error;
 #[cfg(not(target_os = "wasi"))]
 use {crate::proxy, reqwest::blocking::ClientBuilder, reqwest::header};

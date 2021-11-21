@@ -2139,7 +2139,19 @@ dependencies = [
 [[package]]
 name = "tar"
 version = "0.4.37"
-source = "git+https://github.com/john-sharratt/tar-rs.git#2c60fdf627dda245ae994c8ea7cd1e5bacc89392"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f5515d3add52e0bbdcad7b83c388bb36ba7b754dda3b5f5bc2d38640cdba5c"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
+]
+
+[[package]]
+name = "tar-wasi"
+version = "0.4.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dc8c9b52069d6c0fce0ef39728889fb380529f5bb3c05cdafb3e5f25ad18ed3"
 dependencies = [
  "filetime",
  "libc",
@@ -2597,6 +2609,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "tar",
+ "tar-wasi",
  "tempfile",
  "thiserror",
  "time",
@@ -2623,7 +2636,9 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 
 [[package]]
 name = "wasi-net"
-version = "0.3.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b355b337c10c5f666512f39602f47d53d25bb94bb93bf945c112cde5d39d2f84"
 dependencies = [
  "base64 0.13.0",
  "bincode",

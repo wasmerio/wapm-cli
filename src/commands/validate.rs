@@ -3,7 +3,7 @@ use crate::validate::*;
 use flate2::read::GzDecoder;
 use std::{fs, io::Read, path::PathBuf};
 use structopt::StructOpt;
-use tar::Archive;
+use tar_wasi::Archive;
 
 #[derive(StructOpt, Debug)]
 pub struct ValidateOpt {
