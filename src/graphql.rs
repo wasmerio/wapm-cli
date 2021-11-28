@@ -11,7 +11,7 @@ use {
     },
 };
 #[cfg(target_os = "wasi")]
-use {wasi_net::reqwest::header::*, wasi_net::reqwest::*};
+use {wasm_bus::reqwest::header::*, wasm_bus::reqwest::*};
 
 use crate::util::whoami_distro;
 

@@ -22,12 +22,12 @@ use std::fs::{self, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use tar_wasi::Archive;
+use tar::Archive;
 use thiserror::Error;
 #[cfg(not(target_os = "wasi"))]
 use {crate::proxy, reqwest::blocking::ClientBuilder, reqwest::header};
 #[cfg(target_os = "wasi")]
-use {wasi_net::reqwest::header, wasi_net::reqwest::ClientBuilder};
+use {wasm_bus::reqwest::header, wasm_bus::reqwest::ClientBuilder};
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {

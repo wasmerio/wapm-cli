@@ -14,7 +14,7 @@ use std::process::Command;
 use structopt::StructOpt;
 use thiserror::Error;
 #[cfg(target_os = "wasi")]
-use wasi_net::process::Command;
+use wasm_bus::process::Command;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
