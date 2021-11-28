@@ -45,7 +45,7 @@ blake3 = { version = "0.3.1", optional = true }
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 whoami = "1.1.5"
 atty = "0.2"
-reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"] }
+reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"], optional = true }
 tar = { version = "0.4" }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
@@ -71,4 +71,4 @@ update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
 packagesigning = []#[cfg(feature = "full")]
 integration_tests = ["maplit"]
-full = [ "dirs", "rusqlite", "prettytable-rs" ]
+full = [ "dirs", "rusqlite", "prettytable-rs", "reqwest" ]
