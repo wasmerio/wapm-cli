@@ -2744,7 +2744,7 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 
 [[package]]
 name = "wasm-bus"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "base64 0.13.0",
  "bincode",
