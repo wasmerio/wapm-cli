@@ -53,6 +53,7 @@ whoami = "0.5"
 wasm-bus = { version = "^0.3", path = "../ate/wasm-bus" }
 getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
+serde_yaml = { version = "^0.8" }
 
 [dev-dependencies]
 tempfile = "3"

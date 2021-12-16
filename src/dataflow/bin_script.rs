@@ -16,12 +16,26 @@ pub enum Error {
 }
 
 #[cfg(target_os = "wasi")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AliasConfig {
+    pub run: String,
+    #[serde(default)]
+    pub chroot: bool,
+    #[serde(default)]
+    pub base: Option<String>,
+    #[serde(default)]
+    pub mappings: Vec<String>,
+}
+
+#[cfg(target_os = "wasi")]
 pub fn save_bin_script<P: AsRef<Path>>(
     _directory: P,
     command_name: String,
+    package_path: String,
     module_path: String,
 ) -> Result<(), Error> {
     let command_path = format!("/bin/{}.alias", command_name);
+    let package_path = format!("/wapm_packages/{}", package_path);
     let module_path = format!("/wapm_packages/{}", module_path);
     let mut file = fs::OpenOptions::new()
         .create(true)
@@ -29,7 +43,29 @@ pub fn save_bin_script<P: AsRef<Path>>(
         .write(true)
         .open(Path::new(command_path.as_str()))
         .map_err(|e| Error::FileCreationError(command_path, e.to_string()))?;
-    file.write_all(module_path.as_bytes())
+
+    let mut mappings = Vec::new();
+    match crate::dataflow::ManifestResult::find_in_directory(&package_path) {
+        crate::dataflow::ManifestResult::Manifest(manifest) => {
+            if let Some(ref fs) = manifest.fs {
+                for (guest_path, host_path) in fs.iter() {
+                    mappings.push(format!("{}:{}/{}", guest_path, package_path, host_path.to_string_lossy()));
+                }
+            }
+        }
+        _ => (),
+    }
+
+    let alias = AliasConfig {
+        run: module_path,
+        chroot: false,
+        base: Some(package_path),
+        mappings,
+    };
+
+    let data = serde_yaml::to_vec(&alias)
+        .map_err(|e| Error::SaveError(command_name.clone(), e.to_string()))?;
+    file.write_all(&data[..])
         .map_err(|e| Error::SaveError(command_name.clone(), e.to_string()))?;
     Ok(())
 }
@@ -38,6 +74,7 @@ pub fn save_bin_script<P: AsRef<Path>>(
 pub fn save_bin_script<P: AsRef<Path>>(
     directory: P,
     command_name: String,
+    _package_path: String,
     _module_path: String,
 ) -> Result<(), Error> {
     let data = format!("#!/bin/bash\nwapm run {} \"$@\"\n", command_name);
@@ -48,6 +85,7 @@ pub fn save_bin_script<P: AsRef<Path>>(
 pub fn save_bin_script<P: AsRef<Path>>(
     directory: P,
     command_name: String,
+    _package_path: String,
     _module_path: String,
 ) -> Result<(), Error> {
     let data = format!("@\"wapm\" run {} %*\n", command_name);
