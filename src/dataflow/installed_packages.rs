@@ -27,7 +27,7 @@ use thiserror::Error;
 #[cfg(not(target_os = "wasi"))]
 use {crate::proxy, reqwest::blocking::ClientBuilder, reqwest::header};
 #[cfg(target_os = "wasi")]
-use {wasm_bus::reqwest::header, wasm_bus::reqwest::ClientBuilder};
+use {wasm_bus_reqwest::prelude::header, wasm_bus_reqwest::prelude::ClientBuilder};
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {

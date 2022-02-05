@@ -14,7 +14,6 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
-use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -52,7 +51,7 @@ fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
 
 pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let mut builder = Builder::new(Vec::new());
-    let cwd = env::current_dir()?;
+    let cwd = crate::config::Config::get_current_dir()?;
 
     validate::validate_directory(cwd.clone())?;
 

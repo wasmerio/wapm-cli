@@ -108,6 +108,14 @@ impl Default for Config {
 }
 
 impl Config {
+    pub fn get_current_dir() -> std::io::Result<PathBuf> {
+        #[cfg(target_os = "wasi")]
+        if let Some(pwd) = std::env::var("PWD").ok() {
+            return Ok(PathBuf::from(pwd));
+        }
+        Ok(std::env::current_dir()?)
+    }
+
     pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
         Ok(
             if let Some(folder_str) = env::var(GLOBAL_CONFIG_FOLDER_ENV_VAR)
@@ -116,13 +124,17 @@ impl Config {
             {
                 PathBuf::from(folder_str)
             } else {
+                #[allow(unused_variables)]
+                let default_dir = Self::get_current_dir()
+                    .ok()
+                    .unwrap_or_else(|| PathBuf::from("/".to_string()));
                 #[cfg(feature = "dirs")]
                 let home_dir =
                     dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
                 #[cfg(not(feature = "dirs"))]
                 let home_dir = std::env::var("HOME")
                     .ok()
-                    .unwrap_or_else(|| String::from("/"));
+                    .unwrap_or_else(|| default_dir.to_string_lossy().to_string());
                 let mut folder = PathBuf::from(home_dir);
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
                 std::fs::create_dir_all(folder.clone())

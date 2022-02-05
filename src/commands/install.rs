@@ -8,7 +8,6 @@ use crate::config::Config;
 use crate::dataflow;
 use crate::util;
 use std::borrow::Cow;
-use std::env;
 use std::path::Path;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -72,7 +71,7 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
-    let current_directory = env::current_dir()?;
+    let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
         _value.is_some(),

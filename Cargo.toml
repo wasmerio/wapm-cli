@@ -50,7 +50,8 @@ tar = { version = "0.4" }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
 whoami = "0.5"
-wasm-bus = { version = "^0.3", path = "../ate/wasm-bus" }
+wasm-bus-reqwest = { version = "1.0", path = "../ate/wasm-bus-reqwest" }
+wasm-bus-process = { version = "1.0", path = "../ate/wasm-bus-process" }
 getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }

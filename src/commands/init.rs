@@ -1,5 +1,4 @@
 use crate::init;
-use std::env;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -10,7 +9,7 @@ pub struct InitOpt {
 }
 
 pub fn init(opt: InitOpt) -> anyhow::Result<()> {
-    let current_directory = env::current_dir()?;
+    let current_directory = crate::config::Config::get_current_dir()?;
     init::init(current_directory, opt.force_yes)
 }
 

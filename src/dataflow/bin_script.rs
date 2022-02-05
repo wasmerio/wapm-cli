@@ -34,9 +34,10 @@ pub fn save_bin_script<P: AsRef<Path>>(
     package_path: String,
     module_path: String,
 ) -> Result<(), Error> {
+    let current_dir = crate::config::Config::get_current_dir().ok().unwrap_or_else(|| std::path::PathBuf::from("/".to_string()));
     let command_path = format!("/bin/{}.alias", command_name);
-    let package_path = format!("/wapm_packages/{}", package_path);
-    let module_path = format!("/wapm_packages/{}", module_path);
+    let package_path = current_dir.clone().join("wapm_packages").join(package_path).to_string_lossy().to_string();
+    let module_path = current_dir.clone().join("wapm_packages").join(module_path).to_string_lossy().to_string();
     let mut file = fs::OpenOptions::new()
         .create(true)
         .truncate(true)

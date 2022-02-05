@@ -1,6 +1,5 @@
 use crate::config::Config;
 use crate::dataflow;
-use std::env;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -21,7 +20,7 @@ pub struct UninstallOpt {
 pub fn uninstall(options: UninstallOpt) -> anyhow::Result<()> {
     let dir = match options.global {
         true => Config::get_globals_directory()?,
-        false => env::current_dir()?,
+        false => Config::get_current_dir()?,
     };
     let uninstalled_package_names = vec![options.package.as_str()];
 

@@ -79,6 +79,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.52"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061a7acccaa286c011ddc30970520b98fa40e00c9d644633fb26b5fc63a265e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,6 +379,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
+name = "convert_case"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4a24b1aaf0fd0ce8b45161144d6f42cd91677fd5940fd431183eb023b3a2b8"
+
+[[package]]
 name = "cooked-waker"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -516,6 +533,12 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "dummy-waker"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ea6672d73216c05740850c789368d371ca226dc8104d5f2e30c74252d5d6e5e"
 
 [[package]]
 name = "either"
@@ -2681,7 +2704,8 @@ dependencies = [
  "time",
  "toml",
  "url 2.2.2",
- "wasm-bus",
+ "wasm-bus-process",
+ "wasm-bus-reqwest",
  "wasmer-wasm-interface",
  "wasmparser",
  "whoami 0.5.3",
@@ -2768,21 +2792,58 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 
 [[package]]
 name = "wasm-bus"
-version = "0.3.2"
+version = "1.0.0"
 dependencies = [
  "base64 0.13.0",
  "bincode",
- "bytes",
  "cooked-waker",
  "derivative",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "wasm-bus-macros",
+ "wasm-bus-types",
+]
+
+[[package]]
+name = "wasm-bus-macros"
+version = "1.0.0"
+dependencies = [
+ "convert_case",
+ "derivative",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "wasm-bus-types",
+]
+
+[[package]]
+name = "wasm-bus-process"
+version = "1.0.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "dummy-waker",
+ "serde",
+ "tokio",
+ "tracing",
+ "wasm-bus",
+]
+
+[[package]]
+name = "wasm-bus-reqwest"
+version = "1.0.0"
+dependencies = [
+ "async-trait",
+ "bytes",
  "formdata",
  "futures-core",
  "futures-util",
  "http",
  "http-body",
  "mime_guess",
- "once_cell",
- "percent-encoding 2.1.0",
  "pin-project-lite",
  "serde",
  "serde_json",
@@ -2790,7 +2851,12 @@ dependencies = [
  "tracing",
  "url 2.2.2",
  "urlencoding",
+ "wasm-bus",
 ]
+
+[[package]]
+name = "wasm-bus-types"
+version = "1.0.0"
 
 [[package]]
 name = "wasmer-wasm-interface"

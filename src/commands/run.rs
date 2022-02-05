@@ -6,7 +6,6 @@ use crate::dataflow::find_command_result;
 use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::util::get_runtime_with_args;
-use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "wasi"))]
@@ -14,7 +13,7 @@ use std::process::Command;
 use structopt::StructOpt;
 use thiserror::Error;
 #[cfg(target_os = "wasi")]
-use wasm_bus::process::Command;
+use wasm_bus_process::prelude::Command;
 
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
@@ -31,7 +30,7 @@ pub struct RunOpt {
 pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
-    let current_dir = env::current_dir()?;
+    let current_dir = crate::config::Config::get_current_dir()?;
 
     // always update the local lockfile if the manifest has changed
     match is_lockfile_out_of_date(&current_dir) {

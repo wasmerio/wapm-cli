@@ -3,7 +3,6 @@ use crate::data::lock::lockfile::{Lockfile, LockfileError};
 use crate::data::manifest::Manifest;
 use crate::dataflow::lockfile_packages::LockfileResult;
 use crate::dataflow::manifest_packages::ManifestResult;
-use std::env;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -241,7 +240,7 @@ pub struct Command {
 /// A flag indicating global run is also returned. Commands are found in local lockfile first.
 pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Command, Error> {
     // look in the local directory, update if necessary
-    let current_directory = env::current_dir().unwrap();
+    let current_directory = crate::config::Config::get_current_dir().unwrap();
     let local_command_result =
         FindCommandResult::find_command_in_directory(&current_directory, &command_name);
 

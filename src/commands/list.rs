@@ -4,7 +4,7 @@ use crate::config;
 use crate::data::lock::lockfile::{CommandMap, ModuleMap};
 use crate::dataflow::lockfile_packages::LockfileResult;
 use prettytable::{format, Table};
-use std::{env, fmt::Write as _};
+use std::{fmt::Write as _};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -37,7 +37,7 @@ pub fn list(options: ListOpt) -> anyhow::Result<()> {
 
     let mut handle = String::new();
     if local {
-        let cwd = env::current_dir()?;
+        let cwd = crate::config::Config::get_current_dir()?;
         match LockfileResult::find_in_directory(cwd) {
             LockfileResult::Lockfile(lockfile) => {
                 let has_modules = !lockfile.modules.is_empty();
