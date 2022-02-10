@@ -132,10 +132,11 @@ pub fn set_up_logging(count_lines: bool) -> anyhow::Result<()> {
                         .write(true)
                         .create(true)
                         .truncate(true)
-                        .open(log_out)
+                        .open(log_out.clone())
                         .map_err(|e| {
                             LoggingError::FailedToOpenLoggingFile(format!(
-                                "error type: {:?}",
+                                "log_out: {:?}, error type: {:?}",
+                                log_out,
                                 e.kind()
                             ))
                         })?,

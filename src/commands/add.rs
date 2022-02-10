@@ -36,7 +36,7 @@ enum AddError {
 pub fn add(options: AddOpt) -> anyhow::Result<()> {
     let mut error = false;
     let mut manifest: Manifest = {
-        let cur_dir = std::env::current_dir()?;
+        let cur_dir = crate::config::Config::get_current_dir()?;
         Manifest::find_in_directory(cur_dir).map_err(|_| AddError::NoManifest)?
     };
 

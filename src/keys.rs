@@ -1,9 +1,14 @@
 //! Functions for dealing with package verification keys
-
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 use crate::constants::*;
+#[cfg(feature = "full")]
 use crate::database::*;
 use crate::sql;
 use crate::util;
+#[cfg(feature = "full")]
 use rusqlite::{params, Connection, TransactionBehavior};
 use std::{fs, path::PathBuf};
 use thiserror::Error;
@@ -55,6 +60,7 @@ pub struct WapmPackageSignature {
 }
 
 /// Gets the user's keys from the database
+#[cfg(feature = "full")]
 pub fn get_personal_keys_from_database(conn: &Connection) -> anyhow::Result<Vec<PersonalKey>> {
     let mut stmt = conn.prepare(sql::GET_PERSONAL_KEYS)?;
 
@@ -78,6 +84,7 @@ pub fn get_personal_keys_from_database(conn: &Connection) -> anyhow::Result<Vec<
 }
 
 /// Gets all public keys the user has seen from WAPM from the database
+#[cfg(feature = "full")]
 pub fn get_wapm_public_keys_from_database(conn: &Connection) -> anyhow::Result<Vec<WapmPublicKey>> {
     let mut stmt = conn.prepare(sql::GET_WAPM_PUBLIC_KEYS)?;
     let result = stmt.query_map(params![], |row| {
@@ -99,6 +106,7 @@ pub fn get_wapm_public_keys_from_database(conn: &Connection) -> anyhow::Result<V
 }
 
 /// Get the public key in base64 from its id from the local database
+#[cfg(feature = "full")]
 pub fn get_full_personal_public_key_by_id(
     conn: &Connection,
     public_key_id: String,
@@ -114,6 +122,7 @@ pub fn get_full_personal_public_key_by_id(
     Ok(result)
 }
 
+#[cfg(feature = "full")]
 pub fn get_active_personal_key(conn: &Connection) -> anyhow::Result<PersonalKey> {
     let mut stmt = conn.prepare(
         "SELECT active, public_key_value, private_key_location, date_added, key_type_identifier, public_key_id FROM personal_keys 
@@ -145,6 +154,7 @@ pub fn get_active_personal_key(conn: &Connection) -> anyhow::Result<PersonalKey>
     }
 }
 
+#[cfg(feature = "full")]
 pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> anyhow::Result<()> {
     conn.execute(sql::DELETE_PERSONAL_KEY_PAIR, params![public_key])?;
     Ok(())
@@ -152,6 +162,7 @@ pub fn delete_key_pair(conn: &mut Connection, public_key: String) -> anyhow::Res
 
 /// This function takes the raw output from Minisign and returns the key's tag
 /// and the key's value in base64
+#[cfg(feature = "full")]
 pub fn normalize_public_key(pk: String) -> anyhow::Result<(String, String)> {
     let mut lines = pk.lines();
     let first_line = lines
@@ -178,6 +189,7 @@ pub fn normalize_public_key(pk: String) -> anyhow::Result<(String, String)> {
 /// Adds a public/private key pair to the database (storing the public key directly
 /// and a path to a file containing the private key)
 /// Returns the public key ID and the public key value on success
+#[cfg(feature = "full")]
 pub fn add_personal_key_pair_to_database(
     conn: &mut Connection,
     public_key_location: String,
@@ -257,6 +269,7 @@ pub fn add_personal_key_pair_to_database(
 
 /// Parses a public key out of the given string and adds it to the database of
 /// trusted keys associated with the given user
+#[cfg(feature = "full")]
 pub fn import_public_key(
     conn: &mut Connection,
     public_key_id: &str,
@@ -307,6 +320,7 @@ pub fn import_public_key(
     Ok(())
 }
 
+#[cfg(feature = "full")]
 pub fn get_latest_public_key_for_user(
     conn: &Connection,
     user_name: &str,

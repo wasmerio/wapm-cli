@@ -1,11 +1,19 @@
-use crate::proxy;
 use graphql_client::{QueryBody, Response};
-use reqwest::blocking::multipart;
-use reqwest::blocking::Client;
-use reqwest::header::USER_AGENT;
 use serde;
 use std::string::ToString;
 use thiserror::Error;
+#[cfg(not(target_os = "wasi"))]
+use {
+    crate::proxy,
+    reqwest::{
+        blocking::{multipart::Form, Client},
+        header::USER_AGENT,
+    },
+};
+#[cfg(target_os = "wasi")]
+use {wasm_bus_reqwest::prelude::header::*, wasm_bus_reqwest::prelude::*};
+
+use crate::util::whoami_distro;
 
 use super::config::Config;
 
@@ -22,11 +30,12 @@ pub fn execute_query_modifier<R, V, F>(query: &QueryBody<V>, form_modifier: F) -
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
-    F: FnOnce(multipart::Form) -> multipart::Form,
+    F: FnOnce(Form) -> Form,
 {
     let client = {
         let builder = Client::builder();
 
+        #[cfg(not(target_os = "wasi"))]
         let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()? {
             builder.proxy(proxy)
         } else {
@@ -39,7 +48,7 @@ where
     let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();
 
-    let form = multipart::Form::new()
+    let form = Form::new()
         .text("query", query.query.to_string())
         .text("operationName", query.operation_name.to_string())
         .text("variables", vars);
@@ -50,7 +59,7 @@ where
         "wapm/{} {} {}",
         VERSION,
         whoami::platform(),
-        whoami::distro().to_lowercase(),
+        whoami_distro(),
     );
 
     let res = client

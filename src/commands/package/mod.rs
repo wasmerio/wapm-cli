@@ -20,7 +20,7 @@ pub fn package(package_options: PackageOpt) -> anyhow::Result<()> {
         }
         None => {
             let manifest = Manifest::find_in_current_directory()?;
-            let base_path = env::current_dir()?;
+            let base_path = crate::config::Config::get_current_dir()?;
             (manifest, base_path)
         }
     };

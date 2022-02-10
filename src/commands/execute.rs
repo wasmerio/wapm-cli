@@ -18,7 +18,6 @@ use thiserror::Error;
 use graphql_client::*;
 
 use std::convert::From;
-use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -228,7 +227,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     }
     let opt = opt;
     trace!("Execute {:?}", &opt);
-    let current_dir = env::current_dir()?;
+    let current_dir = crate::config::Config::get_current_dir()?;
     if let Some(which) = opt.which {
         let mut wax_index = wax_index::WaxIndex::open()?;
         let dir = if let Ok((package_name, version, _)) = wax_index.search_for_entry(which.clone())

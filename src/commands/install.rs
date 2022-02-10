@@ -8,7 +8,6 @@ use crate::config::Config;
 use crate::dataflow;
 use crate::util;
 use std::borrow::Cow;
-use std::env;
 use std::path::Path;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -35,6 +34,9 @@ enum InstallError {
 
     #[error("Failed to install packages. {0}")]
     CannotRegenLockFile(dataflow::Error),
+
+    #[error("Failed to create the install directory. {0}")]
+    CannotCreateInstallDirectory(std::io::Error),
 
     #[error("Failed to install packages in manifest. {0}")]
     FailureInstallingPackages(dataflow::Error),
@@ -69,7 +71,7 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
-    let current_directory = env::current_dir()?;
+    let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
         _value.is_some(),
@@ -137,9 +139,12 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                 }
                 false => Cow::Borrowed(&current_directory),
             };
+            std::fs::create_dir_all(install_directory.clone())
+                .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
 
-            let changes_applied = dataflow::update(installed_packages, vec![], install_directory)
-                .map_err(|err| InstallError::CannotRegenLockFile(err))?;
+            let changes_applied =
+                dataflow::update(installed_packages.clone(), vec![], install_directory)
+                    .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
             if changes_applied {
                 if options.global {

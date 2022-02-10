@@ -1,10 +1,19 @@
+#![cfg_attr(
+    not(feature = "full"),
+    allow(dead_code, unused_imports, unused_variables)
+)]
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use thiserror::Error;
 
-pub static GLOBAL_CONFIG_FILE_NAME: &str = "wapm.toml";
+pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os = "wasi") {
+    "/.private/wapm.toml"
+} else {
+    "wapm.toml"
+};
+
 pub static GLOBAL_CONFIG_FOLDER_NAME: &str = ".wasmer";
 pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.json";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
@@ -99,6 +108,14 @@ impl Default for Config {
 }
 
 impl Config {
+    pub fn get_current_dir() -> std::io::Result<PathBuf> {
+        #[cfg(target_os = "wasi")]
+        if let Some(pwd) = std::env::var("PWD").ok() {
+            return Ok(PathBuf::from(pwd));
+        }
+        Ok(std::env::current_dir()?)
+    }
+
     pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
         Ok(
             if let Some(folder_str) = env::var(GLOBAL_CONFIG_FOLDER_ENV_VAR)
@@ -107,10 +124,21 @@ impl Config {
             {
                 PathBuf::from(folder_str)
             } else {
+                #[allow(unused_variables)]
+                let default_dir = Self::get_current_dir()
+                    .ok()
+                    .unwrap_or_else(|| PathBuf::from("/".to_string()));
+                #[cfg(feature = "dirs")]
                 let home_dir =
                     dirs::home_dir().ok_or(GlobalConfigError::CannotFindHomeDirectory)?;
+                #[cfg(not(feature = "dirs"))]
+                let home_dir = std::env::var("HOME")
+                    .ok()
+                    .unwrap_or_else(|| default_dir.to_string_lossy().to_string());
                 let mut folder = PathBuf::from(home_dir);
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
+                std::fs::create_dir_all(folder.clone())
+                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
                 folder
             },
         )
@@ -210,6 +238,8 @@ pub enum GlobalConfigError {
         "While falling back to the default location for WASMER_DIR, could not resolve the user's home directory"
     )]
     CannotFindHomeDirectory,
+    #[error("Error while creating config directory: [{0}]")]
+    CannotCreateConfigDirectory(std::io::Error),
 }
 
 #[derive(Debug, Error)]
@@ -287,6 +317,7 @@ pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
 #[cfg(test)]
 mod test {
     use crate::config::{Config, GLOBAL_CONFIG_FILE_NAME, GLOBAL_CONFIG_FOLDER_ENV_VAR};
+    use crate::util::create_temp_dir;
     use std::fs::*;
     use std::io::Write;
 
@@ -303,12 +334,9 @@ mod test {
 
     #[test]
     fn get_non_existent_config() {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
+        let tmp_dir = create_temp_dir().unwrap();
         // set the env var to our temp dir
-        std::env::set_var(
-            GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.path().display().to_string(),
-        );
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
         let actual_config = config_result.unwrap();
@@ -321,17 +349,14 @@ mod test {
 
     #[test]
     fn get_global_config() {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let manifest_absolute_path = tmp_dir.path().join(GLOBAL_CONFIG_FILE_NAME);
+        let tmp_dir = create_temp_dir().unwrap();
+        let manifest_absolute_path = tmp_dir.join(GLOBAL_CONFIG_FILE_NAME);
         let mut file = File::create(&manifest_absolute_path).unwrap();
         let config = Config::default();
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
         // set the env var to our temp dir
-        std::env::set_var(
-            GLOBAL_CONFIG_FOLDER_ENV_VAR,
-            tmp_dir.path().display().to_string(),
-        );
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");
     }
