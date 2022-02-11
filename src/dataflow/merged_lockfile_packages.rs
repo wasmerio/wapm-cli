@@ -73,8 +73,13 @@ impl<'a> MergedLockfilePackages<'a> {
                             let module_path = format!("{}/{}", module.package_path, module.source);
                             commands.insert(name, command);
                             // save the bin script to execute this command from the terminal
-                            save_bin_script(directory, script_name, module.package_path.clone(), module_path)
-                                .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
+                            save_bin_script(
+                                directory,
+                                script_name,
+                                module.package_path.clone(),
+                                module_path,
+                            )
+                            .map_err(|e| Error::FailedToSaveLockfile(e.to_string()))?;
                         }
                     }
                 }

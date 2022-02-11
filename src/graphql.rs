@@ -1,5 +1,6 @@
 use graphql_client::{QueryBody, Response};
 use serde;
+use std::env;
 use std::string::ToString;
 use thiserror::Error;
 #[cfg(not(target_os = "wasi"))]
@@ -65,7 +66,10 @@ where
     let res = client
         .post(registry_url)
         .multipart(form)
-        .bearer_auth(&config.registry.token.unwrap_or_else(|| "".to_string()))
+        .bearer_auth(
+            env::var("WAPM_REGISTRY_TOKEN")
+                .unwrap_or(config.registry.token.unwrap_or_else(|| "".to_string())),
+        )
         .header(USER_AGENT, user_agent)
         .send()?;
 

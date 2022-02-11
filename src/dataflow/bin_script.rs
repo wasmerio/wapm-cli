@@ -34,10 +34,22 @@ pub fn save_bin_script<P: AsRef<Path>>(
     package_path: String,
     module_path: String,
 ) -> Result<(), Error> {
-    let current_dir = crate::config::Config::get_current_dir().ok().unwrap_or_else(|| std::path::PathBuf::from("/".to_string()));
+    let current_dir = crate::config::Config::get_current_dir()
+        .ok()
+        .unwrap_or_else(|| std::path::PathBuf::from("/".to_string()));
     let command_path = format!("/bin/{}.alias", command_name);
-    let package_path = current_dir.clone().join("wapm_packages").join(package_path).to_string_lossy().to_string();
-    let module_path = current_dir.clone().join("wapm_packages").join(module_path).to_string_lossy().to_string();
+    let package_path = current_dir
+        .clone()
+        .join("wapm_packages")
+        .join(package_path)
+        .to_string_lossy()
+        .to_string();
+    let module_path = current_dir
+        .clone()
+        .join("wapm_packages")
+        .join(module_path)
+        .to_string_lossy()
+        .to_string();
     let mut file = fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -50,7 +62,12 @@ pub fn save_bin_script<P: AsRef<Path>>(
         crate::dataflow::ManifestResult::Manifest(manifest) => {
             if let Some(ref fs) = manifest.fs {
                 for (guest_path, host_path) in fs.iter() {
-                    mappings.push(format!("{}:{}/{}", guest_path, package_path, host_path.to_string_lossy()));
+                    mappings.push(format!(
+                        "{}:{}/{}",
+                        guest_path,
+                        package_path,
+                        host_path.to_string_lossy()
+                    ));
                 }
             }
         }

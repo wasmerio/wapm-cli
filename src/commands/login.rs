@@ -3,8 +3,15 @@ use crate::graphql::execute_query;
 use rpassword_wasi as rpassword;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
+use structopt::StructOpt;
 
 use graphql_client::*;
+
+#[derive(StructOpt, Debug)]
+pub struct LoginOpt {
+    /// Provide the token
+    token: Option<String>,
+}
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -14,7 +21,15 @@ use graphql_client::*;
 )]
 struct LoginMutation;
 
-pub fn login() -> anyhow::Result<()> {
+pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
+    if let Some(token) = login_options.token {
+        let mut config = Config::from_file()?;
+        config.registry.token = Some(token);
+        config.save()?;
+        println!("Login for WAPM saved");
+        return Ok(());
+    }
+
     print!("Username: ");
     stdout().flush().ok().expect("Could not flush stdout");
 

@@ -34,7 +34,7 @@ pub use self::install::{install, InstallOpt};
 pub use self::keys::{keys, KeyOpt};
 #[cfg(feature = "full")]
 pub use self::list::{list, ListOpt};
-pub use self::login::login;
+pub use self::login::{login, LoginOpt};
 pub use self::logout::logout;
 #[cfg(feature = "full")]
 pub use self::publish::{publish, PublishOpt};

@@ -2793,6 +2793,8 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 [[package]]
 name = "wasm-bus"
 version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f8a5b897677bfc7588b7d25379d271e8268fec1c997082e1d690e02223b0def"
 dependencies = [
  "base64 0.13.0",
  "bincode",
@@ -2810,6 +2812,8 @@ dependencies = [
 [[package]]
 name = "wasm-bus-macros"
 version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f531039ad076210eddb13a14128ea735f76bd8b282147c4784cf1634d745120"
 dependencies = [
  "convert_case",
  "derivative",
@@ -2822,6 +2826,8 @@ dependencies = [
 [[package]]
 name = "wasm-bus-process"
 version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89882b99614733fe750ac3b48342138b4450c64ba7f592c00f78a95ac00c2b70"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2835,6 +2841,8 @@ dependencies = [
 [[package]]
 name = "wasm-bus-reqwest"
 version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b92003b8b68d44eeee1f458d621beb9274132474575a75ddb7ab4ae071c35c5c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2857,6 +2865,8 @@ dependencies = [
 [[package]]
 name = "wasm-bus-types"
 version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d49ff958a0d83cacc3dc470ded238af5e1d316dcdc6d74322d2b7b2a438046d"
 
 [[package]]
 name = "wasmer-wasm-interface"

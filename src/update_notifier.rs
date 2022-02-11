@@ -153,7 +153,8 @@ pub fn run_async_check_base() {
         }
 
         let current_wapm = std::env::current_exe().expect("Can't get current wapm executable");
-        let current_dir = crate::config::Config::get_current_dir().expect("Can't get current wapm dir");
+        let current_dir =
+            crate::config::Config::get_current_dir().expect("Can't get current wapm dir");
         std::process::Command::new(current_wapm)
             .arg("run-background-update-check")
             .current_dir(current_dir)

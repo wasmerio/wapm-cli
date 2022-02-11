@@ -15,7 +15,7 @@ enum Command {
 
     #[structopt(name = "login")]
     /// Logins into wapm, saving the token locally for future commands
-    Login,
+    Login(commands::LoginOpt),
 
     #[structopt(name = "logout")]
     /// Remove the token for the registry
@@ -110,7 +110,7 @@ fn main() {
         }
     }
 
-    //#[cfg(target_os = "wasi")]
+    #[cfg(target_os = "wasi")]
     {
         if let Err(e) = logging::set_up_logging(true) {
             eprintln!("Error: {}", e);
@@ -174,7 +174,7 @@ fn main() {
 
     let result = match args {
         Command::WhoAmI => commands::whoami(),
-        Command::Login => commands::login(),
+        Command::Login(login_options) => commands::login(login_options),
         Command::Logout => commands::logout(),
         Command::Config(config_options) => commands::config(config_options),
         Command::Install(install_options) => commands::install(install_options),
