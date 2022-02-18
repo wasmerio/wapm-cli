@@ -300,7 +300,7 @@ pub fn create_temp_dir() -> Result<tempfile::TempDir, std::io::Error> {
 }
 
 #[cfg(target_os = "wasi")]
-pub fn create_temp_dir() -> Result<PathBuf, std::io::Error> {
+pub fn create_temp_dir() -> Result<std::path::PathBuf, std::io::Error> {
     let mut buf = [0u8; 4];
     getrandom::getrandom(&mut buf)?;
     let path = format!("/tmp/{:#10x}", u32::from_be_bytes(buf));
