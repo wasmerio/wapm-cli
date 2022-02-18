@@ -301,7 +301,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|e| Error::FailedToParsePackageName(key.to_string(), e.to_string()))?;
         let fully_qualified_package_name: String =
             fully_qualified_package_display_name(pkg_name, &key.version);
-        let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
+        let package_dir = create_package_dir(dbg!(&directory), dbg!(namespace), dbg!(&fully_qualified_package_name))
             .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
         let client = {
             let builder = ClientBuilder::new().gzip(false);
