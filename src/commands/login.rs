@@ -45,7 +45,7 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
     });
     let response: login_mutation::ResponseData = execute_query(&q)?;
     let token = match response.token_auth {
-        Some(token_auth) => token_auth.refresh_token,
+        Some(token_auth) => Some(token_auth.refresh_token),
         None => None,
     };
     if let Some(token) = token {
