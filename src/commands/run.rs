@@ -244,7 +244,7 @@ mod test {
     fn create_run_command_vec() {
         let args: Vec<OsString> = vec![OsString::from("arg1"), OsString::from("arg2")];
         let tmp_dir = create_temp_dir().unwrap();
-        let dir = tmp_dir.clone();
+        let dir: &std::path::Path = tmp_dir.as_ref();
         let wapm_module_dir = dir.join(
             [PACKAGES_DIR_NAME, "_", "foo@1.0.2"]
                 .iter()

@@ -295,8 +295,8 @@ pub fn get_runtime_with_args() -> (String, Vec<String>) {
 }
 
 #[cfg(not(target_os = "wasi"))]
-pub fn create_temp_dir() -> Result<std::path::PathBuf, std::io::Error> {
-    Ok(tempfile::TempDir::new()?.path().to_path_buf())
+pub fn create_temp_dir() -> Result<tempfile::TempDir, std::io::Error> {
+    Ok(tempfile::TempDir::new()?)
 }
 
 #[cfg(target_os = "wasi")]

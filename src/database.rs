@@ -119,7 +119,7 @@ mod test {
 
     #[test]
     fn data_version_was_updated() {
-        let tmp_dir = create_temp_dir().unwrap();
+        let tmp_dir = create_temp_dir().unwrap().path().to_owned();
         let mut conn = Connection::open(tmp_dir).unwrap();
         if let Err(MigrationError::MigrationNumberDoesNotExist { .. }) =
             apply_migration(&mut conn, CURRENT_DATA_VERSION)

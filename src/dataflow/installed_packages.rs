@@ -387,9 +387,10 @@ impl<'a> Install<'a> for RegistryInstaller {
 
         let temp_dir =
             create_temp_dir().map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-        fs::create_dir(temp_dir.join("wapm_package_install"))
+        let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
+        fs::create_dir(tmp_dir_path.join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
-        let temp_tar_gz_path = temp_dir.join("wapm_package_install").join("package.tar.gz");
+        let temp_tar_gz_path = tmp_dir_path.join("wapm_package_install").join("package.tar.gz");
         let mut dest = OpenOptions::new()
             .read(true)
             .write(true)

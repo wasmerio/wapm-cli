@@ -287,7 +287,8 @@ mod dependency_tests {
     #[test]
     fn add_new_dependency() {
         let tmp_dir = create_temp_dir().unwrap();
-        let manifest_path = tmp_dir.join(MANIFEST_FILE_NAME);
+        let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
+        let manifest_path = tmp_dir_path.join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
         let wapm_toml = toml! {
             [package]
