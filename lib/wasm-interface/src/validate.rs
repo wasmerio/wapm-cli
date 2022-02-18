@@ -345,7 +345,7 @@ mod validation_tests {
 (global $length (import "env" "length") i32)
 (import "env" "do_panic" (func $do_panic (type $t0)))
 )"#;
-        let wasm = wabt::wat2wasm(WAT).unwrap();
+        let wasm = wat::parse_str(WAT).unwrap();
 
         let interface_src = r#"
 (interface 
@@ -407,7 +407,7 @@ mod validation_tests {
   (nop) (i32.const 2) (set_local 0) (get_local 0))
 (global (export "num_tries") i64 (i64.const 0))
 )"#;
-        let wasm = wabt::wat2wasm(WAT).unwrap();
+        let wasm = wat::parse_str(WAT).unwrap();
 
         let interface_src = r#"
 (interface 
