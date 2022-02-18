@@ -335,8 +335,9 @@ mod test {
     #[test]
     fn get_non_existent_config() {
         let tmp_dir = create_temp_dir().unwrap();
+        let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         // set the env var to our temp dir
-        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir_path.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
         let actual_config = config_result.unwrap();
@@ -350,7 +351,8 @@ mod test {
     #[test]
     fn get_global_config() {
         let tmp_dir = create_temp_dir().unwrap();
-        let manifest_absolute_path = tmp_dir.join(GLOBAL_CONFIG_FILE_NAME);
+        let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
+        let manifest_absolute_path = tmp_dir_path.join(GLOBAL_CONFIG_FILE_NAME);
         let mut file = File::create(&manifest_absolute_path).unwrap();
         let config = Config::default();
         let config_string = toml::to_string(&config).unwrap();

@@ -120,7 +120,8 @@ mod test {
     #[test]
     fn data_version_was_updated() {
         let tmp_dir = create_temp_dir().unwrap();
-        let mut conn = Connection::open(tmp_dir).unwrap();
+        let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
+        let mut conn = Connection::open(tmp_dir_path).unwrap();
         if let Err(MigrationError::MigrationNumberDoesNotExist { .. }) =
             apply_migration(&mut conn, CURRENT_DATA_VERSION)
         {

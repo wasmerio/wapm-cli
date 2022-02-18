@@ -119,8 +119,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
                                                         PublishError::NoModule)?;
     let archive_name = "package.tar.gz".to_string();
     let archive_dir = create_temp_dir()?;
-    fs::create_dir(archive_dir.join("wapm_package"))?;
-    let archive_path = archive_dir.join("wapm_package").join(&archive_name);
+    let archive_dir_path: &std::path::Path = archive_dir.as_ref();
+    fs::create_dir(archive_dir_path.join("wapm_package"))?;
+    let archive_path = archive_dir_path.join("wapm_package").join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
     let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
 
