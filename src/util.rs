@@ -119,7 +119,7 @@ pub fn create_package_dir(
     let mut package_dir = project_dir.join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
     package_dir.push(&fully_qualified_package_name);
-    fs::create_dir_all(&package_dir)?;
+    fs::create_dir_all(dbg!(&package_dir))?;
     Ok(package_dir)
 }
 
