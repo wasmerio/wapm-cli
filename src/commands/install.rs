@@ -139,7 +139,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                 }
                 false => Cow::Borrowed(&current_directory),
             };
-            println!("{:?}", install_directory);
             std::fs::create_dir_all(install_directory.clone())
                 .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
 
@@ -153,7 +152,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
                 } else {
                     println!("Package installed successfully to wapm_packages!");
                 }
-                println!("Available commands: ");
             } else {
                 println!("No packages to install")
             }

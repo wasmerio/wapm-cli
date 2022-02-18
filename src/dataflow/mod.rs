@@ -189,7 +189,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
 ) -> Result<bool, Error> {
-    let directory = dbg!(directory.as_ref());
+    let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
     let mut lockfile_packages =
