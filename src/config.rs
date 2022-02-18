@@ -358,7 +358,7 @@ mod test {
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
         // set the env var to our temp dir
-        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir.display().to_string());
+        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir_path.display().to_string());
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");
     }
