@@ -21,6 +21,28 @@
 
 The WebAssembly Package Manager CLI. This tool enables installing, managing, and publishing wasm packages on the [wapm.io][wapmio] registry. 
 
+## Installation
+
+### With [`Wasmer`](https://wapm.io/help/install):
+
+As described in [README.md of Wasmer](https://github.com/wasmerio/wasmer#install), you can install `wapm-cli` together by the following command:
+
+```bash
+curl https://get.wasmer.io -sSfL | sh
+```
+
+### With [`Cargo`](https://crates.io/crates/wapm-cli/):
+
+```bash
+cargo install wapm-cli
+```
+
+### With [`Homebrew`](https://formulae.brew.sh/formula/wapm):
+
+```bash
+brew install wapm
+```
+
 ## Get Started
 
 Read the [`wapm-cli` user guide on `wapm.io`][guide] to get started using the tool and use the [`wapm-cli` reference][reference] for information about the CLI commands.
