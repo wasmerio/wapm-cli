@@ -122,7 +122,10 @@ impl Config {
                 .ok()
                 .filter(|s| !s.is_empty())
             {
-                PathBuf::from(folder_str)
+                let folder = PathBuf::from(folder_str);
+                std::fs::create_dir_all(folder.clone())
+                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                folder
             } else {
                 #[allow(unused_variables)]
                 let default_dir = Self::get_current_dir()
