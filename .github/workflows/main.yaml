@@ -1,4 +1,4 @@
-name: core tests
+name: tests and release builds
 
 env:
   RUST_BACKTRACE: 1
@@ -113,13 +113,15 @@ jobs:
         if: matrix.os != 'windows-latest'
         with:
           name: wapm-${{ matrix.os }}
-          path: target/release/wapm
+          path: dist/wapm-cli.tar.gz
+          if-no-files-found: error
       - name: Upload Artifacts (Windows)
         uses: actions/upload-artifact@v2
         if: matrix.os == 'windows-latest'
         with:
           name: wapm-${{ matrix.os }}
-          path: target/release/wapm.exe
+          path: dist/wapm-cli.tar.gz
+          if-no-files-found: error
 #      - name: Cache
 #        uses: actions/cache@master
 #        with:
@@ -193,7 +195,7 @@ jobs:
           ./end-to-end-tests/ci/init-and-add.sh
 
   release:
-    needs: [setup, test, regression_tests]
+    needs: [setup, test] #, regression_tests]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.DOING_RELEASE == '1'
     steps:
@@ -218,9 +220,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: artifacts/wapm-windows-latest/wapm.exe
-          asset_name: wapm-windows.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
+          asset_path: artifacts/wapm-windows-latest/wapm-cli.tar.gz
+          asset_name: wapm-windows.tar.gz
+          asset_content_type: application/gzip
       - name: Upload Release Asset Linux
         id: upload-release-asset-linux
         uses: actions/upload-release-asset@v1
@@ -228,9 +230,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/wapm-ubuntu-latest/wapm
-          asset_name: wapm-linux-amd64
-          asset_content_type: application/x-elf
+          asset_path: artifacts/wapm-ubuntu-latest/wapm-cli.tar.gz
+          asset_name: wapm-linux-amd64.tar.gz
+          asset_content_type: application/gzip
       - name: Upload Release Asset Mac
         id: upload-release-asset-mac
         uses: actions/upload-release-asset@v1
@@ -238,6 +240,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/wapm-macos-latest/wapm
-          asset_name: wapm-darwin-amd64
-          asset_content_type: application/x-mach-binary
+          asset_path: artifacts/wapm-macos-latest/wapm-cli.tar.gz
+          asset_name: wapm-darwin-amd64.tar.gz
+          asset_content_type: application/gzip
