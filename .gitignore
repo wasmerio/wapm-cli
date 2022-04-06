@@ -1,5 +1,7 @@
 /target
 /.env
 /wapm_packages
+package
+dist
 
 \.idea/
