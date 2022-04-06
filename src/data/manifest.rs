@@ -88,6 +88,22 @@ pub struct Manifest {
 }
 
 impl Manifest {
+    fn locate_readme(path: &Path) -> Option<PathBuf> {
+        for filename in [
+            "README",
+            "README.md",
+            "README.markdown",
+            "README.mdown",
+            "README.mkdn",
+        ] {
+            let readme_path_buf = path.join(filename);
+            if readme_path_buf.exists() {
+                return Some(filename.into());
+            }
+        }
+        None
+    }
+
     /// Construct a manifest by searching in the specified directory for a manifest file
     #[cfg(not(feature = "integration_tests"))]
     pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
@@ -100,8 +116,11 @@ impl Manifest {
         let contents = fs::read_to_string(&manifest_path_buf).map_err(|_e| {
             ManifestError::MissingManifest(manifest_path_buf.to_string_lossy().to_string())
         })?;
-        let manifest: Self = toml::from_str(contents.as_str())
+        let mut manifest: Self = toml::from_str(contents.as_str())
             .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
+        if manifest.package.readme.is_none() {
+            manifest.package.readme = Self::locate_readme(path.as_ref());
+        }
         manifest.validate()?;
         Ok(manifest)
     }
