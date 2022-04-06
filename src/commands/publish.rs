@@ -77,13 +77,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         }
         fs::read_to_string(normalized_path).ok()
     });
-    // include a LICENSE file if it exists and an explicit license_file was not given
-    if package.license_file.is_none() {
-        let license_path = PathBuf::from("LICENSE");
-        if license_path.exists() {
-            builder.append_path(license_path).ok();
-        }
-    }
+
     for module in modules {
         let normalized_path = normalize_path(&manifest.base_directory_path, &module.source);
         normalized_path

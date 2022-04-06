@@ -88,16 +88,10 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    fn locate_readme(path: &Path) -> Option<PathBuf> {
-        for filename in [
-            "README",
-            "README.md",
-            "README.markdown",
-            "README.mdown",
-            "README.mkdn",
-        ] {
-            let readme_path_buf = path.join(filename);
-            if readme_path_buf.exists() {
+    fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
+        for filename in candidates {
+            let path_buf = path.join(filename);
+            if path_buf.exists() {
                 return Some(filename.into());
             }
         }
@@ -119,7 +113,20 @@ impl Manifest {
         let mut manifest: Self = toml::from_str(contents.as_str())
             .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
         if manifest.package.readme.is_none() {
-            manifest.package.readme = Self::locate_readme(path.as_ref());
+            manifest.package.readme = Self::locate_file(
+                path.as_ref(),
+                &[
+                    "README",
+                    "README.md",
+                    "README.markdown",
+                    "README.mdown",
+                    "README.mkdn",
+                ],
+            );
+        }
+        if manifest.package.license_file.is_none() {
+            manifest.package.license_file =
+                Self::locate_file(path.as_ref(), &["LICENSE", "LICENSE.md", "COPYING"]);
         }
         manifest.validate()?;
         Ok(manifest)
