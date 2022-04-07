@@ -157,6 +157,9 @@ jobs:
           path: artifacts
       - name: Set up for tests
         run: |
+          rm -f /home/runner/.wasmer/bin/wapm
+          cp `pwd`/artifacts/wapm-ubuntu-latest/wapm /home/runner/.wasmer/bin/wapm
+          chmod +x /home/runner/.wasmer/bin/wapm
           export PATH=`pwd`/artifacts:$PATH
       - name: 'Regression test: direct execution works'
         shell: bash

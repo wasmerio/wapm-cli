@@ -2,7 +2,8 @@
 aGVsbG8K
 [INFO] Installing mark2/coreutils@0.0.3
 hello
-[INFO] Installing _/cowsay@0.1.2
+[INFO] Installing namespace-example/cowsay@0.2.0
+Package installed successfully to wapm_packages!
  _______
 < hello >
  -------
@@ -11,16 +12,21 @@ hello
             (__)\       )\/\
                ||----w |
                 ||     ||
-[INFO] Installing _/lolcat@0.1.1
+[INFO] Package "namespace-example/cowsay" is uninstalled.
+[INFO] Installing syrusakbary/lolcat@0.1.1
 Package installed successfully to wapm_packages!
 lolcat 1.0.1
 lolcat 1.0.1
-[INFO] Package "lolcat" is uninstalled.
-[INFO] Installing _/lolcat@0.1.1
+[INFO] Package "lolcat" is not installed.
 lolcat 1.0.1
-No packages found
-[INFO] Installing _/lolcat@0.1.1
+LOCAL PACKAGES:
+ PACKAGE            | VERSION | MODULE | ABI 
+ syrusakbary/lolcat | 0.1.1   | lolcat | wasi 
+
+LOCAL COMMANDS:
+ COMMAND | PACKAGE            | VERSION 
+ lolcat  | syrusakbary/lolcat | 0.1.1 
+
 lolcat 1.0.1
 lolcat 1.0.1
 Success: command-name not found
-
