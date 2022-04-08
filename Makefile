@@ -39,7 +39,11 @@ else
 	endif
 endif
 
-TARGET_DIR := target/release
+ifeq ($(IS_DARWIN), 1)
+	TARGET_DIR := target/*/release
+else
+	TARGET_DIR := target/release
+endif
 
 build-release:
 ifeq ($(IS_DARWIN), 1)
@@ -52,13 +56,13 @@ endif
 release: build-release
 	mkdir -p "package/bin"
 ifeq ($(IS_WINDOWS), 1)
-	cp $(TARGET_DIR)/wapm.exe package/bin/ ;\
-	printf '@echo off\nwapm.exe execute %%*' > package/bin/wax.cmd ;\
+	cp $(TARGET_DIR)/wapm.exe package/bin/ &&\
+	printf '@echo off\nwapm.exe execute %%*' > package/bin/wax.cmd &&\
 	chmod +x package/bin/wax.cmd ;
 else
 ifneq (, $(filter 1, $(IS_DARWIN) $(IS_LINUX)))
-	cp $(TARGET_DIR)/wapm package/bin/ ;\
-	printf "#!/bin/bash\nwapm execute \"\$$@\"" > package/bin/wax ;\
+	cp $(TARGET_DIR)/wapm package/bin/ &&\
+	printf "#!/bin/bash\nwapm execute \"\$$@\"" > package/bin/wax &&\
 	chmod +x package/bin/wax ;
 else
 	cp $(TARGET_DIR)/wapm package/bin/
