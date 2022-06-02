@@ -19,6 +19,7 @@ impl<'a> LockfileCommand {
         local_package_version: Version,
         command: &'a Command,
     ) -> Result<Self, Error> {
+        
         // split the "package" field of the command if it exists
         // otherwise assume that this is a command for a local module
         // extract the package name and version for this command and insert into the lockfile command

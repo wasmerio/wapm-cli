@@ -12,6 +12,8 @@ pub static MAX_NAME_LENGTH: usize = 50;
 
 #[derive(Debug, Error)]
 pub enum NameError {
+    #[error("Please enter a name")]
+    Empty,
     #[error("The name \"{0}\" is too long. It must be {} characters or fewer")]
     NameTooLong(String, usize),
     #[error(
@@ -33,6 +35,37 @@ pub fn validate_name(name: &str) -> Result<String, NameError> {
     }
 
     Ok(name.to_owned())
+}
+
+/// Checks whether a given command / runner name is acceptable or not
+pub fn validate_runner(runner: &str) -> Result<(String, String), NameError> {
+    
+    let default_runner_url = "webc.org/runner/wasi/command@unstable_";
+
+    let mut items = runner
+        .split_whitespace()
+        .collect::<Vec<_>>();
+    
+    let first_item = match items.get(0) {
+        Some(s) => s,
+        None => { return Err(NameError::Empty); },
+    };
+
+    let runner_name = validate_name(&first_item)?;
+    if items.len() == 1 { 
+        return Ok((runner_name, default_runner_url.to_string())); 
+    }
+
+    items.retain(|i| {
+        *i != runner_name.as_str() && 
+        *i != "run" && 
+        *i != "with"
+    });
+    
+    Ok(match items.last() {
+        Some(s) => (runner_name, s.to_string()),
+        None => (runner_name, default_runner_url.to_string()),
+    })
 }
 
 #[derive(Debug, Error)]

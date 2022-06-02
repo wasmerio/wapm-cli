@@ -2,7 +2,7 @@
 
 use crate::abi::Abi;
 use crate::data::manifest::MANIFEST_FILE_NAME;
-use crate::data::manifest::{Command, Manifest, Module, Package};
+use crate::data::manifest::{Command, CommandV2, Manifest, Module, Package};
 use crate::util;
 
 use dialoguer::{Confirmation, Input, Select};
@@ -60,11 +60,11 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
     return Err("The module source path must have a .wasm extension".to_owned());
 }
 
-pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
+pub fn validate_runners(command_names: &str) -> Result<Vec<(String, String)>, util::NameError> {
     trace!("Validating command names: {:?}", command_names);
     command_names
-        .split_whitespace()
-        .map(util::validate_name)
+        .split(",")
+        .map(util::validate_runner)
         .collect()
 }
 
@@ -207,20 +207,19 @@ Press ^C at any time to quit."
             // We ask for commands if it has an Abi
             if !module.abi.is_none() {
                 let module_command_strings = ask_until_valid(
-                    " - Commmands (space separated)",
-                    Some(default_module_name.clone()),
-                    validate_commands,
+                    " - Commmands (comma separated, optional with runners)",
+                    Some(format!("{} run with webc.org/runner/wasi/command@unstable_", default_module_name.clone())),
+                    validate_runners,
                 )?;
                 if !module_command_strings.is_empty() {
                     let module_commands =
                         module_command_strings
                             .into_iter()
-                            .map(|command_string| Command {
+                            .map(|(command_string, runner)| Command::V2(CommandV2 {
                                 name: command_string,
-                                module: module.name.clone(),
-                                main_args: None,
-                                package: None,
-                            });
+                                runner: runner,
+                                annotations: None,
+                            }));
                     all_commands.extend(module_commands);
                 }
             }

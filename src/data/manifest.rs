@@ -43,13 +43,27 @@ pub struct Package {
     pub rename_commands_to_raw_command_name: bool,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum Command {
+    V1(CommandV1),
+    V2(CommandV2),
+}
+
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Command {
+pub struct CommandV1 {
     pub name: String,
     pub module: String,
     pub main_args: Option<String>,
     pub package: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CommandV2 {
+    pub name: String,
+    pub runner: String,
+    pub annotations: Option<toml::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -58,6 +72,8 @@ pub struct Module {
     pub source: PathBuf,
     #[serde(default = "Abi::default", skip_serializing_if = "Abi::is_none")]
     pub abi: Abi,
+    #[serde(default)]
+    pub kind: Option<String>,
     #[cfg(feature = "package")]
     pub fs: Option<Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
