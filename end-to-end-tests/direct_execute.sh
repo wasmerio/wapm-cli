@@ -6,7 +6,9 @@ wapm config set registry.url "https://registry.wapm.dev"
 
 echo "hello" | wapm execute base64
 ./wax echo "hello"
+wapm install namespace-example/cowsay
 ./wax --emscripten cowsay "hello"
+wapm uninstall namespace-example/cowsay
 wapm install lolcat
 wapm run lolcat -V
 ./wax lolcat -V

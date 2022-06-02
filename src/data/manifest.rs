@@ -88,6 +88,16 @@ pub struct Manifest {
 }
 
 impl Manifest {
+    fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
+        for filename in candidates {
+            let path_buf = path.join(filename);
+            if path_buf.exists() {
+                return Some(filename.into());
+            }
+        }
+        None
+    }
+
     /// Construct a manifest by searching in the specified directory for a manifest file
     #[cfg(not(feature = "integration_tests"))]
     pub fn find_in_directory<T: AsRef<Path>>(path: T) -> Result<Self, ManifestError> {
@@ -100,8 +110,24 @@ impl Manifest {
         let contents = fs::read_to_string(&manifest_path_buf).map_err(|_e| {
             ManifestError::MissingManifest(manifest_path_buf.to_string_lossy().to_string())
         })?;
-        let manifest: Self = toml::from_str(contents.as_str())
+        let mut manifest: Self = toml::from_str(contents.as_str())
             .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
+        if manifest.package.readme.is_none() {
+            manifest.package.readme = Self::locate_file(
+                path.as_ref(),
+                &[
+                    "README",
+                    "README.md",
+                    "README.markdown",
+                    "README.mdown",
+                    "README.mkdn",
+                ],
+            );
+        }
+        if manifest.package.license_file.is_none() {
+            manifest.package.license_file =
+                Self::locate_file(path.as_ref(), &["LICENSE", "LICENSE.md", "COPYING"]);
+        }
         manifest.validate()?;
         Ok(manifest)
     }

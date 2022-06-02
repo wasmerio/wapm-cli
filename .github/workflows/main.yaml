@@ -1,4 +1,4 @@
-name: core tests
+name: tests and release builds
 
 env:
   RUST_BACKTRACE: 1
@@ -36,17 +36,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [linux, macos, windows]
+        build: [linux, macos-x86_64, macos-aarch64, windows]
         include:
           - build: linux
             os: ubuntu-latest
             rust: stable
-          - build: macos
+            artifact_name: 'wapm-linux-amd64'
+          - build: macos-x86_64
             os: macos-latest
             rust: stable
+            target: x86_64-apple-darwin
+            artifact_name: 'wapm-darwin-amd64'
+          - build: macos-aarch64
+            os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+            artifact_name: 'wapm-darwin-aarch64'
           - build: windows
             os: windows-latest
             rust: stable
+            artifact_name: 'wapm-windows-amd64'
+         #- build: linux-musl-x64
+         #  os: ubuntu-latest
+         #  container: alpine:latest
+         #  rust: stable
+         #  artifact_name: 'wapm-linux-musl-amd64'
 #    env:
 #      CARGO_SCCACHE_VERSION: 0.2.10
 #      SCCACHE_AZURE_BLOB_CONTAINER: ${{ secrets.SCCACHE_AZURE_BLOB_CONTAINER }}
@@ -57,6 +71,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
           override: true
       - name: Configure cargo data directory
         # After this point, all cargo registry and crate data is stored in
@@ -74,11 +89,23 @@ jobs:
 #          ${{ runner.tool_cache }}/cargo-sccache/bin/sccache --start-server
 #          ${{ runner.tool_cache }}/cargo-sccache/bin/sscache -s
 #          echo "::set-env name=RUSTC_WRAPPER::${{ runner.tool_cache }}/cargo-sccache/bin/sccache"
+      - name: Setup Rust target
+        if: matrix.target
+        run: |
+          mkdir -p .cargo
+          cat << EOF > .cargo/config.toml
+          [build]
+          target = "${{ matrix.target }}"
+          EOF
+     #- name: Set up base deps on musl
+     #  if: matrix.build == 'linux-musl-x64'
+     #  run: |
+     #      apk add build-base musl-dev curl make libtool libffi-dev gcc automake autoconf git openssl-dev g++ libxkbcommon-dev wayland-dev
       - name: Install Cmake (Windows)
         if: matrix.os == 'windows-latest'
         run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
       - name: Install cmake (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.target == 'x86_64-apple-darwin'
         shell: bash
         run: |
           set -ex
@@ -94,32 +121,31 @@ jobs:
           export CMAKE_BIN_PATH="`pwd`/cmake-3.4.1-Linux-x86_64/CMake.app/Contents/bin"
           export PATH=$CMAKE_BIN_PATH:$PATH
       - name: Tests
+        if: matrix.target != 'aarch64-apple-darwin'
         run: |
           cargo test --verbose --features "update-notifications" -- --test-threads=1
       - name: Integration Tests
+        if: matrix.target != 'aarch64-apple-darwin'
         run: |
           make integration-tests
       - name: Tests (Wasm Interface)
+        if: matrix.target != 'aarch64-apple-darwin'
         run: |
           cargo test --manifest-path lib/wasm-interface/Cargo.toml
       - name: Check
+        if: matrix.target != 'aarch64-apple-darwin'
         run: |
           cargo check --features "telemetry update-notifications"
       - name: Build binary
         run: |
           make release
-      - name: Upload Artifacts (Unix)
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v2
-        if: matrix.os != 'windows-latest'
         with:
-          name: wapm-${{ matrix.os }}
-          path: target/release/wapm
-      - name: Upload Artifacts (Windows)
-        uses: actions/upload-artifact@v2
-        if: matrix.os == 'windows-latest'
-        with:
-          name: wapm-${{ matrix.os }}
-          path: target/release/wapm.exe
+          name: ${{ matrix.artifact_name }}
+          path: dist/wapm-cli.tar.gz
+          if-no-files-found: error
+          retention-days: 3
 #      - name: Cache
 #        uses: actions/cache@master
 #        with:
@@ -155,7 +181,10 @@ jobs:
           path: artifacts
       - name: Set up for tests
         run: |
-          export PATH=`pwd`/artifacts:$PATH
+          rm -f /home/runner/.wasmer/bin/wapm
+          tar -xzf `pwd`/artifacts/wapm-linux-amd64/wapm-cli.tar.gz
+          cp ./bin/wapm /home/runner/.wasmer/bin/wapm
+          chmod +x /home/runner/.wasmer/bin/wapm
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
@@ -193,7 +222,7 @@ jobs:
           ./end-to-end-tests/ci/init-and-add.sh
 
   release:
-    needs: [setup, test, regression_tests]
+    needs: [setup, test] #, regression_tests]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.DOING_RELEASE == '1'
     steps:
@@ -212,32 +241,52 @@ jobs:
           draft: true
           prerelease: false
       - name: Upload Release Asset Windows
-        id: upload-release-asset-windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: artifacts/wapm-windows-latest/wapm.exe
-          asset_name: wapm-windows.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
-      - name: Upload Release Asset Linux
-        id: upload-release-asset-linux
+        id: upload-release-asset-windows-amd64
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/wapm-ubuntu-latest/wapm
-          asset_name: wapm-linux-amd64
-          asset_content_type: application/x-elf
-      - name: Upload Release Asset Mac
-        id: upload-release-asset-mac
+          asset_path: artifacts/wapm-windows-amd64/wapm-cli.tar.gz
+          asset_name: wapm-cli-windows-amd64.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload Release Asset Linux amd64
+        id: upload-release-asset-linux-amd64
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/wapm-macos-latest/wapm
-          asset_name: wapm-darwin-amd64
-          asset_content_type: application/x-mach-binary
+          asset_path: artifacts/wapm-linux-amd64/wapm-cli.tar.gz
+          asset_name: wapm-cli-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+     #- name: Upload Release Asset Linux amd64 (musl)
+     #  id: upload-release-asset-linux-musl-amd64
+     #  uses: actions/upload-release-asset@v1
+     #  env:
+     #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+     #  with:
+     #    upload_url: ${{ steps.create_release.outputs.upload_url }}
+     #    asset_path: artifacts/wapm-linux-musl-amd64/wapm-cli.tar.gz
+     #    asset_name: wapm-cli-linux-musl-amd64.tar.gz
+     #    asset_content_type: application/gzip
+      - name: Upload Release Asset Mac amd64
+        id: upload-release-asset-mac-darwin-amd64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/wapm-darwin-amd64/wapm-cli.tar.gz
+          asset_name: wapm-cli-darwin-amd64.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload Release Asset Mac aarch64
+        id: upload-release-asset-mac-darwin-aarch64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/wapm-darwin-aarch64/wapm-cli.tar.gz
+          asset_name: wapm-cli-darwin-aarch64.tar.gz
+          asset_content_type: application/gzip
