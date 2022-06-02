@@ -37,7 +37,7 @@ pub fn uninstall(options: UninstallOpt) -> anyhow::Result<()> {
     if !result {
         info!("Package \"{}\" is not installed.", options.package);
     } else {
-        info!("Package \"{}\" is uninstalled.", options.package);
+        info!("Package \"{}\" uninstalled.", options.package);
     }
 
     Ok(())
