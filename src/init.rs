@@ -105,6 +105,7 @@ pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
                 source: "entry.wasm".into(),
                 abi: Abi::default(),
                 interfaces: None,
+                kind: Some("wasi".to_string()),
             }]),
             command: None,
         }
@@ -155,6 +156,7 @@ Press ^C at any time to quit."
                         source: PathBuf::from("none"),
                         abi: Abi::default(),
                         interfaces: None,
+                        kind: None,
                     }
                 }
             };

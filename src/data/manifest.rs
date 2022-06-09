@@ -50,6 +50,40 @@ pub enum Command {
     V2(CommandV2),
 }
 
+impl Command {
+    
+    pub fn get_name(&self) -> String {
+        match self {
+            Self::V1(c) => c.name.clone(),
+            Self::V2(c) => c.name.clone(),
+        }
+    }
+
+    pub fn get_module(&self) -> String {
+        match self {
+            Self::V1(c) => c.module.clone(),
+            // TODO(felix): how to migrate to the new API?
+            Self::V2(_) => String::new(),
+        }
+    }
+
+    pub fn get_package(&self) -> Option<String> {
+        match self {
+            Self::V1(c) => c.package.clone(),
+            // TODO(felix): how to migrate to the new version / "kind" API?
+            Self::V2(_) => None,
+        }
+    }
+
+    pub fn get_main_args(&self) -> Option<String> {
+        match self {
+            Self::V1(c) => c.main_args.clone(),
+            // TODO(felix): how to migrate to the new API?
+            // Self::V2(c) => serde_json::to_string(&c.annotations)
+            Self::V2(_) => None,
+        }
+    }
+}
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CommandV1 {
@@ -162,18 +196,18 @@ impl Manifest {
 
         if let Some(ref commands) = self.command {
             for command in commands {
-                if let Some(ref module) = module_map.get(&command.module) {
+                if let Some(ref module) = module_map.get(&command.get_module()) {
                     if module.abi == Abi::None {
                         return Err(ManifestError::ValidationError(ValidationError::MissingABI(
-                            command.name.clone(),
+                            command.get_name(),
                             module.name.clone(),
                         )));
                     }
                 } else {
                     return Err(ManifestError::ValidationError(
                         ValidationError::MissingModuleForCommand(
-                            command.name.clone(),
-                            command.module.clone(),
+                            command.get_name(),
+                            command.get_module(),
                         ),
                     ));
                 }
