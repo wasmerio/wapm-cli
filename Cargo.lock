@@ -2707,12 +2707,26 @@ dependencies = [
  "time",
  "toml",
  "url 2.2.2",
+ "wapm-toml",
  "wasm-bus-process",
  "wasm-bus-reqwest",
  "wasmer-wasm-interface",
  "wasmparser",
  "whoami 0.5.3",
  "whoami 1.2.1",
+]
+
+[[package]]
+name = "wapm-toml"
+version = "0.1.0"
+source = "git+https://github.com/fschutt/wapm-toml?rev=4f58a1e0485a52c279fdcde43eebe5aadf81532d#4f58a1e0485a52c279fdcde43eebe5aadf81532d"
+dependencies = [
+ "anyhow",
+ "semver",
+ "serde",
+ "serde_derive",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]
