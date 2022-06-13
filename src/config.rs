@@ -340,7 +340,10 @@ mod test {
         let tmp_dir = create_temp_dir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         // set the env var to our temp dir
-        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir_path.display().to_string());
+        std::env::set_var(
+            GLOBAL_CONFIG_FOLDER_ENV_VAR,
+            tmp_dir_path.display().to_string(),
+        );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Did not find the default config.");
         let actual_config = config_result.unwrap();
@@ -361,7 +364,10 @@ mod test {
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
         // set the env var to our temp dir
-        std::env::set_var(GLOBAL_CONFIG_FOLDER_ENV_VAR, tmp_dir_path.display().to_string());
+        std::env::set_var(
+            GLOBAL_CONFIG_FOLDER_ENV_VAR,
+            tmp_dir_path.display().to_string(),
+        );
         let config_result = Config::from_file();
         assert!(config_result.is_ok(), "Config not found.");
     }

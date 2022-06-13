@@ -210,18 +210,23 @@ Press ^C at any time to quit."
             if !module.abi.is_none() {
                 let module_command_strings = ask_until_valid(
                     " - Commmands (comma separated, optional with runners)",
-                    Some(format!("{} run with webc.org/runner/wasi/command@unstable_", default_module_name.clone())),
+                    Some(format!(
+                        "{} run with webc.org/runner/wasi/command@unstable_",
+                        default_module_name.clone()
+                    )),
                     validate_runners,
                 )?;
                 if !module_command_strings.is_empty() {
                     let module_commands =
                         module_command_strings
                             .into_iter()
-                            .map(|(command_string, runner)| Command::V2(CommandV2 {
-                                name: command_string,
-                                runner: runner,
-                                annotations: None,
-                            }));
+                            .map(|(command_string, runner)| {
+                                Command::V2(CommandV2 {
+                                    name: command_string,
+                                    runner: runner,
+                                    annotations: None,
+                                })
+                            });
                     all_commands.extend(module_commands);
                 }
             }

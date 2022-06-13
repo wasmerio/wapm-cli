@@ -39,29 +39,24 @@ pub fn validate_name(name: &str) -> Result<String, NameError> {
 
 /// Checks whether a given command / runner name is acceptable or not
 pub fn validate_runner(runner: &str) -> Result<(String, String), NameError> {
-    
     let default_runner_url = "webc.org/runner/wasi/command@unstable_";
 
-    let mut items = runner
-        .split_whitespace()
-        .collect::<Vec<_>>();
-    
+    let mut items = runner.split_whitespace().collect::<Vec<_>>();
+
     let first_item = match items.get(0) {
         Some(s) => s,
-        None => { return Err(NameError::Empty); },
+        None => {
+            return Err(NameError::Empty);
+        }
     };
 
     let runner_name = validate_name(&first_item)?;
-    if items.len() == 1 { 
-        return Ok((runner_name, default_runner_url.to_string())); 
+    if items.len() == 1 {
+        return Ok((runner_name, default_runner_url.to_string()));
     }
 
-    items.retain(|i| {
-        *i != runner_name.as_str() && 
-        *i != "run" && 
-        *i != "with"
-    });
-    
+    items.retain(|i| *i != runner_name.as_str() && *i != "run" && *i != "with");
+
     Ok(match items.last() {
         Some(s) => (runner_name, s.to_string()),
         None => (runner_name, default_runner_url.to_string()),
