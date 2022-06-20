@@ -942,6 +942,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+
+[[package]]
 name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2059,6 +2065,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_cbor"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
+dependencies = [
+ "half",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2719,12 +2735,14 @@ dependencies = [
 [[package]]
 name = "wapm-toml"
 version = "0.1.0"
-source = "git+https://github.com/fschutt/wapm-toml?rev=4f58a1e0485a52c279fdcde43eebe5aadf81532d#4f58a1e0485a52c279fdcde43eebe5aadf81532d"
 dependencies = [
  "anyhow",
  "semver",
  "serde",
+ "serde_cbor",
  "serde_derive",
+ "serde_json",
+ "serde_yaml",
  "thiserror",
  "toml",
 ]

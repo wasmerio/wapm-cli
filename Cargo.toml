@@ -36,7 +36,7 @@ tempfile = "3"
 time = "0.1"
 toml = "0.5.6"
 url = "2"
-wapm-toml = { version = "0.1.0", git = "https://github.com/fschutt/wapm-toml", rev = "4f58a1e0485a52c279fdcde43eebe5aadf81532d" }
+wapm-toml = { version = "0.1.0", path = "./wapm-toml" }
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
 dialoguer = "0.4.0"
