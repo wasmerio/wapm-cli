@@ -1,11 +1,11 @@
 //! The Manifest file is where the core metadata of a wapm package lives
 
 use semver::Version;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
-use std::{fs, fmt};
 use std::path::{Path, PathBuf};
+use std::{fmt, fs};
 use thiserror::Error;
-use serde_derive::{Serialize, Deserialize};
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
@@ -55,7 +55,7 @@ impl Default for Abi {
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
-pub static README_PATHS: &[&'static str;5]  = &[
+pub static README_PATHS: &[&'static str; 5] = &[
     "README",
     "README.md",
     "README.markdown",
@@ -63,11 +63,7 @@ pub static README_PATHS: &[&'static str;5]  = &[
     "README.mkdn",
 ];
 
-pub static LICENSE_PATHS: &[&'static str;3] = &[
-    "LICENSE", 
-    "LICENSE.md", 
-    "COPYING"
-];
+pub static LICENSE_PATHS: &[&'static str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -110,7 +106,6 @@ pub enum Command {
 }
 
 impl Command {
-
     pub fn get_name(&self) -> String {
         match self {
             Self::V1(c) => c.name.clone(),
@@ -167,25 +162,37 @@ impl CommandV2 {
             Some(CommandAnnotations::File(FileCommandAnnotations { file, kind })) => {
                 let path = basepath.join(file.clone());
                 let file = std::fs::read_to_string(&path).map_err(|e| {
-                    format!("Error reading {:?}.annotation ({:?}): {e}", self.name, path.display())
+                    format!(
+                        "Error reading {:?}.annotation ({:?}): {e}",
+                        self.name,
+                        path.display()
+                    )
                 })?;
                 match kind {
                     FileKind::Json => {
-                        let value: serde_json::Value = serde_json::from_str(&file)
-                        .map_err(|e| {
-                            format!("Error reading {:?}.annotation ({:?}): {e}", self.name, path.display())
-                        })?;
+                        let value: serde_json::Value =
+                            serde_json::from_str(&file).map_err(|e| {
+                                format!(
+                                    "Error reading {:?}.annotation ({:?}): {e}",
+                                    self.name,
+                                    path.display()
+                                )
+                            })?;
                         Ok(Some(json_to_cbor_value(&value)))
-                    },
+                    }
                     FileKind::Yaml => {
-                        let value: serde_yaml::Value = serde_yaml::from_str(&file)
-                        .map_err(|e| {
-                            format!("Error reading {:?}.annotation ({:?}): {e}", self.name, path.display())
-                        })?;
+                        let value: serde_yaml::Value =
+                            serde_yaml::from_str(&file).map_err(|e| {
+                                format!(
+                                    "Error reading {:?}.annotation ({:?}): {e}",
+                                    self.name,
+                                    path.display()
+                                )
+                            })?;
                         Ok(Some(yaml_to_cbor_value(&value)))
                     }
                 }
-            },
+            }
             None => Ok(None),
         }
     }
@@ -198,14 +205,14 @@ pub fn toml_to_cbor_value(val: &toml::Value) -> serde_cbor::Value {
         toml::Value::Float(f) => serde_cbor::Value::Float(*f),
         toml::Value::Boolean(b) => serde_cbor::Value::Bool(*b),
         toml::Value::Datetime(d) => serde_cbor::Value::Text(format!("{}", d)),
-        toml::Value::Array(sq) => serde_cbor::Value::Array(
-            sq.into_iter().map(toml_to_cbor_value).collect()
+        toml::Value::Array(sq) => {
+            serde_cbor::Value::Array(sq.into_iter().map(toml_to_cbor_value).collect())
+        }
+        toml::Value::Table(m) => serde_cbor::Value::Map(
+            m.iter()
+                .map(|(k, v)| (serde_cbor::Value::Text(k.clone()), toml_to_cbor_value(v)))
+                .collect(),
         ),
-        toml::Value::Table(m) => {
-            serde_cbor::Value::Map(m.iter().map(|(k, v)| {
-                (serde_cbor::Value::Text(k.clone()), toml_to_cbor_value(v))
-            }).collect())
-        },
     }
 }
 
@@ -223,16 +230,16 @@ pub fn json_to_cbor_value(val: &serde_json::Value) -> serde_cbor::Value {
             } else {
                 serde_cbor::Value::Null
             }
-        },
+        }
         serde_json::Value::String(s) => serde_cbor::Value::Text(s.clone()),
-        serde_json::Value::Array(sq) => serde_cbor::Value::Array(
-            sq.into_iter().map(json_to_cbor_value).collect()
+        serde_json::Value::Array(sq) => {
+            serde_cbor::Value::Array(sq.into_iter().map(json_to_cbor_value).collect())
+        }
+        serde_json::Value::Object(m) => serde_cbor::Value::Map(
+            m.iter()
+                .map(|(k, v)| (serde_cbor::Value::Text(k.clone()), json_to_cbor_value(v)))
+                .collect(),
         ),
-        serde_json::Value::Object(m) => {
-            serde_cbor::Value::Map(m.iter().map(|(k, v)| {
-                (serde_cbor::Value::Text(k.clone()), json_to_cbor_value(v))
-            }).collect())
-        },
     }
 }
 
@@ -250,16 +257,16 @@ pub fn yaml_to_cbor_value(val: &serde_yaml::Value) -> serde_cbor::Value {
             } else {
                 serde_cbor::Value::Null
             }
-        },
+        }
         serde_yaml::Value::String(s) => serde_cbor::Value::Text(s.clone()),
-        serde_yaml::Value::Sequence(sq) => serde_cbor::Value::Array(
-            sq.into_iter().map(yaml_to_cbor_value).collect()
+        serde_yaml::Value::Sequence(sq) => {
+            serde_cbor::Value::Array(sq.into_iter().map(yaml_to_cbor_value).collect())
+        }
+        serde_yaml::Value::Mapping(m) => serde_cbor::Value::Map(
+            m.iter()
+                .map(|(k, v)| (yaml_to_cbor_value(k), yaml_to_cbor_value(v)))
+                .collect(),
         ),
-        serde_yaml::Value::Mapping(m) => {
-            serde_cbor::Value::Map(m.iter().map(|(k, v)| {
-                (yaml_to_cbor_value(k), yaml_to_cbor_value(v))
-            }).collect())
-        },
     }
 }
 
@@ -322,6 +329,26 @@ pub struct Manifest {
     pub base_directory_path: PathBuf,
 }
 
+#[cfg(feature = "integration_tests")]
+pub mod integration_tests {
+    pub mod data {
+        //! Global data definitions used for testing
+
+        use std::cell::RefCell;
+        use std::thread_local;
+
+        thread_local! {
+            /// The string is the contents of the manifest, the Option is whether or not the manifest exists.
+            /// Used to mock reading and writing the manifest to the file system.
+            // for now we just have one manifest, a more complex implementation may be useful later
+            pub static RAW_MANIFEST_DATA: RefCell<Option<String>> = RefCell::new(None);
+
+            /// The string is the contents of the manifest, the Option is whether or not the manifest exists.
+            /// Used to mock reading and writing the manifest to the file system.
+            pub static RAW_CONFIG_DATA: RefCell<Option<String>> = RefCell::new(None);
+        }
+    }
+}
 impl Manifest {
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
         for filename in candidates {
@@ -348,14 +375,10 @@ impl Manifest {
         let mut manifest: Self = toml::from_str(contents.as_str())
             .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
         if manifest.package.readme.is_none() {
-            manifest.package.readme = Self::locate_file(
-                path.as_ref(),
-                &README_PATHS[..],
-            );
+            manifest.package.readme = Self::locate_file(path.as_ref(), &README_PATHS[..]);
         }
         if manifest.package.license_file.is_none() {
-            manifest.package.license_file =
-                Self::locate_file(path.as_ref(), &LICENSE_PATHS[..]);
+            manifest.package.license_file = Self::locate_file(path.as_ref(), &LICENSE_PATHS[..]);
         }
         manifest.validate()?;
         Ok(manifest)
@@ -613,5 +636,3 @@ module = "mod"
         )
     }
 }
-
-

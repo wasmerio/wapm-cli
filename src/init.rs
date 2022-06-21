@@ -208,7 +208,6 @@ Press ^C at any time to quit."
             module.interfaces = interfaces;
             // We ask for commands if it has an Abi
             if !module.abi.is_none() {
-                
                 loop {
                     let module_command_strings = ask_until_valid(
                         " - Commmand(s), space separated",
@@ -223,9 +222,8 @@ Press ^C at any time to quit."
                     )?;
 
                     if !module_command_strings.is_empty() {
-                        let module_commands = module_command_strings
-                            .into_iter()
-                            .map(|command_string| {
+                        let module_commands =
+                            module_command_strings.into_iter().map(|command_string| {
                                 Command::V2(CommandV2 {
                                     name: command_string,
                                     runner: runner_for_modules.clone(),
@@ -237,9 +235,9 @@ Press ^C at any time to quit."
                     }
 
                     let continue_loop = Confirmation::new()
-                    .with_text("Add more modules with a different runner? (no)")
-                    .default(false)
-                    .interact()?;
+                        .with_text("Add more modules with a different runner? (no)")
+                        .default(false)
+                        .interact()?;
 
                     if !continue_loop {
                         break;
