@@ -2,7 +2,7 @@
 
 use crate::abi::Abi;
 use crate::data::manifest::MANIFEST_FILE_NAME;
-use crate::data::manifest::{Command, Manifest, Module, Package};
+use crate::data::manifest::{Command, CommandV2, Manifest, Module, Package};
 use crate::util;
 
 use dialoguer::{Confirmation, Input, Select};
@@ -62,10 +62,10 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
 
 pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
     trace!("Validating command names: {:?}", command_names);
-    command_names
+    Ok(command_names
         .split_whitespace()
-        .map(util::validate_name)
-        .collect()
+        .map(|s| s.to_string())
+        .collect())
 }
 
 pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
@@ -105,6 +105,7 @@ pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
                 source: "entry.wasm".into(),
                 abi: Abi::default(),
                 interfaces: None,
+                kind: Some("wasi".to_string()),
             }]),
             command: None,
         }
@@ -155,6 +156,7 @@ Press ^C at any time to quit."
                         source: PathBuf::from("none"),
                         abi: Abi::default(),
                         interfaces: None,
+                        kind: None,
                     }
                 }
             };
@@ -206,22 +208,40 @@ Press ^C at any time to quit."
             module.interfaces = interfaces;
             // We ask for commands if it has an Abi
             if !module.abi.is_none() {
-                let module_command_strings = ask_until_valid(
-                    " - Commmands (space separated)",
-                    Some(default_module_name.clone()),
-                    validate_commands,
-                )?;
-                if !module_command_strings.is_empty() {
-                    let module_commands =
-                        module_command_strings
-                            .into_iter()
-                            .map(|command_string| Command {
-                                name: command_string,
-                                module: module.name.clone(),
-                                main_args: None,
-                                package: None,
+                loop {
+                    let module_command_strings = ask_until_valid(
+                        " - Commmand(s), space separated",
+                        Some(default_module_name.clone()),
+                        validate_commands,
+                    )?;
+
+                    let runner_for_modules = ask_until_valid(
+                        &format!(" - Command runner for {:?}", module_command_strings),
+                        Some(format!("webc.org/runner/wasi/command@unstable_")),
+                        util::validate_runner,
+                    )?;
+
+                    if !module_command_strings.is_empty() {
+                        let module_commands =
+                            module_command_strings.into_iter().map(|command_string| {
+                                Command::V2(CommandV2 {
+                                    name: command_string,
+                                    runner: runner_for_modules.clone(),
+                                    annotations: None,
+                                })
                             });
-                    all_commands.extend(module_commands);
+
+                        all_commands.extend(module_commands);
+                    }
+
+                    let continue_loop = Confirmation::new()
+                        .with_text("Add more modules with a different runner? (no)")
+                        .default(false)
+                        .interact()?;
+
+                    if !continue_loop {
+                        break;
+                    }
                 }
             }
             all_modules.push(module);

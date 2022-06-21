@@ -22,7 +22,8 @@ impl<'a> LockfileCommand {
         // split the "package" field of the command if it exists
         // otherwise assume that this is a command for a local module
         // extract the package name and version for this command and insert into the lockfile command
-        let (package_name, package_version): (&str, Version) = match &command.package {
+        let package = command.get_package();
+        let (package_name, package_version): (&str, Version) = match &package {
             Some(package_string) => {
                 let split = package_string.as_str().split(' ').collect::<Vec<_>>();
                 match &split[..] {
@@ -35,7 +36,7 @@ impl<'a> LockfileCommand {
                     _ => {
                         return Err(Error::CouldNotParsePackageVersionForCommand(
                             package_string.clone(),
-                            command.name.clone(),
+                            command.get_name(),
                         ));
                     }
                 }
@@ -44,11 +45,11 @@ impl<'a> LockfileCommand {
         };
 
         let lockfile_command = LockfileCommand {
-            name: command.name.to_string(),
+            name: command.get_name(),
             package_name: package_name.to_string(),
             package_version,
-            module: command.module.to_string(),
-            main_args: command.main_args.clone(),
+            module: command.get_module(),
+            main_args: command.get_main_args(),
             is_top_level_dependency: true,
         };
         Ok(lockfile_command)

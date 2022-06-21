@@ -1,0 +1,21 @@
+[package]
+name = "wapm-toml"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+anyhow = "1"
+toml = "0.5.6"
+thiserror = "1.0"
+semver = { version = "0.11", features = ["serde"] }
+serde_json = "1.0.81"
+serde_yaml = "0.8.24"
+serde_cbor = "0.11.2"
+
+[features]
+integration_tests = []
+package = []

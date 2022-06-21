@@ -11,7 +11,7 @@ license = "MIT"
 billboard = { version = "0.1.0", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = { version = "1.8", optional = true }
-dirs = { version = "1", optional = true }
+dirs = { version = "4", optional = true }
 anyhow = "1"
 thiserror = "1.0"
 fern = {version = "0.6", features = ["colored"]}
@@ -36,6 +36,7 @@ tempfile = "3"
 time = "0.1"
 toml = "0.5.6"
 url = "2"
+wapm-toml = { version = "0.1.0", path = "./wapm-toml" }
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
 dialoguer = "0.4.0"
@@ -72,5 +73,5 @@ telemetry = ["sentry"]
 update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
 packagesigning = []#[cfg(feature = "full")]
-integration_tests = ["maplit"]
+integration_tests = ["maplit", "wapm-toml/integration_tests"]
 full = [ "dirs", "rusqlite", "prettytable-rs", "reqwest" ]
