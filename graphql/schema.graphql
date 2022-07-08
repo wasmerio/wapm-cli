@@ -258,6 +258,12 @@ type InterfaceVersion implements Node {
   publishedBy: User!
   updatedAt: DateTime!
   version: String!
+  distribution: Distribution!,
+}
+
+type Distribution {
+  downloadUrl: String!,
+  size: Int!,
 }
 
 type InterfaceVersionConnection {

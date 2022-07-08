@@ -337,13 +337,13 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 /// The function that starts lockfile dataflow. This function finds a manifest and a lockfile,
 /// calculates differences, installs missing dependencies, and finally generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
-    added_packages: Vec<(&str, &str)>,
+    added_packages: Vec<(String, String)>,
     removed_packages: Vec<&str>,
     directory: P,
 ) -> Result<bool, Error> {
     let directory = directory.as_ref();
     let added_packages =
-        AddedPackages::new_from_str_pairs(added_packages).map_err(Error::AddError)?;
+        AddedPackages::new_from_str_pairs(&added_packages).map_err(Error::AddError)?;
     let removed_packages = RemovedPackages::new_from_package_names(removed_packages);
     let manifest_result = ManifestResult::find_in_directory(&directory);
     match manifest_result {

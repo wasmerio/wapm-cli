@@ -1,5 +1,6 @@
 //! Code pertaining to the `install` subcommand
 
+use crate::dataflow::installed_packages;
 use crate::graphql::execute_query;
 
 use graphql_client::*;
@@ -19,6 +20,9 @@ pub struct InstallOpt {
     /// Install the package(s) globally
     #[structopt(short = "g", long = "global")]
     global: bool,
+    /// Expect the file to be a PiritaFile (experimental flag)
+    #[structopt(long = "pirita")]
+    pirita: bool,
     /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
@@ -48,6 +52,8 @@ enum InstallError {
     InvalidPackageIdentifier { name: String },
     #[error("Must supply package names to install command when using --global/-g flag.")]
     MustSupplyPackagesWithGlobalFlag,
+    #[error("Cannot combine --global/-g and --pirita flag (--pirita packages are experimental and installed locally for now).")]
+    CannotCombineGlobalAndPirita,
 }
 
 #[derive(GraphQLQuery)]
@@ -71,6 +77,9 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
+    if options.pirita {
+        return install_pirita(options);
+    }
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
@@ -91,44 +100,8 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             println!("Packages installed to wapm_packages!");
         }
         (_, package_args::SOME_PACKAGES) => {
-            let mut packages = vec![];
-            for name in options.packages {
-                let name_with_version: Vec<&str> = name.split("@").collect();
 
-                match &name_with_version[..] {
-                    [package_name, package_version] => {
-                        packages.push((package_name.to_string(), package_version.to_string()));
-                    }
-                    [name] => {
-                        let q = GetPackageQuery::build_query(get_package_query::Variables {
-                            name: name.to_string(),
-                        });
-                        let response: get_package_query::ResponseData = execute_query(&q)?;
-                        let package = response.package.ok_or(InstallError::PackageNotFound {
-                            name: name.to_string(),
-                        })?;
-                        let last_version =
-                            package
-                                .last_version
-                                .ok_or(InstallError::NoVersionsAvailable {
-                                    name: name.to_string(),
-                                })?;
-                        let package_name = package.name.clone();
-                        let package_version = last_version.version.clone();
-                        packages.push((package_name, package_version));
-                    }
-                    _ => {
-                        return Err(
-                            InstallError::InvalidPackageIdentifier { name: name.clone() }.into(),
-                        );
-                    }
-                }
-            }
-
-            let installed_packages: Vec<(&str, &str)> = packages
-                .iter()
-                .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
-                .collect();
+            let installed_packages = get_packages_with_versions(&options.packages)?;
 
             // the install directory will determine which wapm.lock we are updating. For now, we
             // look in the local directory, or the global install directory
@@ -157,5 +130,66 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             }
         }
     }
+    Ok(())
+}
+
+fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<(String, String)>> {
+    let mut packages = vec![];
+    for name in package_args {
+        let name_with_version: Vec<&str> = name.split("@").collect();
+
+        match &name_with_version[..] {
+            [package_name, package_version] => {
+                packages.push((package_name.to_string(), package_version.to_string()));
+            }
+            [name] => {
+                let q = GetPackageQuery::build_query(get_package_query::Variables {
+                    name: name.to_string(),
+                });
+                let response: get_package_query::ResponseData = execute_query(&q)?;
+                let package = response.package.ok_or(InstallError::PackageNotFound {
+                    name: name.to_string(),
+                })?;
+                let last_version =
+                    package
+                        .last_version
+                        .ok_or(InstallError::NoVersionsAvailable {
+                            name: name.to_string(),
+                        })?;
+                let package_name = package.name.clone();
+                let package_version = last_version.version.clone();
+                packages.push((package_name, package_version));
+            }
+            _ => {
+                return Err(
+                    InstallError::InvalidPackageIdentifier { name: name.clone() }.into(),
+                );
+            }
+        }
+    }
+
+    Ok(packages
+        .iter()
+        .map(|(s1, s2)| (s1.as_str().to_string(), s2.as_str().to_string()))
+        .collect())
+}
+
+/// Run the install command with --pirita flags
+pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
+    let current_directory = crate::config::Config::get_current_dir()?;
+    let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
+    debug_assert!(
+        _value.is_some(),
+        "this function should only be called once!"
+    );
+
+    if options.global {
+        return Err(InstallError::CannotCombineGlobalAndPirita.into());
+    }
+
+    let installed_packages = get_packages_with_versions(&options.packages)?;
+
+    println!("packages with versions: {:#?}", installed_packages);
+
     Ok(())
 }

@@ -19,6 +19,9 @@ use wasm_bus_process::prelude::Command;
 pub struct RunOpt {
     /// Command name
     command: String,
+    /// Expect the file to be a PiritaFile (experimental flag)
+    #[structopt(long = "pirita")]
+    pirita: bool,
     /// WASI pre-opened directory
     #[structopt(long = "dir", multiple = true, group = "wasi")]
     pre_opened_directories: Vec<String>,
