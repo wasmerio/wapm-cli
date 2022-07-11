@@ -16,7 +16,7 @@ use thiserror::Error;
     query_path = "graphql/queries/get_packages.graphql",
     response_derives = "Debug"
 )]
-struct GetPackagesQuery;
+pub struct GetPackagesQuery;
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {

@@ -64,6 +64,15 @@ pub struct WapmPackageKey<'a> {
     pub version: Version,
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
+pub struct WapmDistribution {
+    pub name: String,
+    pub version: String,
+    pub download_url: String,
+    pub pirita_download_url: Option<String>,
+    pub is_last_version: bool,
+}
+
 /// A range of versions for a package in the wapm.io registry.
 #[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
 pub struct WapmPackageRange<'a> {
@@ -337,7 +346,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 /// The function that starts lockfile dataflow. This function finds a manifest and a lockfile,
 /// calculates differences, installs missing dependencies, and finally generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
-    added_packages: Vec<(String, String)>,
+    added_packages: Vec<WapmDistribution>,
     removed_packages: Vec<&str>,
     directory: P,
 ) -> Result<bool, Error> {

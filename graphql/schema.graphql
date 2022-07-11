@@ -258,12 +258,6 @@ type InterfaceVersion implements Node {
   publishedBy: User!
   updatedAt: DateTime!
   version: String!
-  distribution: Distribution!,
-}
-
-type Distribution {
-  downloadUrl: String!,
-  size: Int!,
 }
 
 type InterfaceVersionConnection {
@@ -651,6 +645,8 @@ type PackageConnection {
 type PackageDistribution {
   downloadUrl: String!
   size: Int!
+  piritaDownloadUrl: String
+  piritaSize: Int
 }
 
 # A Relay edge containing a `Package` and its cursor.
