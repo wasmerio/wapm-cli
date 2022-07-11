@@ -1,8 +1,8 @@
 //! Code pertaining to the `install` subcommand
 
 use crate::dataflow::{
+    resolved_packages::{get_packages_query, GetPackagesQuery},
     WapmDistribution,
-    resolved_packages::{get_packages_query, GetPackagesQuery}
 };
 use crate::graphql::execute_query;
 
@@ -60,7 +60,11 @@ enum InstallError {
     InvalidPackageIdentifier { name: String },
     #[error("Must supply package names to install command when using --global/-g flag.")]
     MustSupplyPackagesWithGlobalFlag,
-    #[error("Could not find PiritaFile donwload url for package {0}@{1}", name, version)]
+    #[error(
+        "Could not find PiritaFile donwload url for package {0}@{1}",
+        name,
+        version
+    )]
     NoPiritaFileForPackage { name: String, version: String },
 }
 
@@ -100,7 +104,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             println!("Packages installed to wapm_packages!");
         }
         (_, package_args::SOME_PACKAGES) => {
-
             let installed_packages = get_packages_with_versions(&options.packages)?;
 
             // the install directory will determine which wapm.lock we are updating. For now, we
@@ -134,7 +137,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
 }
 
 fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<WapmDistribution>> {
-    
     let mut result = vec![];
     for name in package_args {
         let name_with_version: Vec<&str> = name.split("@").collect();
@@ -143,49 +145,62 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
             [package_name, _] => Some(package_name),
             [package_name] => Some(package_name),
             _ => None,
-        }.ok_or(InstallError::InvalidPackageIdentifier { 
-            name: name.clone() 
-        })?;
+        }
+        .ok_or(InstallError::InvalidPackageIdentifier { name: name.clone() })?;
 
         let q = GetPackagesQuery::build_query(get_packages_query::Variables {
             names: vec![package_name.to_string()],
         });
         let all_package_versions: get_packages_query::ResponseData = execute_query(&q)?;
-        let packages = all_package_versions.package.first().ok_or(InstallError::PackageNotFound {
-            name: name.to_string(),
-        })?;
+        let packages =
+            all_package_versions
+                .package
+                .first()
+                .ok_or(InstallError::PackageNotFound {
+                    name: name.to_string(),
+                })?;
 
-        let versions = packages.iter().flat_map(|packageversion| {
-            if &packageversion.name != name {
-                Vec::new()
-            } else {
-                packageversion.versions.iter().flat_map(|v| {
-                    v.into_iter()
-                    .filter_map(|v| {
-                        let v = v.as_ref()?;
-                        Some(WapmDistribution {
-                            name: name.clone(),
-                            version: v.version.clone(),
-                            download_url: v.distribution.download_url.clone(),
-                            pirita_download_url: v.distribution.pirita_download_url.clone(),
-                            is_last_version: v.is_last_version,
+        let versions = packages
+            .iter()
+            .flat_map(|packageversion| {
+                if &packageversion.name != name {
+                    Vec::new()
+                } else {
+                    packageversion
+                        .versions
+                        .iter()
+                        .flat_map(|v| {
+                            v.into_iter().filter_map(|v| {
+                                let v = v.as_ref()?;
+                                Some(WapmDistribution {
+                                    name: name.clone(),
+                                    version: v.version.clone(),
+                                    download_url: v.distribution.download_url.clone(),
+                                    pirita_download_url: v.distribution.pirita_download_url.clone(),
+                                    is_last_version: v.is_last_version,
+                                })
+                            })
                         })
-                    })
-                }).collect()
-            }
-        }).collect::<Vec<_>>();
+                        .collect()
+                }
+            })
+            .collect::<Vec<_>>();
 
         if versions.is_empty() {
-            return Err(InstallError::NoVersionsAvailable { name: name.to_string() }.into());
+            return Err(InstallError::NoVersionsAvailable {
+                name: name.to_string(),
+            }
+            .into());
         }
 
         let package_to_download = match &name_with_version[..] {
-            [_, package_version] => versions.iter().find(|p| p.version.as_str() == *package_version),
+            [_, package_version] => versions
+                .iter()
+                .find(|p| p.version.as_str() == *package_version),
             [_] => versions.iter().find(|p| p.is_last_version),
-            _ => None
-        }.ok_or(InstallError::InvalidPackageIdentifier { 
-            name: name.clone() 
-        })?;
+            _ => None,
+        }
+        .ok_or(InstallError::InvalidPackageIdentifier { name: name.clone() })?;
 
         result.push(package_to_download.clone());
     }
@@ -195,7 +210,6 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 
 /// Run the install command with --pirita flags
 pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
-    
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
@@ -207,52 +221,58 @@ pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
     let install_directory = Path::new(&current_directory);
 
     let rt = tokio::runtime::Builder::new_current_thread()
-    .enable_all()
-    .build()
-    .unwrap();
+        .enable_all()
+        .build()
+        .unwrap();
 
     rt.block_on(async {
         for p in installed_packages {
-            let pirita_url = p.pirita_download_url.ok_or(InstallError::NoPiritaFileForPackage { 
-                name: p.name.clone(), 
-                version: p.version.clone(),
-            })?;
+            let pirita_url = p
+                .pirita_download_url
+                .ok_or(InstallError::NoPiritaFileForPackage {
+                    name: p.name.clone(),
+                    version: p.version.clone(),
+                })?;
             download_pirita(
-                &p.name, 
-                &p.version, 
-                &pirita_url, 
-                &install_directory, 
-                options.nocache || options.force_yes
-            ).await?; 
+                &p.name,
+                &p.version,
+                &pirita_url,
+                &install_directory,
+                options.nocache || options.force_yes,
+            )
+            .await?;
         }
         Ok(())
     })
 }
 
-async fn download_pirita(name: &str, version: &str, download_url: &str, directory: &Path, nocache: bool) -> Result<(String, PathBuf, String), anyhow::Error> {
-    use crate::util::{
-        get_package_namespace_and_name,
-        fully_qualified_package_display_name,
-        create_package_dir,
-        whoami_distro,
-        create_temp_dir,
-    };
+async fn download_pirita(
+    name: &str,
+    version: &str,
+    download_url: &str,
+    directory: &Path,
+    nocache: bool,
+) -> Result<(String, PathBuf, String), anyhow::Error> {
+    use crate::dataflow::installed_packages::Error;
     use crate::graphql::VERSION;
     #[cfg(not(target_os = "wasi"))]
     use crate::proxy;
-    use crate::dataflow::installed_packages::Error;
+    use crate::util::{
+        create_package_dir, create_temp_dir, fully_qualified_package_display_name,
+        get_package_namespace_and_name, whoami_distro,
+    };
+    use dialoguer::Confirm;
+    use indicatif::{ProgressBar, ProgressStyle};
     use reqwest::{header, ClientBuilder};
     use std::fs::OpenOptions;
     use std::io::Write;
-    use indicatif::{ProgressBar, ProgressStyle};
-    use dialoguer::Confirm;
 
     let version = semver::Version::parse(version)
-        .map_err(|e| anyhow!("Invalid version for package {name:?}: {version:?}: {e}"))?;    
-    
+        .map_err(|e| anyhow!("Invalid version for package {name:?}: {version:?}: {e}"))?;
+
     let key = format!("{name}@{version}");
     let (namespace, pkg_name) = get_package_namespace_and_name(name)
-    .map_err(|e| Error::FailedToParsePackageName(name.to_string(), e.to_string()))?;
+        .map_err(|e| Error::FailedToParsePackageName(name.to_string(), e.to_string()))?;
 
     let fully_qualified_package_name: String =
         fully_qualified_package_display_name(pkg_name, &version);
@@ -261,11 +281,10 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
     let target_file_path = package_dir.join("package.pirita");
 
     let client = {
-
         let builder = ClientBuilder::new().gzip(true);
         #[cfg(not(target_os = "wasi"))]
-        let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()
-            .map_err(|e| Error::IoConnectionError(format!("{}", e)))?
+        let builder = if let Some(proxy) =
+            proxy::maybe_set_up_proxy().map_err(|e| Error::IoConnectionError(format!("{}", e)))?
         {
             builder.proxy(proxy)
         } else {
@@ -302,8 +321,8 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
         .unwrap_or(u64::MAX);
 
     if nocache || (
-       target_file_path.exists() && 
-       target_file_path.metadata()?.len() == total_size && 
+       target_file_path.exists() &&
+       target_file_path.metadata()?.len() == total_size &&
        Confirm::new()
         .with_prompt(format!("The package {key:?} seems to already have been downloaded. Download again? (no)"))
         .default(false)
@@ -313,32 +332,32 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
         let temp_dir =
             create_temp_dir()
             .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-        
+
         let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
-        
+
         std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
-        
+
         let temp_tar_gz_path = tmp_dir_path
             .join("wapm_package_install")
             .join("package.pirita");
-    
+
         let mut dest = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(&temp_tar_gz_path)
             .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
-    
+
         let pb = ProgressBar::new(total_size);
         pb.set_style(
             ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
             .progress_chars("#>-")
         );
-    
+
         let mut downloaded = 0_u64;
-    
+
         if let Some(first_chunk) = response.chunk().await? {
             let new = (downloaded + first_chunk.len() as u64).min(total_size);
             downloaded = new;
@@ -349,27 +368,32 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
             dest.write_all(&first_chunk)?;
             pb.set_position(new);
         }
-    
+
         while let Some(chunk) = response.chunk().await? {
             let new = (downloaded + chunk.len() as u64).min(total_size);
             downloaded = new;
             dest.write_all(&chunk)?;
             pb.set_position(new);
         }
-    
+
         std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
-    
+
         pb.finish_and_clear();
     }
 
-    let parsed_file = pirita::PiritaFile::load_mmap(target_file_path.clone())
-    .ok_or(anyhow!("Could not parse {key:?} ({target_file_path:?}): not a PiritaFile"))?;
+    let parsed_file = pirita::PiritaFile::load_mmap(target_file_path.clone()).ok_or(anyhow!(
+        "Could not parse {key:?} ({target_file_path:?}): not a PiritaFile"
+    ))?;
 
     std::fs::create_dir_all(directory.join("wapm_packages").join(".bin"))?;
 
     for (command_name, command_data) in parsed_file.get_manifest().commands.iter() {
-        let command = format!("wasmer run --pirita {target_file_path:?} --command {command_name:?}");
-        let command_path = directory.join("wapm_packages").join(".bin").join(&command_name);
+        let command =
+            format!("wasmer run --pirita {target_file_path:?} --command {command_name:?}");
+        let command_path = directory
+            .join("wapm_packages")
+            .join(".bin")
+            .join(&command_name);
         std::fs::write(&command_path, command.as_bytes())?;
     }
 
