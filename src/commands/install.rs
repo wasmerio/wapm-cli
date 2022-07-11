@@ -234,6 +234,7 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
     use reqwest::{header, ClientBuilder};
     use std::fs::OpenOptions;
     use std::io::Write;
+    use indicatif::{ProgressBar, ProgressStyle};
 
     let version = semver::Version::parse(version)
         .map_err(|e| anyhow!("Invalid version for package {name:?}: {version:?}: {e}"))?;    
@@ -281,10 +282,18 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
             Error::DownloadError(key.to_string(), error_message)
         })?;
 
+    let total_size: u64 = response
+        .headers()
+        .get("Content-Length")
+        .and_then(|c| c.to_str().ok()?.parse().ok())
+        .unwrap_or(u64::MAX);
+
     let temp_dir =
         create_temp_dir()
         .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+    
     let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
+    
     std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
         .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
     
@@ -299,10 +308,41 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
         .open(&temp_tar_gz_path)
         .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
 
-    while let Some(chunk) = response.chunk().await? {
-        println!("writing chunk({}) to file {:?}", chunk.len(), temp_tar_gz_path);
-        dest.write_all(&chunk)?;
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(
+        ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+        .progress_chars("#>-")
+    );
+
+    let mut downloaded = 0_u64;
+
+    if let Some(first_chunk) = response.chunk().await? {
+        let new = (downloaded + first_chunk.len() as u64).min(total_size);
+        downloaded = new;
+        if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
+            pb.finish_and_clear();
+            return Err(anyhow!("Error: remote package is not a PiritaFile"));
+        }
+        dest.write_all(&first_chunk)?;
+        pb.set_position(new);
     }
+
+    while let Some(chunk) = response.chunk().await? {
+        let new = (downloaded + chunk.len() as u64).min(total_size);
+        downloaded = new;
+        dest.write_all(&chunk)?;
+        pb.set_position(new);
+    }
+
+    pb.finish_and_clear();
+
+    /* 
+    It checks the commands that the pirita file has, and put them into
+    wapm_packages/.bin folder (so for example, a new python file will be
+    created in the .bin folder that calls wasmer run
+    THE_FULL_PATH/python.webc --run-command python
+    */
 
     Ok((key, package_dir, download_url.to_string()))
 }
