@@ -389,7 +389,7 @@ async fn download_pirita(
 
     for (command_name, _) in parsed_file.get_manifest().commands.iter() {
         let command =
-            format!("wasmer run --pirita {target_file_path:?} --command {command_name:?}");
+            format!("wasmer run {target_file_path:?} --invoke {command_name:?}");
         let command_path = directory
             .join("wapm_packages")
             .join(".bin")
