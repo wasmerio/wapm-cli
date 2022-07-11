@@ -26,6 +26,11 @@ pub struct InstallOpt {
     /// Expect the file to be a PiritaFile (experimental flag)
     #[structopt(long = "pirita")]
     pirita: bool,
+    /// If packages already exist, the CLI will throw a prompt whether you'd like to
+    /// re-download the package. This flag disables the prompt and will re-download
+    /// the file even if it already exists.
+    #[structopt(long = "nocache")]
+    nocache: bool,
     /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
@@ -212,14 +217,19 @@ pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
                 name: p.name.clone(), 
                 version: p.version.clone(),
             })?;
-            let file = download_pirita(&p.name, &p.version, &pirita_url, &install_directory).await; 
-            println!("{:#?}", file);
+            download_pirita(
+                &p.name, 
+                &p.version, 
+                &pirita_url, 
+                &install_directory, 
+                options.nocache || options.force_yes
+            ).await?; 
         }
         Ok(())
     })
 }
 
-async fn download_pirita(name: &str, version: &str, download_url: &str, directory: &Path) -> Result<(String, PathBuf, String), anyhow::Error> {
+async fn download_pirita(name: &str, version: &str, download_url: &str, directory: &Path, nocache: bool) -> Result<(String, PathBuf, String), anyhow::Error> {
     use crate::util::{
         get_package_namespace_and_name,
         fully_qualified_package_display_name,
@@ -235,6 +245,7 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
     use std::fs::OpenOptions;
     use std::io::Write;
     use indicatif::{ProgressBar, ProgressStyle};
+    use dialoguer::Confirm;
 
     let version = semver::Version::parse(version)
         .map_err(|e| anyhow!("Invalid version for package {name:?}: {version:?}: {e}"))?;    
@@ -247,6 +258,8 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
         fully_qualified_package_display_name(pkg_name, &version);
     let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
         .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
+    let target_file_path = package_dir.join("package.pirita");
+
     let client = {
 
         let builder = ClientBuilder::new().gzip(true);
@@ -288,61 +301,77 @@ async fn download_pirita(name: &str, version: &str, download_url: &str, director
         .and_then(|c| c.to_str().ok()?.parse().ok())
         .unwrap_or(u64::MAX);
 
-    let temp_dir =
-        create_temp_dir()
-        .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+    if nocache || (
+       target_file_path.exists() && 
+       target_file_path.metadata()?.len() == total_size && 
+       Confirm::new()
+        .with_prompt(format!("The package {key:?} seems to already have been downloaded. Download again? (no)"))
+        .default(false)
+        .interact()?
+    ) {
+
+        let temp_dir =
+            create_temp_dir()
+            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+        
+        let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
+        
+        std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
+            .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
+        
+        let temp_tar_gz_path = tmp_dir_path
+            .join("wapm_package_install")
+            .join("package.pirita");
     
-    let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
+        let mut dest = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&temp_tar_gz_path)
+            .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
     
-    std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
-        .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
+        let pb = ProgressBar::new(total_size);
+        pb.set_style(
+            ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+            .progress_chars("#>-")
+        );
     
-    let temp_tar_gz_path = tmp_dir_path
-        .join("wapm_package_install")
-        .join("package.pirita");
-
-    let mut dest = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&temp_tar_gz_path)
-        .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
-
-    let pb = ProgressBar::new(total_size);
-    pb.set_style(
-        ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-        .progress_chars("#>-")
-    );
-
-    let mut downloaded = 0_u64;
-
-    if let Some(first_chunk) = response.chunk().await? {
-        let new = (downloaded + first_chunk.len() as u64).min(total_size);
-        downloaded = new;
-        if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
-            pb.finish_and_clear();
-            return Err(anyhow!("Error: remote package is not a PiritaFile"));
+        let mut downloaded = 0_u64;
+    
+        if let Some(first_chunk) = response.chunk().await? {
+            let new = (downloaded + first_chunk.len() as u64).min(total_size);
+            downloaded = new;
+            if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
+                pb.finish_and_clear();
+                return Err(anyhow!("Error: remote package is not a PiritaFile"));
+            }
+            dest.write_all(&first_chunk)?;
+            pb.set_position(new);
         }
-        dest.write_all(&first_chunk)?;
-        pb.set_position(new);
+    
+        while let Some(chunk) = response.chunk().await? {
+            let new = (downloaded + chunk.len() as u64).min(total_size);
+            downloaded = new;
+            dest.write_all(&chunk)?;
+            pb.set_position(new);
+        }
+    
+        std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
+    
+        pb.finish_and_clear();
     }
 
-    while let Some(chunk) = response.chunk().await? {
-        let new = (downloaded + chunk.len() as u64).min(total_size);
-        downloaded = new;
-        dest.write_all(&chunk)?;
-        pb.set_position(new);
+    let parsed_file = pirita::PiritaFile::load_mmap(target_file_path.clone())
+    .ok_or(anyhow!("Could not parse {key:?} ({target_file_path:?}): not a PiritaFile"))?;
+
+    std::fs::create_dir_all(directory.join("wapm_packages").join(".bin"))?;
+
+    for (command_name, command_data) in parsed_file.get_manifest().commands.iter() {
+        let command = format!("wasmer run --pirita {target_file_path:?} --command {command_name:?}");
+        let command_path = directory.join("wapm_packages").join(".bin").join(&command_name);
+        std::fs::write(&command_path, command.as_bytes())?;
     }
-
-    pb.finish_and_clear();
-
-    /* 
-    It checks the commands that the pirita file has, and put them into
-    wapm_packages/.bin folder (so for example, a new python file will be
-    created in the .bin folder that calls wasmer run
-    THE_FULL_PATH/python.webc --run-command python
-    */
 
     Ok((key, package_dir, download_url.to_string()))
 }

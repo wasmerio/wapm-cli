@@ -39,7 +39,6 @@ url = "2"
 wapm-toml = { version = "0.1.0", path = "./wapm-toml" }
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
-dialoguer = "0.4.0"
 hex = { version = "0.4", optional = true }
 blake3 = { version = "0.3.1", optional = true }
 indicatif = "0.16.2"
@@ -59,9 +58,13 @@ getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }
 
+[dependencies.dialoguer]
+git = "https://github.com/mitsuhiko/dialoguer"
+features = ["default", "editor", "fuzzy-select", "history", "password", "completion"]
+
 [dependencies.pirita]
 git = "ssh://git@github.com/wasmerio/pirita.git"
-rev = "a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10"
+rev = "0573041d5e6b312ca5bd437fe68ff0fc505ba7d4"
 features = ["emscripten", "wasi"]
 
 [dev-dependencies]

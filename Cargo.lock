@@ -919,13 +919,13 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "116f66c4e7b19af0d52857aa4ff710cc3b4781d9c16616e31540bc55ec57ba8c"
+version = "0.10.1"
+source = "git+https://github.com/mitsuhiko/dialoguer#6a8c08ca2ef24cdc9bb0946fe794cbd977b23e7b"
 dependencies = [
  "console 0.15.0",
- "lazy_static",
+ "fuzzy-matcher",
  "tempfile",
+ "zeroize",
 ]
 
 [[package]]
@@ -1435,6 +1435,15 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "fuzzy-matcher"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
+dependencies = [
+ "thread_local",
 ]
 
 [[package]]
@@ -2463,7 +2472,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10#a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=0573041d5e6b312ca5bd437fe68ff0fc505ba7d4#0573041d5e6b312ca5bd437fe68ff0fc505ba7d4"
 dependencies = [
  "webc",
  "webc-runner",
@@ -3212,7 +3221,7 @@ checksum = "4ee32fced98917f2c03d571658934aadae9b1527133ae9c7ac3cadb9d8252a05"
 dependencies = [
  "aes",
  "anyhow",
- "base64 0.12.3",
+ "base64 0.13.0",
  "block-modes",
  "block-padding",
  "blowfish",
@@ -3751,6 +3760,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
+dependencies = [
+ "once_cell",
 ]
 
 [[package]]
@@ -4660,7 +4678,7 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10#a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=0573041d5e6b312ca5bd437fe68ff0fc505ba7d4#0573041d5e6b312ca5bd437fe68ff0fc505ba7d4"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4682,7 +4700,7 @@ dependencies = [
 [[package]]
 name = "webc-runner"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10#a8d9c1a6c6ba999f9037a9b6e3e9f8205fc3bf10"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=0573041d5e6b312ca5bd437fe68ff0fc505ba7d4#0573041d5e6b312ca5bd437fe68ff0fc505ba7d4"
 dependencies = [
  "anyhow",
  "futures-util",
