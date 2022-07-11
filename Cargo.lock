@@ -920,10 +920,10 @@ dependencies = [
 [[package]]
 name = "dialoguer"
 version = "0.10.1"
-source = "git+https://github.com/mitsuhiko/dialoguer#6a8c08ca2ef24cdc9bb0946fe794cbd977b23e7b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8c8ae48e400addc32a8710c8d62d55cb84249a7d58ac4cd959daecfbaddc545"
 dependencies = [
  "console 0.15.0",
- "fuzzy-matcher",
  "tempfile",
  "zeroize",
 ]
@@ -1435,15 +1435,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "fuzzy-matcher"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
-dependencies = [
- "thread_local",
 ]
 
 [[package]]
@@ -3760,15 +3751,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "thread_local"
-version = "1.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
-dependencies = [
- "once_cell",
 ]
 
 [[package]]

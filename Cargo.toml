@@ -42,6 +42,7 @@ wasmparser = "0.51.4"
 hex = { version = "0.4", optional = true }
 blake3 = { version = "0.3.1", optional = true }
 indicatif = "0.16.2"
+dialoguer = "0.10.1"
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 whoami = "1.1.5"
@@ -57,10 +58,6 @@ wasm-bus-process = "1.0"
 getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }
-
-[dependencies.dialoguer]
-git = "https://github.com/mitsuhiko/dialoguer"
-features = ["default", "editor", "fuzzy-select", "history", "password", "completion"]
 
 [dependencies.pirita]
 git = "ssh://git@github.com/wasmerio/pirita.git"

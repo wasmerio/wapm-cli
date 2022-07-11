@@ -387,7 +387,7 @@ async fn download_pirita(
 
     std::fs::create_dir_all(directory.join("wapm_packages").join(".bin"))?;
 
-    for (command_name, command_data) in parsed_file.get_manifest().commands.iter() {
+    for (command_name, _) in parsed_file.get_manifest().commands.iter() {
         let command =
             format!("wasmer run --pirita {target_file_path:?} --command {command_name:?}");
         let command_path = directory
