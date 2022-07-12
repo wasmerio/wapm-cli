@@ -27,7 +27,73 @@ pub struct RunOpt {
     args: Vec<OsString>,
 }
 
+#[derive(Debug)]
+pub enum PiritaRunError {
+    Initialize(PiritaInitializeError),
+    Run(anyhow::Error),
+}
+
+#[derive(Debug)]
+pub enum PiritaInitializeError {
+    CannotGetCurrentDir(std::io::Error),
+    CouldNotFindCommandInDotBin(std::io::Error),
+}
+
+pub fn try_run_pirita(run_options: &RunOpt) -> Result<(), PiritaRunError> {
+    
+    let command_name = run_options.command.as_str();
+    let args = &run_options.args;
+    let current_dir = crate::config::Config::get_current_dir()
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CannotGetCurrentDir(e)))?;
+    
+    let cmd = std::fs::read_to_string(current_dir.join("wapm_packages").join(".bin").join(command_name))
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CouldNotFindCommandInDotBin(e)))?;
+
+    let mut sw = shellwords::split(&cmd)
+    .map_err(|e| PiritaRunError::Run(e.into()))?;
+    
+    if sw.get(0).map(|s| s.as_str()) != Some("wasmer") || sw.get(1).map(|s| s.as_str()) != Some("run") {
+        return Err(PiritaRunError::Run(anyhow!(
+            "Expected \"wasmer run\" command in command for {command_name:?}, got: {sw:?}"
+        )));
+    }
+
+    sw.remove(0);
+    sw.remove(0);
+
+    run_pirita(&sw)
+    .map_err(|e| PiritaRunError::Run(e))
+}
+
+fn run_pirita(args: &[String]) -> Result<(), anyhow::Error> {
+    
+    let mut command = std::process::Command::new("wasmer");
+    
+    command.arg("run");
+    
+    for arg in args {
+        command.arg(arg);
+    }
+
+    let output = command.output()?;
+    if !output.stderr.is_empty() {
+        Err(anyhow!("{}", String::from_utf8_lossy(&output.stderr)))
+    } else if !output.stdout.is_empty() {
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        Ok(())
+    } else {
+        Ok(())
+    }
+}
+
 pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
+
+    match try_run_pirita(&run_options) {
+        Ok(()) => return Ok(()),
+        Err(PiritaRunError::Initialize(_)) => { },
+        Err(PiritaRunError::Run(e)) => return Err(e),
+    }
+
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = crate::config::Config::get_current_dir()?;
