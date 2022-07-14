@@ -266,6 +266,10 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
 
     // first search for locally installed command
     match FindCommandResult::find_command_in_directory(&current_dir, &command_name) {
+        FindCommandResult::CommandFoundPirita(cmd) => {
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, &opt.args.as_ref())?;
+            return Ok(());
+        },
         FindCommandResult::CommandNotFound(_) => {
             // go to normal wax flow
             debug!(
@@ -549,6 +553,10 @@ fn run(
                 prehashed_cache_key,
             );
         }
+        FindCommandResult::CommandFoundPirita(cmd) => {
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)?;
+            return Ok(());
+        },
         FindCommandResult::Error(e) => return Err(e),
     };
 }

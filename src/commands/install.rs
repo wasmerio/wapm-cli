@@ -23,9 +23,6 @@ pub struct InstallOpt {
     /// Install the package(s) globally
     #[structopt(short = "g", long = "global")]
     global: bool,
-    /// Expect the file to be a PiritaFile (experimental flag)
-    #[structopt(long = "pirita")]
-    pirita: bool,
     /// If packages already exist, the CLI will throw a prompt whether you'd like to
     /// re-download the package. This flag disables the prompt and will re-download
     /// the file even if it already exists.
@@ -81,7 +78,7 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
-    if options.pirita {
+    if std::env::var("USE_PIRITA").ok() == Some("1".to_string()) {
         return install_pirita(options);
     }
     let current_directory = crate::config::Config::get_current_dir()?;

@@ -49,37 +49,55 @@ pub fn try_run_pirita(run_options: &RunOpt) -> Result<(), PiritaRunError> {
     let cmd = std::fs::read_to_string(current_dir.join("wapm_packages").join(".bin").join(command_name))
     .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CouldNotFindCommandInDotBin(e)))?;
 
-    let mut sw = shellwords::split(&cmd)
-    .map_err(|e| PiritaRunError::Run(e.into()))?;
+    try_run_pirita_cmd(&cmd, command_name, args.as_ref())
+    .map_err(|e| PiritaRunError::Run(e))
+}
+
+pub(crate) fn try_run_pirita_cmd(cmd: &str, command_name: &str, args: &[OsString]) -> Result<(), anyhow::Error> {
+
+    let mut sw = shellwords::split(&cmd)?;
     
     if sw.get(0).map(|s| s.as_str()) != Some("wasmer") || sw.get(1).map(|s| s.as_str()) != Some("run") {
-        return Err(PiritaRunError::Run(anyhow!(
+        return Err(anyhow!(
             "Expected \"wasmer run\" command in command for {command_name:?}, got: {sw:?}"
-        )));
+        ));
     }
 
     sw.remove(0);
     sw.remove(0);
 
-    run_pirita(&sw)
-    .map_err(|e| PiritaRunError::Run(e))
+    run_pirita(&sw, args)
 }
 
-fn run_pirita(args: &[String]) -> Result<(), anyhow::Error> {
+fn run_pirita(args: &[String], rt_args: &[OsString]) -> Result<(), anyhow::Error> {
+        
+    let (runtime, runtime_args) = get_runtime_with_args();
+    let mut command = std::process::Command::new(runtime);
     
-    let mut command = std::process::Command::new("wasmer");
-    
+    for arg in runtime_args {
+        command.arg(arg);
+    }
+
     command.arg("run");
     
     for arg in args {
         command.arg(arg);
     }
 
-    let output = command.output()?;
+    for arg in rt_args {
+        command.arg(arg);
+    }
+
+    let output = command.spawn()?;
+
+    let output = output
+    .wait_with_output()
+    .expect("failed to wait on child");
+
     if !output.stderr.is_empty() {
         Err(anyhow!("{}", String::from_utf8_lossy(&output.stderr)))
     } else if !output.stdout.is_empty() {
-        println!("{}", String::from_utf8_lossy(&output.stdout));
+        println!("{}", String::from_utf8_lossy(&output.stderr));
         Ok(())
     } else {
         Ok(())
@@ -106,14 +124,9 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
 
-    let find_command_result::Command {
-        source: source_path_buf,
-        manifest_dir,
-        args: _,
-        module_name,
-        is_global,
-        prehashed_cache_key,
-    } = match get_command_from_anywhere(command_name) {
+    let found_command = get_command_from_anywhere(command_name);
+
+    let command = match found_command {
         Err(find_command_result::Error::CommandNotFound(command)) => {
             let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
             return Err(anyhow!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
@@ -123,28 +136,45 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
                   &package_info.namespaced_package_name,
                   &package_info.version,
             ));
+        },
+        Err(e) => { return Err(e.into()); },
+        Ok(o) => o,
+    };
+
+    match command {
+        find_command_result::Command::TarGz(find_command_result::TarGzCommand {
+            source: source_path_buf,
+            manifest_dir,
+            args: _,
+            module_name,
+            is_global,
+            prehashed_cache_key,
+        }) => {
+            let run_dir = if is_global {
+                Config::get_globals_directory().unwrap()
+            } else {
+                current_dir.clone()
+            };
+        
+            let manifest_dir = run_dir.join(manifest_dir);
+        
+            do_run(
+                run_dir,
+                source_path_buf,
+                manifest_dir,
+                command_name,
+                &module_name,
+                &run_options.pre_opened_directories,
+                &args,
+                prehashed_cache_key,
+            )
+        },
+        find_command_result::Command::Pirita(find_command_result::PiritaCommand { 
+            cmd 
+        }) => {
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)
         }
-        otherwise => otherwise?,
-    };
-
-    let run_dir = if is_global {
-        Config::get_globals_directory().unwrap()
-    } else {
-        current_dir.clone()
-    };
-
-    let manifest_dir = run_dir.join(manifest_dir);
-
-    do_run(
-        run_dir,
-        source_path_buf,
-        manifest_dir,
-        command_name,
-        &module_name,
-        &run_options.pre_opened_directories,
-        &args,
-        prehashed_cache_key,
-    )
+    }
 }
 
 pub(crate) fn do_run(

@@ -26,6 +26,7 @@ pub mod local_package;
 pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
+pub mod pirita_packages;
 pub mod removed_lockfile_packages;
 pub mod removed_packages;
 pub mod resolved_packages;

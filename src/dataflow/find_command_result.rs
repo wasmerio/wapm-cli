@@ -3,6 +3,7 @@ use crate::data::lock::lockfile::{Lockfile, LockfileError};
 use crate::data::manifest::Manifest;
 use crate::dataflow::lockfile_packages::LockfileResult;
 use crate::dataflow::manifest_packages::ManifestResult;
+use crate::dataflow::pirita_packages::PiritaResult;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -81,6 +82,7 @@ pub enum FindCommandResult {
         module_name: String,
         prehashed_cache_key: Option<String>,
     },
+    CommandFoundPirita(String),
     Error(anyhow::Error),
 }
 
@@ -197,8 +199,17 @@ impl FindCommandResult {
     }
 
     pub fn find_command_in_directory<S: AsRef<str>>(directory: &Path, command_name: S) -> Self {
+
+        let command_name = command_name.as_ref();
+        
+        let pirita_result = PiritaResult::find_in_directory(&directory, command_name);
+        if let PiritaResult::Ok(o) = pirita_result {
+            return FindCommandResult::CommandFoundPirita(o);
+        }
+
         let manifest_result = ManifestResult::find_in_directory(&directory);
         let lockfile_result = LockfileResult::find_in_directory(&directory);
+
         match (manifest_result, lockfile_result) {
             (ManifestResult::ManifestError(e), _) => return FindCommandResult::Error(e.into()),
             (_, LockfileResult::LockfileError(e)) => return FindCommandResult::Error(e.into()),
@@ -219,12 +230,23 @@ impl FindCommandResult {
                 return Self::find_command_in_manifest_and_lockfile(command_name, m, l, directory);
             }
         };
-        FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
+        FindCommandResult::CommandNotFound(command_name.to_string())
     }
 }
 
 #[derive(Debug)]
-pub struct Command {
+pub enum Command {
+    Pirita(PiritaCommand),
+    TarGz(TarGzCommand)
+}
+
+#[derive(Debug)]
+pub struct PiritaCommand {
+    pub cmd: String,
+}
+
+#[derive(Debug)]
+pub struct TarGzCommand {
     // PathBuf, Option<String>, String, bool
     pub source: PathBuf,
     pub manifest_dir: PathBuf,
@@ -253,15 +275,18 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             module_name,
             prehashed_cache_key,
         } => {
-            return Ok(Command {
+            return Ok(Command::TarGz(TarGzCommand {
                 source,
                 manifest_dir,
                 args,
                 module_name,
                 is_global: false,
                 prehashed_cache_key,
-            });
-        }
+            }));
+        },
+        FindCommandResult::CommandFoundPirita(cmd) => {
+            return Ok(Command::Pirita(PiritaCommand { cmd }));
+        },
         FindCommandResult::Error(e) => {
             return Err(Error::ErrorReadingLocalDirectory(
                 command_name.as_ref().to_string(),
@@ -287,15 +312,18 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             module_name,
             prehashed_cache_key,
         } => {
-            return Ok(Command {
+            return Ok(Command::TarGz(TarGzCommand {
                 source,
                 manifest_dir,
                 args,
                 module_name,
                 is_global: true,
                 prehashed_cache_key,
-            });
-        }
+            }));
+        },
+        FindCommandResult::CommandFoundPirita(cmd) => {
+            return Ok(Command::Pirita(PiritaCommand { cmd }));
+        },
         FindCommandResult::Error(e) => {
             return Err(
                 Error::CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory(
