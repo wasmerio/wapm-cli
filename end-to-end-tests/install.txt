@@ -17,16 +17,16 @@ LOCAL COMMANDS:
  COMMAND  | PACKAGE                  | VERSION 
  cowsay   | namespace-example/cowsay | 0.1.2 
  cowthink | namespace-example/cowsay | 0.1.2 
-[INFO] Package "namespace-example/cowsay" is uninstalled.
+[INFO] Package "namespace-example/cowsay" uninstalled.
 [INFO] Installing namespace-example/cowsay@0.1.2
 Package installed successfully to wapm_packages!
-[INFO] Package "namespace-example/cowsay" is uninstalled.
+[INFO] Package "namespace-example/cowsay" uninstalled.
 [INFO] Package "namespace-example/cowsay" is not installed.
 [INFO] Installing mark/rust-example@0.1.11
 Global package installed successfully!
 Hello, world!
 
-[INFO] Package "mark/rust-example" is uninstalled.
+[INFO] Package "mark/rust-example" uninstalled.
 [INFO] Installing mark/wapm-override-test@0.1.0
 Global package installed successfully!
 GLOBAL PACKAGES:
@@ -40,7 +40,7 @@ Version 0.1.0
 [INFO] Installing mark/wapm-override-test@0.2.0
 Package installed successfully to wapm_packages!
 Version 0.2.0
-[INFO] Package "mark/wapm-override-test" is uninstalled.
+[INFO] Package "mark/wapm-override-test" uninstalled.
 Version 0.1.0
-[INFO] Package "mark/wapm-override-test" is uninstalled.
+[INFO] Package "mark/wapm-override-test" uninstalled.
 Error: Failed to install packages. Attempting to install multiple versions of package namespace-example/cowsay (0.1.1 and 0.1.2)
