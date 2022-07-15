@@ -19,18 +19,18 @@ use thiserror::Error;
 /// Options for the `install` subcommand
 #[derive(StructOpt, Debug)]
 pub struct InstallOpt {
-    packages: Vec<String>,
+    pub(crate) packages: Vec<String>,
     /// Install the package(s) globally
     #[structopt(short = "g", long = "global")]
-    global: bool,
+    pub(crate) global: bool,
     /// If packages already exist, the CLI will throw a prompt whether you'd like to
     /// re-download the package. This flag disables the prompt and will re-download
     /// the file even if it already exists.
     #[structopt(long = "nocache")]
-    nocache: bool,
+    pub(crate) nocache: bool,
     /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
     #[structopt(long = "force-yes", short = "y")]
-    force_yes: bool,
+    pub(crate) force_yes: bool,
 }
 
 #[derive(Debug, Error)]
@@ -160,7 +160,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
         let versions = packages
             .iter()
             .flat_map(|packageversion| {
-                if &packageversion.name != name {
+                if &packageversion.name != package_name {
                     Vec::new()
                 } else {
                     packageversion
@@ -214,7 +214,8 @@ pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
         "this function should only be called once!"
     );
 
-    let installed_packages = get_packages_with_versions(&options.packages)?;
+    let installed_packages = get_packages_with_versions(&options.packages);
+    let installed_packages = installed_packages?;
     let install_directory = Path::new(&current_directory);
 
     let rt = tokio::runtime::Builder::new_current_thread()

@@ -18,13 +18,13 @@ use wasm_bus_process::prelude::Command;
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
     /// Command name
-    command: String,
+    pub(crate) command: String,
     /// WASI pre-opened directory
     #[structopt(long = "dir", multiple = true, group = "wasi")]
-    pre_opened_directories: Vec<String>,
+    pub(crate) pre_opened_directories: Vec<String>,
     /// Application arguments
     #[structopt(multiple = true, parse(from_os_str))]
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
 }
 
 #[derive(Debug)]

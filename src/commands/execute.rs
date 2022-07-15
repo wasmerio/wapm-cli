@@ -145,6 +145,14 @@ enum ExecuteArgParsingError {
 )]
 struct WaxGetCommandQuery;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/wax_get_command-pirita.graphql",
+    response_derives = "Debug"
+)]
+struct WaxGetCommandQueryPirita;
+
 /// Do the real argument parsing into [`ExecuteOptInner`].
 fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgParsingError> {
     let mut idx = 0;
@@ -361,6 +369,55 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
                     debug!("Failed to run when cached due to `{}`. continuing...", e);
                 }
             }
+        }
+    }
+
+    // if not found, try querying the server for a PiritaFile first 
+    // (before continuing to query for a regular .tar.gz file)
+    let q = WaxGetCommandQueryPirita::build_query(wax_get_command_query_pirita::Variables {
+        command: command_name.to_string(),
+    });
+
+    // Try to download and execute the PiritaFile before falling back to .tar.gz
+    loop {
+        use crate::commands::run::PiritaRunError;
+
+        if opt.offline {
+            break;
+        }
+
+        debug!("Querying server for package info");
+        let response: Result<wax_get_command_query_pirita::ResponseData, _> = execute_query(&q);
+        if response.is_err() {
+            info!("Failed to connect to the wapm registry. Continuning.");
+            break;
+        }
+        let response: wax_get_command_query_pirita::ResponseData = response?;
+        let command = match response.command {
+            Some(s) => s,
+            None => { break; },
+        };
+
+        let package = command.package_version.package.name;
+        let version = command.package_version.version;
+
+        // run wapm install [package] && wapm run [package]
+        let install_opts = crate::commands::install::InstallOpt {
+            packages: vec![format!("{package}@{version}")],
+            global: false,
+            nocache: true,
+            force_yes: true,
+        };
+        crate::commands::install::install_pirita(install_opts)?;
+        let run_opts = crate::commands::run::RunOpt {
+            command: command.command.clone(),
+            pre_opened_directories: Vec::new(),
+            args: opt.args.clone(),
+        };
+        match crate::commands::run::try_run_pirita(&run_opts) {
+            Ok(()) => return Ok(()),
+            Err(PiritaRunError::Run(e)) => { return Err(e); },
+            Err(PiritaRunError::Initialize(_)) => { break; },
         }
     }
 

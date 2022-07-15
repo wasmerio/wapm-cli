@@ -1,0 +1,15 @@
+query WaxGetCommandQueryPirita($command: String!) {
+  command: getCommand(name: $command) {
+    command
+    packageVersion {
+      version
+      package {
+        name
+        displayName
+      }
+      distribution {
+        piritaDownloadUrl
+      }
+    }
+  }
+}
