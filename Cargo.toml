@@ -63,8 +63,9 @@ serde_yaml = { version = "^0.8" }
 # Due to issues with SSH
 [dependencies.pirita]
 git = "https://github.com/wasmerio/pirita.git"
-rev = "b20cf5dfadb82e5fe0fcc0a77bf901b58da31dea"
-features = ["emscripten", "wasi"]
+rev = "0967fda8971b0e2b0757c40d656f6ed5cad8d2e9"
+default-features = false
+optional = true
 
 [dev-dependencies]
 tempfile = "3"
@@ -79,6 +80,7 @@ members = [
 default = ["full","packagesigning", "sqlite-bundled"]
 sqlite-bundled = ["rusqlite/bundled"]
 telemetry = ["sentry"]
+pirita_file = ["pirita"]
 update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
 packagesigning = []#[cfg(feature = "full")]
