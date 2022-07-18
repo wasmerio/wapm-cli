@@ -82,6 +82,7 @@ jobs:
         run: |
           echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
           echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
+          ssh-add
           echo https://wasmer:${{ secrets.GH_PAT }}@github.com > .creds
           git config --global credential.helper "store --file .creds"
 #      - name: Install sccache
