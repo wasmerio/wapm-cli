@@ -17,6 +17,8 @@ pub enum Abi {
     None,
     #[serde(rename = "wasi")]
     Wasi,
+    #[serde(rename = "wasm4")]
+    WASM4,
 }
 
 impl Abi {
@@ -24,6 +26,7 @@ impl Abi {
         match self {
             Abi::Emscripten => "emscripten",
             Abi::Wasi => "wasi",
+            Abi::WASM4 => "wasm4",
             Abi::None => "generic",
         }
     }
@@ -151,6 +154,7 @@ pub struct CommandV1 {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CommandV2 {
     pub name: String,
+    pub module: String,
     pub runner: String,
     pub annotations: Option<CommandAnnotations>,
 }
@@ -399,7 +403,7 @@ impl Manifest {
         if let Some(ref commands) = self.command {
             for command in commands {
                 if let Some(ref module) = module_map.get(&command.get_module()) {
-                    if module.abi == Abi::None {
+                    if module.abi == Abi::None && module.interfaces.is_none() {
                         return Err(ManifestError::ValidationError(ValidationError::MissingABI(
                             command.get_name(),
                             module.name.clone(),

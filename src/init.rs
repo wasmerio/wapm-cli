@@ -16,6 +16,7 @@ use std::{
 };
 
 const WASI_LAST_VERSION: &str = "0.0.0-unstable";
+const WASM4_LAST_VERSION: &str = "0.0.1";
 
 pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std::io::Error> {
     let value = Input::<String>::new()
@@ -105,7 +106,7 @@ pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
                 source: "entry.wasm".into(),
                 abi: Abi::default(),
                 interfaces: None,
-                kind: Some("wasi".to_string()),
+                kind: None,
             }]),
             command: None,
         }
@@ -183,31 +184,46 @@ Press ^C at any time to quit."
                 Abi::None => 0,
                 Abi::Wasi => 1,
                 Abi::Emscripten => 2,
+                Abi::WASM4 => 3,
             };
-            let (abi, interfaces): (Abi, Option<HashMap<String, String>>) = match Select::new()
-                .with_prompt(" - ABI")
-                .item("None")
-                .item("WASI")
-                .item("Emscripten")
-                .default(default_module_abi)
-                .interact()?
-            {
-                1 => (
-                    Abi::Wasi,
-                    Some(
-                        [("wasi".to_owned(), WASI_LAST_VERSION.to_owned())]
-                            .iter()
-                            .cloned()
-                            .collect(),
+            let (abi, interfaces, _kind): (Abi, Option<HashMap<String, String>>, Option<String>) =
+                match Select::new()
+                    .with_prompt(" - ABI")
+                    .item("None")
+                    .item("WASI")
+                    .item("Emscripten")
+                    .item("WASM4")
+                    .default(default_module_abi)
+                    .interact()?
+                {
+                    1 => (
+                        Abi::Wasi,
+                        Some(
+                            [("wasi".to_owned(), WASI_LAST_VERSION.to_owned())]
+                                .iter()
+                                .cloned()
+                                .collect(),
+                        ),
+                        Some("wasi".to_owned()),
                     ),
-                ),
-                2 => (Abi::Emscripten, None),
-                0 | _ => (Abi::None, None),
-            };
+                    2 => (Abi::Emscripten, None, None),
+                    3 => (
+                        Abi::WASM4,
+                        Some(
+                            [("wasm4".to_owned(), WASM4_LAST_VERSION.to_owned())]
+                                .iter()
+                                .cloned()
+                                .collect(),
+                        ),
+                        None,
+                    ),
+                    0 | _ => (Abi::None, None, None),
+                };
             module.abi = abi;
+            // module.kind = kind;
             module.interfaces = interfaces;
             // We ask for commands if it has an Abi
-            if !module.abi.is_none() {
+            if !module.abi.is_none() || !module.interfaces.is_none() {
                 loop {
                     let module_command_strings = ask_until_valid(
                         " - Commmand(s), space separated",
@@ -215,9 +231,14 @@ Press ^C at any time to quit."
                         validate_commands,
                     )?;
 
+                    let default_runner = match module.abi {
+                        Abi::Wasi => Some(format!("wasi@unstable_")),
+                        Abi::WASM4 => Some(format!("wasm4@0.0.1")),
+                        _ => None,
+                    };
                     let runner_for_modules = ask_until_valid(
                         &format!(" - Command runner for {:?}", module_command_strings),
-                        Some(format!("webc.org/runner/wasi/command@unstable_")),
+                        default_runner,
                         util::validate_runner,
                     )?;
 
@@ -227,6 +248,7 @@ Press ^C at any time to quit."
                                 Command::V2(CommandV2 {
                                     name: command_string,
                                     runner: runner_for_modules.clone(),
+                                    module: module.name.clone(),
                                     annotations: None,
                                 })
                             });

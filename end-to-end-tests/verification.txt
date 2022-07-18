@@ -10,7 +10,7 @@ Would you like to trust this key?
 [INFO] Signature of package dog@0.0.4 verified!
 Package installed successfully to wapm_packages!
 3
-[INFO] Package "mark2/dog" is uninstalled.
+[INFO] Package "mark2/dog" uninstalled.
 [INFO] Installing mark2/dog@0.0.4
 [INFO] Signature of package dog@0.0.4 verified!
 Package installed successfully to wapm_packages!
@@ -23,7 +23,7 @@ Would you like to trust this key?
 [y/n] [INFO] Importing key "BB702CB61EC2F2F6" for user "mark2"
 [INFO] Signature of package dog3@0.0.0 verified!
 Package installed successfully to wapm_packages!
-[INFO] Package "syrusakbary/dog3" is uninstalled.
+[INFO] Package "syrusakbary/dog3" uninstalled.
 [INFO] Installing syrusakbary/dog3@0.0.0
 [INFO] Signature of package dog3@0.0.0 verified!
 Package installed successfully to wapm_packages!
