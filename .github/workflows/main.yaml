@@ -73,7 +73,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
           override: true
-      - name: Configure cargo data directory
+      - name: Configure cargo data directory + private access tokens
         # After this point, all cargo registry and crate data is stored in
         # $GITHUB_WORKSPACE/.cargo_home. This allows us to cache only the files
         # that are needed during the build process. Additionally, this works
@@ -82,6 +82,8 @@ jobs:
         run: |
           echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
           echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
+          echo https://wasmer:${{ secrets.GH_PAT }}@github.com > .creds
+          git config --global credential.helper "store --file .creds"
 #      - name: Install sccache
 #        run: |
 #          echo "::add-path::${{ runner.tool_cache }}/cargo-sccache/bin"

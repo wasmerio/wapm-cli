@@ -62,7 +62,7 @@ serde_yaml = { version = "^0.8" }
 
 [dependencies.pirita]
 git = "ssh://git@github.com/wasmerio/pirita.git"
-rev = "0573041d5e6b312ca5bd437fe68ff0fc505ba7d4"
+rev = "b20cf5dfadb82e5fe0fcc0a77bf901b58da31dea"
 features = ["emscripten", "wasi"]
 
 [dev-dependencies]
