@@ -60,8 +60,9 @@ getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }
 
+# Due to issues with SSH
 [dependencies.pirita]
-git = "ssh://git@github.com/wasmerio/pirita.git"
+git = "https://github.com/wasmerio/pirita.git"
 rev = "b20cf5dfadb82e5fe0fcc0a77bf901b58da31dea"
 features = ["emscripten", "wasi"]
 
