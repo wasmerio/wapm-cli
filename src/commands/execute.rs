@@ -374,11 +374,13 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
 
     // if not found, try querying the server for a PiritaFile first 
     // (before continuing to query for a regular .tar.gz file)
+    #[cfg(feature = "pirita_file")]
     let q = WaxGetCommandQueryPirita::build_query(wax_get_command_query_pirita::Variables {
         command: command_name.to_string(),
     });
 
-    // Try to download and execute the PiritaFile before falling back to .tar.gz
+    // Try to download and execute the PiritaFile before falling back to .tar.
+    #[cfg(feature = "pirita_file")]
     loop {
         use crate::commands::run::PiritaRunError;
 

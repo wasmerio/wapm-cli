@@ -12,7 +12,9 @@ use crate::config::Config;
 use crate::dataflow;
 use crate::util;
 use std::borrow::Cow;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "pirita_file")]
+use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -57,6 +59,7 @@ enum InstallError {
     InvalidPackageIdentifier { name: String },
     #[error("Must supply package names to install command when using --global/-g flag.")]
     MustSupplyPackagesWithGlobalFlag,
+    #[cfg(feature = "pirita_file")]
     #[error(
         "Could not find PiritaFile donwload url for package {0}@{1}",
         name,
@@ -78,6 +81,7 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
+    #[cfg(feature = "pirita_file")]
     if std::env::var("USE_PIRITA").ok() == Some("1".to_string()) {
         return install_pirita(options);
     }
@@ -206,6 +210,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 }
 
 /// Run the install command with --pirita flags
+#[cfg(feature = "pirita_file")]
 pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
@@ -244,6 +249,7 @@ pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
     })
 }
 
+#[cfg(feature = "pirita_file")]
 async fn download_pirita(
     name: &str,
     version: &str,

@@ -60,7 +60,7 @@ getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }
 
-# Due to issues with SSH
+# Due to issues with SSH, the URL has to be in HTTPS format
 [dependencies.pirita]
 git = "https://github.com/wasmerio/pirita.git"
 rev = "0967fda8971b0e2b0757c40d656f6ed5cad8d2e9"
