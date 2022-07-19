@@ -44,16 +44,16 @@ blake3 = { version = "0.3.1", optional = true }
 indicatif = "0.16.2"
 dialoguer = "0.10.1"
 shellwords = "1.1.0"
+whoami = "1.2.1"
+wapm-resolve-url = { version = "0.1.0", path = "./wapm-resolve-url" }
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-whoami = "1.1.5"
 atty = "0.2"
 reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"], optional = true }
 tar = { version = "0.4" }
 tokio = { version = "1.19.2", features = ["full"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-whoami = "0.5"
 wasm-bus-reqwest = "1.0"
 wasm-bus-process = "1.0"
 getrandom = "0.2.3"

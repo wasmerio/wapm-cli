@@ -10,12 +10,11 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 serde_json = "1.0.81"
+whoami = "1.2.1"
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-whoami = "1.1.5"
 reqwest = { version = "0.11.0", features = ["rustls-tls", "blocking", "json", "gzip","socks", "multipart"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-whoami = "0.5"
 wasm-bus-reqwest = { git = "https://github.com/tokera-com/ate", rev = "77b2bca4264e1fcb3d977650c09bb228a782b6f2" }
 wasm-bus-process = { git = "https://github.com/tokera-com/ate", rev = "77b2bca4264e1fcb3d977650c09bb228a782b6f2"  }

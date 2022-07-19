@@ -3780,12 +3780,28 @@ dependencies = [
  "tokio",
  "toml",
  "url 2.2.2",
+ "wapm-resolve-url 0.1.0",
  "wapm-toml",
  "wasm-bus-process 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bus-reqwest 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasmer-wasm-interface",
  "wasmparser",
- "whoami 0.5.3",
+ "whoami 1.2.1",
+]
+
+[[package]]
+name = "wapm-resolve-url"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "graphql_client",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "url 2.2.2",
+ "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
+ "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "whoami 1.2.1",
 ]
 
@@ -4159,7 +4175,7 @@ dependencies = [
  "serde_derive",
  "tokio",
  "url 2.2.2",
- "wapm-resolve-url",
+ "wapm-resolve-url 0.1.0 (git+https://github.com/wasmerio/wapm-cli?rev=0134b850f20af5b10dbd5b5958351dd64431c957)",
  "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "webc",

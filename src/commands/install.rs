@@ -7,6 +7,7 @@ use crate::dataflow::{
 use crate::graphql::execute_query;
 
 use graphql_client::*;
+use wapm_resolve_url::get_webc_url_of_package;
 
 use crate::config::Config;
 use crate::dataflow;
@@ -39,9 +40,6 @@ pub struct InstallOpt {
 enum InstallError {
     #[error("Package not found in the registry: {name}")]
     PackageNotFound { name: String },
-
-    #[error("No package versions available for package {name}")]
-    NoVersionsAvailable { name: String },
 
     #[error("Failed to install packages. {0}")]
     CannotRegenLockFile(dataflow::Error),
@@ -138,8 +136,16 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
 }
 
 fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<WapmDistribution>> {
+
+    use wapm_resolve_url::get_tar_gz_url_of_package;
+    use url::Url;
+
+    let config = Config::from_file()?;
+    let registry_url = Url::parse(&config.registry.get_graphql_url())?;
+
     let mut result = vec![];
     for name in package_args {
+
         let name_with_version: Vec<&str> = name.split("@").collect();
 
         let package_name = match &name_with_version[..] {
@@ -149,59 +155,25 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
         }
         .ok_or(InstallError::InvalidPackageIdentifier { name: name.clone() })?;
 
-        let q = GetPackagesQuery::build_query(get_packages_query::Variables {
-            names: vec![package_name.to_string()],
-        });
-        let all_package_versions: get_packages_query::ResponseData = execute_query(&q)?;
-        let packages =
-            all_package_versions
-                .package
-                .first()
-                .ok_or(InstallError::PackageNotFound {
-                    name: name.to_string(),
-                })?;
-
-        let versions = packages
-            .iter()
-            .flat_map(|packageversion| {
-                if &packageversion.name != package_name {
-                    Vec::new()
-                } else {
-                    packageversion
-                        .versions
-                        .iter()
-                        .flat_map(|v| {
-                            v.into_iter().filter_map(|v| {
-                                let v = v.as_ref()?;
-                                Some(WapmDistribution {
-                                    name: name.clone(),
-                                    version: v.version.clone(),
-                                    download_url: v.distribution.download_url.clone(),
-                                    pirita_download_url: v.distribution.pirita_download_url.clone(),
-                                    is_last_version: v.is_last_version,
-                                })
-                            })
-                        })
-                        .collect()
-                }
-            })
-            .collect::<Vec<_>>();
-
-        if versions.is_empty() {
-            return Err(InstallError::NoVersionsAvailable {
-                name: name.to_string(),
-            }
-            .into());
-        }
-
-        let package_to_download = match &name_with_version[..] {
-            [_, package_version] => versions
-                .iter()
-                .find(|p| p.version.as_str() == *package_version),
-            [_] => versions.iter().find(|p| p.is_last_version),
+        let package_version = match &name_with_version[..] {
+            [_, version] => Some(version.clone()),
             _ => None,
-        }
-        .ok_or(InstallError::InvalidPackageIdentifier { name: name.clone() })?;
+        };
+
+        let (targz_url, version) = get_tar_gz_url_of_package(&registry_url, &package_name, package_version)
+        .ok_or(InstallError::PackageNotFound {
+            name: name.to_string(),
+        })?;
+
+        let pirita_url = get_webc_url_of_package(&registry_url, &package_name, Some(&version));
+
+        let package_to_download = WapmDistribution {
+            name: package_name.to_string(),
+            version: version.to_string(),
+            download_url: format!("{targz_url}"),
+            pirita_download_url: pirita_url.map(|(u, _)| format!("{u}")),
+            is_last_version: package_version.is_none(),
+        };
 
         result.push(package_to_download.clone());
     }

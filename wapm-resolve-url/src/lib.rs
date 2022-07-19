@@ -41,7 +41,7 @@ pub fn get_current_wapm_registry() -> Option<Url> {
     Some(Url::parse(std::str::from_utf8(&command.stdout).ok()?).ok()?)
 }
 
-pub fn get_tar_gz_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<Url> {
+pub fn get_tar_gz_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<(Url, String)> {
 
     let q = GetPackageQueryTarGz::build_query(get_package_query_tar_gz::Variables {
         name: package_id.to_string(),
@@ -50,20 +50,28 @@ pub fn get_tar_gz_url_of_package(registry: &Url, package_id: &str, version: Opti
 
     match version {
         Some(specific) => {
-            let url = all_package_versions.package?.versions?
+            let last_package = all_package_versions.package?.versions?;
+            
+            let last_package = last_package
             .iter()
             .filter_map(|v| v.as_ref())
             .filter(|v| v.version == specific)
-            .next()
-            .map(|v| v.distribution.download_url.clone())?;
+            .next()?;
 
-            Url::parse(&url).ok()
+            Url::parse(&last_package.distribution.download_url)
+            .ok()
+            .map(|u| (u, last_package.version.clone()))
         },
-        None => Url::parse(&all_package_versions.package?.last_version?.distribution.download_url).ok(),
+        None => {
+            let last_version = all_package_versions.package?.last_version?;
+            Url::parse(&last_version.distribution.download_url)
+            .ok()
+            .map(|u| (u, last_version.version.clone()))
+        },
     }
 }
 
-pub fn get_webc_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<Url> {
+pub fn get_webc_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<(Url, String)> {
     
     let q = GetPackageQueryPirita::build_query(get_package_query_pirita::Variables {
         name: package_id.to_string(),
@@ -72,15 +80,23 @@ pub fn get_webc_url_of_package(registry: &Url, package_id: &str, version: Option
 
     match version {
         Some(specific) => {
-            let url = all_package_versions.package?.versions?
+            let last_package = all_package_versions.package?.versions?;
+
+            let last_package = last_package
             .iter()
             .filter_map(|v| v.as_ref())
             .filter(|v| v.version == specific)
-            .next()
-            .map(|v| v.distribution.pirita_download_url.clone())?;
+            .next()?;
 
-            Url::parse(url.as_ref().map(|s| s.as_str())?).ok()
+            Url::parse(&last_package.distribution.pirita_download_url.as_ref().map(|s| s.as_str())?)
+            .ok()
+            .map(|u| (u, last_package.version.clone()))
         },
-        None => Url::parse(&all_package_versions.package?.last_version?.distribution.pirita_download_url?).ok(),
+        None =>{
+            let last_version = all_package_versions.package?.last_version?;
+            Url::parse(&last_version.distribution.pirita_download_url.as_ref().map(|s| s.as_str())?)
+            .ok()
+            .map(|u| (u, last_version.version.clone()))
+        },
     }
 }
