@@ -71,7 +71,7 @@ pub fn get_tar_gz_url_of_package(registry: &Url, package_id: &str, version: Opti
     }
 }
 
-pub fn get_webc_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<(Url, String)> {
+pub fn get_pirita_url_of_package(registry: &Url, package_id: &str, version: Option<&str>) -> Option<(Url, String)> {
     
     let q = GetPackageQueryPirita::build_query(get_package_query_pirita::Variables {
         name: package_id.to_string(),

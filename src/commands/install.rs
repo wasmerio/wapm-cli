@@ -7,7 +7,7 @@ use crate::dataflow::{
 use crate::graphql::execute_query;
 
 use graphql_client::*;
-use wapm_resolve_url::get_webc_url_of_package;
+use wapm_resolve_url::get_pirita_url_of_package;
 
 use crate::config::Config;
 use crate::dataflow;
@@ -165,7 +165,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
             name: name.to_string(),
         })?;
 
-        let pirita_url = get_webc_url_of_package(&registry_url, &package_name, Some(&version));
+        let pirita_url = get_pirita_url_of_package(&registry_url, &package_name, Some(&version));
 
         let package_to_download = WapmDistribution {
             name: package_name.to_string(),
