@@ -7,6 +7,7 @@ use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::util::get_runtime_with_args;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "wasi"))]
 use std::process::Command;
@@ -32,11 +33,34 @@ pub enum PiritaRunError {
     Initialize(PiritaInitializeError),
     Run(anyhow::Error),
 }
+impl fmt::Display for PiritaRunError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::PiritaRunError::*;
+        match self {
+            Initialize(i) => write!(f, "initialize: {i}"),
+            Run(r) => write!(f, "run: {r}"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum PiritaInitializeError {
+    NotAWasmerRunCommand,
+    InvalidCommand(anyhow::Error),
     CannotGetCurrentDir(std::io::Error),
     CouldNotFindCommandInDotBin(std::io::Error),
+}
+
+impl fmt::Display for PiritaInitializeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::PiritaInitializeError::*;
+        match self {
+            NotAWasmerRunCommand => write!(f, "not a wasmer run command"),
+            InvalidCommand(e) => write!(f, "invalid command: {e}"),
+            CannotGetCurrentDir(e) => write!(f, "cannot get current dir: {e}"),
+            CouldNotFindCommandInDotBin(e) => write!(f, "could not find command in .bin directory: {e}"),
+        }
+    }
 }
 
 pub fn try_run_pirita(run_options: &RunOpt) -> Result<(), PiritaRunError> {
@@ -50,23 +74,22 @@ pub fn try_run_pirita(run_options: &RunOpt) -> Result<(), PiritaRunError> {
     .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CouldNotFindCommandInDotBin(e)))?;
 
     try_run_pirita_cmd(&cmd, command_name, args.as_ref())
-    .map_err(|e| PiritaRunError::Run(e))
 }
 
-pub(crate) fn try_run_pirita_cmd(cmd: &str, command_name: &str, args: &[OsString]) -> Result<(), anyhow::Error> {
+pub(crate) fn try_run_pirita_cmd(cmd: &str, command_name: &str, args: &[OsString]) -> Result<(), PiritaRunError> {
 
-    let mut sw = shellwords::split(&cmd)?;
+    let mut sw = shellwords::split(&cmd)
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::InvalidCommand(e.into())))?;
     
     if sw.get(0).map(|s| s.as_str()) != Some("wasmer") || sw.get(1).map(|s| s.as_str()) != Some("run") {
-        return Err(anyhow!(
-            "Expected \"wasmer run\" command in command for {command_name:?}, got: {sw:?}"
-        ));
+        return Err(PiritaRunError::Initialize(PiritaInitializeError::NotAWasmerRunCommand));
     }
 
     sw.remove(0);
     sw.remove(0);
 
     run_pirita(&sw, args)
+    .map_err(|e| PiritaRunError::Run(e))
 }
 
 fn run_pirita(args: &[String], rt_args: &[OsString]) -> Result<(), anyhow::Error> {
@@ -173,6 +196,7 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             cmd 
         }) => {
             crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)
+            .map_err(|e| anyhow::anyhow!("Error running PiritaFile command: {e}"))
         }
     }
 }

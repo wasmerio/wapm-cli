@@ -275,7 +275,8 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     // first search for locally installed command
     match FindCommandResult::find_command_in_directory(&current_dir, &command_name) {
         FindCommandResult::CommandFoundPirita(cmd) => {
-            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, &opt.args.as_ref())?;
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, &opt.args.as_ref())
+            .map_err(|e| anyhow::anyhow!("Error running PiritaFile command: {e}"))?;
             return Ok(());
         },
         FindCommandResult::CommandNotFound(_) => {
@@ -613,7 +614,8 @@ fn run(
             );
         }
         FindCommandResult::CommandFoundPirita(cmd) => {
-            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)?;
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)
+            .map_err(|e| anyhow::anyhow!("Error running PiritaFile command: {e}"))?;
             return Ok(());
         },
         FindCommandResult::Error(e) => return Err(e),
