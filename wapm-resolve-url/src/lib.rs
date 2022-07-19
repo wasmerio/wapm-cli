@@ -25,11 +25,6 @@ pub fn whoami_distro() -> String {
     whoami::distro().to_lowercase()
 }
 
-#[cfg(not(target_os = "wasi"))]
-pub fn whoami_distro() -> String {
-    whoami::distro().to_lowercase()
-}
-
 pub fn get_current_wapm_registry() -> Option<Url> {
     let command = std::process::Command::new("wapm")
     .arg("config")
