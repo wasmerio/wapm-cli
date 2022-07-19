@@ -83,6 +83,10 @@ jobs:
           echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
           echo https://wasmer:${{ secrets.GH_PAT }}@github.com > creds.txt
           git config --global credential.helper "store --file creds.txt"
+          test="git = \"https://wasmer:${{ secrets.GH_PAT }}@github.com/wasmerio/pirita\""
+          sed  -i "s/git = \"https:\/\/github.com\/wasmerio\/pirita.git\"/$(cat replace.txt)/g" Cargo.toml
+          echo "cargo toml:"
+          cat Cargo.toml
 #      - name: Install sccache
 #        run: |
 #          echo "::add-path::${{ runner.tool_cache }}/cargo-sccache/bin"
