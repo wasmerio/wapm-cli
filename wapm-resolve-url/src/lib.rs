@@ -21,9 +21,8 @@ pub struct GetPackageQueryTarGz;
 )]
 pub struct GetPackageQueryPirita;
 
-#[cfg(target_os = "wasi")]
 pub fn whoami_distro() -> String {
-    whoami::os().to_lowercase()
+    whoami::distro().to_lowercase()
 }
 
 #[cfg(not(target_os = "wasi"))]
