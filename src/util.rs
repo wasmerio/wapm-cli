@@ -320,12 +320,6 @@ pub fn create_temp_dir() -> Result<std::path::PathBuf, std::io::Error> {
     Ok(ret)
 }
 
-#[cfg(target_os = "wasi")]
-pub fn whoami_distro() -> String {
-    whoami::os().to_lowercase()
-}
-
-#[cfg(not(target_os = "wasi"))]
 pub fn whoami_distro() -> String {
     whoami::distro().to_lowercase()
 }
