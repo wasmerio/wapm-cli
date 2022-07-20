@@ -34,7 +34,8 @@ where
     F: FnOnce(Form) -> Form,
 {
     let client = {
-        let builder = Client::builder();
+        let builder = Client::builder()
+        .timeout(std::time::Duration::from_secs(500));
 
         #[cfg(not(target_os = "wasi"))]
         let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()? {
