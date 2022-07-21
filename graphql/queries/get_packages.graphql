@@ -6,7 +6,6 @@ query GetPackagesQuery ($names: [String!]!) {
             isLastVersion
             distribution {
                 downloadUrl
-                piritaDownloadUrl
             }
             signature {
                 publicKey {

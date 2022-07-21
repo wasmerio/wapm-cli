@@ -3,6 +3,7 @@
 /wapm_packages
 package
 dist
+wax
 
 \.idea/
 \.vscode/
