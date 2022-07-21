@@ -154,7 +154,7 @@ pub struct CommandV1 {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CommandV2 {
     pub name: String,
-    pub module: String,
+    pub module: Option<String>,
     pub runner: String,
     pub annotations: Option<CommandAnnotations>,
 }

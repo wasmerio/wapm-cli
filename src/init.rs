@@ -248,7 +248,7 @@ Press ^C at any time to quit."
                                 Command::V2(CommandV2 {
                                     name: command_string,
                                     runner: runner_for_modules.clone(),
-                                    module: module.name.clone(),
+                                    module: Some(module.name.clone()),
                                     annotations: None,
                                 })
                             });
