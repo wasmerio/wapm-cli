@@ -237,7 +237,7 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
             
             match p.pirita_download_url.as_ref() {
                 Some(pirita_url) => {
-                    download_pirita(
+                    if let Err(_) = download_pirita(
                         &p.name,
                         &p.version,
                         &pirita_url,
@@ -245,7 +245,18 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
                         &install_directory,
                         options.nocache || options.force_yes,
                     )
-                    .await?;
+                    .await {
+                        println!("download with autoconversion!");
+                        download_pirita(
+                            &p.name,
+                            &p.version,
+                            &p.download_url,
+                            true, // autoconvert .tar.gz -> .pirita
+                            &install_directory,
+                            options.nocache || options.force_yes,
+                        )
+                        .await?;
+                    }
                 },
                 None => {
                     download_pirita(
@@ -341,7 +352,7 @@ async fn download_pirita(
         .and_then(|c| c.to_str().ok()?.parse().ok())
         .unwrap_or(u64::MAX);
 
-    if nocache || (
+    if nocache || autoconvert || (
        target_file_path.exists() &&
        target_file_path.metadata()?.len() == total_size &&
        Confirm::new()
@@ -382,7 +393,7 @@ async fn download_pirita(
         if let Some(first_chunk) = response.chunk().await? {
             let new = (downloaded + first_chunk.len() as u64).min(total_size);
             downloaded = new;
-            if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) && !autoconvert {
+            if !autoconvert && !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
                 pb.finish_and_clear();
                 return Err(anyhow!("Error: remote package is not a PiritaFile"));
             }
@@ -401,13 +412,9 @@ async fn download_pirita(
 
         std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
 
-        if !pirita::PiritaFile::load_mmap(temp_tar_gz_path.clone()).is_none() {
-            if !autoconvert {
-                std::fs::remove_file(&target_file_path)?;
-                return Err(anyhow!("Error: remote package is not a PiritaFile"));
-            }
+        if autoconvert && pirita::PiritaFile::load_mmap(temp_tar_gz_path.clone()).is_none() {
 
-            println!("autoconverting!");
+            std::fs::remove_file(&target_file_path)?;
 
             // autoconvert .tar.gz => .pirita after download
             let _ = pirita::convert_targz_to_pirita(
