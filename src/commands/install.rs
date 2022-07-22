@@ -59,7 +59,7 @@ enum InstallError {
     MustSupplyPackagesWithGlobalFlag,
     #[cfg(feature = "pirita_file")]
     #[error(
-        "Could not find PiritaFile donwload url for package {0}@{1}",
+        "Could not find PiritaFile download url for package {0}@{1}",
         name,
         version
     )]
@@ -81,7 +81,7 @@ mod package_args {
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     #[cfg(feature = "pirita_file")]
     if std::env::var("USE_PIRITA").ok() == Some("1".to_string()) {
-        return install_pirita(options);
+        return install_pirita(&options);
     }
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
@@ -183,7 +183,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 
 /// Run the install command with --pirita flags
 #[cfg(feature = "pirita_file")]
-pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
+pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
@@ -202,20 +202,35 @@ pub fn install_pirita(options: InstallOpt) -> anyhow::Result<()> {
 
     rt.block_on(async {
         for p in installed_packages {
+            
             let pirita_url = p
                 .pirita_download_url
                 .ok_or(InstallError::NoPiritaFileForPackage {
                     name: p.name.clone(),
                     version: p.version.clone(),
                 })?;
-            download_pirita(
+            
+            let pirita_download_result = download_pirita(
                 &p.name,
                 &p.version,
                 &pirita_url,
+                false,
                 &install_directory,
                 options.nocache || options.force_yes,
             )
-            .await?;
+            .await;
+
+            if pirita_download_result.is_err() {
+                download_pirita(
+                    &p.name,
+                    &p.version,
+                    &pirita_url,
+                    true, // autoconvert .tar.gz -> .pirita
+                    &install_directory,
+                    options.nocache || options.force_yes,
+                )
+                .await?
+            }
         }
         Ok(())
     })
@@ -226,6 +241,7 @@ async fn download_pirita(
     name: &str,
     version: &str,
     download_url: &str,
+    autoconvert: bool,
     directory: &Path,
     nocache: bool,
 ) -> Result<(String, PathBuf, String), anyhow::Error> {
@@ -337,7 +353,7 @@ async fn download_pirita(
         if let Some(first_chunk) = response.chunk().await? {
             let new = (downloaded + first_chunk.len() as u64).min(total_size);
             downloaded = new;
-            if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
+            if !pirita::PiritaFile::check_is_pirita_file(&first_chunk) && !autoconvert {
                 pb.finish_and_clear();
                 return Err(anyhow!("Error: remote package is not a PiritaFile"));
             }
@@ -352,9 +368,19 @@ async fn download_pirita(
             pb.set_position(new);
         }
 
+        pb.finish_and_clear();
+
         std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
 
-        pb.finish_and_clear();
+        if !pirita::PiritaFile::check_is_pirita_file(&temp_tar_gz_path) {
+            if !autoconvert {
+                std::fs::remove_file(&target_file_path)?;
+                return Err(anyhow!("Error: remote package is not a PiritaFile"));
+            }
+
+            // autoconvert .tar.gz => .pirita after download
+            let _ = pirita::autoconvert_to_pirita(&temp_tar_gz_path, &target_file_path);
+        }
     }
 
     let parsed_file = pirita::PiritaFile::load_mmap(target_file_path.clone()).ok_or(anyhow!(

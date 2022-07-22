@@ -6,6 +6,8 @@ use std::collections::hash_map::HashMap;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 use thiserror::Error;
+use indexmap::IndexMap;
+use std::collections::BTreeMap;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
@@ -58,6 +60,23 @@ impl Default for Abi {
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
+pub fn get_wapm_atom_file_paths(
+    paths: &BTreeMap<&PathBuf, &Vec<u8>>
+) -> Result<Vec<(String, PathBuf)>, anyhow::Error> {
+    
+    let wapm_toml: Manifest = paths.get(&Path::new(MANIFEST_FILE_NAME).to_path_buf())
+    .and_then(|t| toml::from_slice(t).ok())
+    .ok_or(anyhow::anyhow!("Could not find wapm.toml in FileMap"))?;
+    
+    Ok(wapm_toml.module.clone().unwrap_or_default().into_iter().map(|m| {
+        (m.name.clone(), Path::new(&m.source).to_path_buf())
+    }).collect())
+}
+
+pub fn get_wapm_manifest_file_name() -> PathBuf {
+    Path::new(MANIFEST_FILE_NAME).to_path_buf()
+}
+
 pub static README_PATHS: &[&'static str; 5] = &[
     "README",
     "README.md",
@@ -67,6 +86,79 @@ pub static README_PATHS: &[&'static str; 5] = &[
 ];
 
 pub static LICENSE_PATHS: &[&'static str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
+
+pub fn get_modules(wapm: &str) -> Vec<(String, String, String)> {
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return Vec::new(); }, 
+    };
+    wapm.module.clone().unwrap_or_default().iter()
+    .map(|m| (
+        m.name.to_string(), 
+        m.abi.to_string(),
+        m.kind.as_ref().map(|s| s.as_str()).unwrap_or("wasm").to_string(),
+    )).collect()
+}
+
+pub fn get_package_annotations(wapm: &str) -> serde_cbor::Value {
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return serde_cbor::Value::Null; }, 
+    };
+    transform_package_meta_to_annotations(&wapm.package)
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PathBufWithVolume {
+    pub volume: String,
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct InternalPackageMeta {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(
+        rename = "license-file",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub license_file: Option<PathBufWithVolume>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readme: Option<PathBufWithVolume>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
+}
+
+fn transform_package_meta_to_annotations(package: &Package) -> serde_cbor::Value {
+    let internal_package = InternalPackageMeta {
+        name: package.name.clone(),
+        version: format!("{}", package.version),
+        description: package.description.clone(),
+        license: package.license.clone(),
+        license_file: package.license_file.as_ref().map(|path| PathBufWithVolume {
+            volume: format!("metadata"),
+            path: path.clone(),
+        }),
+        readme: package.readme.as_ref().map(|path| PathBufWithVolume {
+            volume: format!("metadata"),
+            path: path.clone(),
+        }),
+        repository: package.repository.clone(),
+        homepage: package.homepage.clone(),
+    };
+
+    // convert InternalPackageMeta to a serde_cbor::Value
+    serde_cbor::to_vec(&internal_package)
+        .ok()
+        .and_then(|s| serde_cbor::from_slice(&s).ok())
+        .unwrap_or(serde_cbor::Value::Null)
+}
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -333,6 +425,121 @@ pub struct Manifest {
     pub base_directory_path: PathBuf,
 }
 
+// command name => (runner, annotations)
+pub type WebcCommand = (String, IndexMap<String, serde_cbor::Value>);
+
+pub fn get_commands(
+    wapm: &str, 
+    base_path: &PathBuf, 
+    atom_kinds: &BTreeMap<String, String>
+) -> Result<BTreeMap<String, WebcCommand>, anyhow::Error> {
+
+    let wapm: Manifest = toml::from_str(wapm)?;
+    let default_commands = Vec::new();
+    let mut commands = BTreeMap::new();
+    
+    for command in wapm.command.as_ref().unwrap_or(&default_commands).iter() {
+        match command {
+            Command::V1(command) => {
+                let name = &command.name;
+                let module = &command.module;
+                let main_args = command.main_args.as_ref();
+                let package = command.package.as_ref();
+
+                if commands.contains_key(name) {
+                    return Err(anyhow::anyhow!("Command {name} is defined more than once"));
+                }
+
+                let runner = match atom_kinds.get(module).map(|s| s.as_str()) {
+                    Some("emscripten") => "https://webc.org/runner/emscripten/command@unstable_",
+                    _ => "https://webc.org/runner/wasi/command@unstable_",
+                };
+
+                let annotations_str = match atom_kinds.get(module).map(|s| s.as_str()) {
+                    Some("emscripten") => "emscripten",
+                    _ => "wasi",
+                };
+
+                let runner = runner.to_string();
+                let annotations = {
+                    let mut map = IndexMap::new();
+                    map.insert(
+                        annotations_str.to_string(),
+                        transform_cmd_args(&TransformCmdArgs {
+                            atom: module.clone(),
+                            main_args: main_args.cloned(),
+                            package: package.cloned(),
+                        }),
+                    );
+                    map
+                };
+
+                commands.insert(
+                    name.clone(),
+                    (runner, annotations)
+                );
+            }
+            Command::V2(command) => {
+
+                let runner = if validator::validate_url(&command.runner) {
+                    command.runner.to_string()
+                } else {
+                    format!("https://webc.org/runner/{}", command.runner.to_string())
+                };
+
+                let annotations = {
+                    let mut map = IndexMap::new();
+
+                    let annotations = command
+                        .get_annotations(base_path)
+                        .map_err(|e| anyhow::anyhow!("command {}: {e}", command.name))?;
+
+                    if let Some(s) = annotations {
+                        map.insert(command.runner.clone(), s);
+                    }
+                    map
+                };
+
+                commands.insert(
+                    command.name.clone(),
+                    (runner, annotations),
+                );
+            }
+        }
+    }
+
+    Ok(commands)
+}
+
+pub fn get_manifest_file_names() -> Vec<PathBuf> {
+    vec![Path::new(MANIFEST_FILE_NAME).to_path_buf()]
+}
+
+pub fn get_metadata_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    for p in README_PATHS.iter() {
+        paths.push(Path::new(p).to_path_buf());
+    }
+    for p in LICENSE_PATHS.iter() {
+        paths.push(Path::new(p).to_path_buf());
+    }
+    paths
+}
+
+#[derive(Serialize, Deserialize)]
+struct TransformCmdArgs {
+    atom: String,
+    main_args: Option<String>,
+    package: Option<String>,
+}
+
+fn transform_cmd_args(args: &TransformCmdArgs) -> serde_cbor::Value {
+    serde_cbor::to_vec(&args)
+        .ok()
+        .and_then(|s| serde_cbor::from_slice(&s).ok())
+        .unwrap_or(serde_cbor::Value::Null)
+}
+
 #[cfg(feature = "integration_tests")]
 pub mod integration_tests {
     pub mod data {
@@ -353,6 +560,7 @@ pub mod integration_tests {
         }
     }
 }
+
 impl Manifest {
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
         for filename in candidates {

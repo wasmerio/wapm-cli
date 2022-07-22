@@ -3696,6 +3696,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "validator"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f07b0a1390e01c0fc35ebb26b28ced33c9a3808f7f9fbe94d3cc01e233bfeed5"
+dependencies = [
+ "idna 0.2.3",
+ "lazy_static",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "url 2.2.2",
+]
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3828,6 +3843,7 @@ name = "wapm-toml"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indexmap",
  "semver",
  "serde",
  "serde_cbor",
@@ -3836,6 +3852,7 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "toml",
+ "validator",
 ]
 
 [[package]]
