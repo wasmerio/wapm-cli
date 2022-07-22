@@ -2314,7 +2314,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "wapm-targz-to-pirita",
@@ -3966,7 +3966,7 @@ dependencies = [
 [[package]]
 name = "wapm-targz-to-pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4303,7 +4303,7 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4326,7 +4326,7 @@ dependencies = [
 [[package]]
 name = "webc-runner"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "futures-util",
