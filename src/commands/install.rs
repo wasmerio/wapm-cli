@@ -148,22 +148,53 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 
         let name_with_version: Vec<&str> = name.split("@").collect();
 
-        let package_name = match &name_with_version[..] {
-            [package_name, _] => Some(package_name),
-            [package_name] => Some(package_name),
+        let mut package_name = match &name_with_version[..] {
+            [package_name, _] => Some(package_name.to_string()),
+            [package_name] => Some(package_name.to_string()),
             _ => None,
         }
         .ok_or(InstallError::InvalidPackageIdentifier { name: name.clone() })?;
 
-        let package_version = match &name_with_version[..] {
-            [_, version] => Some(version.clone()),
+        let mut package_version = match &name_with_version[..] {
+            [_, version] => Some(version.to_string()),
             _ => None,
         };
 
-        let (targz_url, version) = get_tar_gz_url_of_package(&registry_url, &package_name, package_version)
-        .ok_or(InstallError::PackageNotFound {
-            name: name.to_string(),
-        })?;
+        use crate::commands::execute::{WaxGetCommandQuery, wax_get_command_query};
+        let get_wax_package_name = |name: String| {
+            let q = WaxGetCommandQuery::build_query(wax_get_command_query::Variables {
+                command: name,
+            });
+            debug!("Querying server for package info");
+            let response: Result<wax_get_command_query::ResponseData, _> = execute_query(&q);
+            match response {
+                Ok(o) => Some((
+                    o.command.as_ref()?.package_version.package.name.to_string(), 
+                    o.command.as_ref()?.package_version.version.to_string(),
+                )),
+                Err(_) => None,
+            }
+        };
+
+        let pv = package_version.clone();
+        let pv = pv.as_ref().map(|s| s.as_str());
+        let (targz_url, version) = match get_tar_gz_url_of_package(&registry_url, &package_name, pv) {
+            Some(s) => s,
+            None => {
+                if let Some((wax_package_name, wax_package_version)) = get_wax_package_name(package_name) {
+                    package_name = wax_package_name.clone();
+                    package_version = Some(wax_package_version.clone());
+                    get_tar_gz_url_of_package(&registry_url, &wax_package_name, Some(&wax_package_version))
+                    .ok_or(InstallError::PackageNotFound {
+                        name: name.to_string(),
+                    })?
+                } else {
+                    return Err(InstallError::PackageNotFound {
+                        name: name.to_string(),
+                    }.into());
+                }
+            }
+        };
 
         let pirita_url = get_pirita_url_of_package(&registry_url, &package_name, Some(&version));
 
@@ -184,6 +215,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 /// Run the install command with --pirita flags
 #[cfg(feature = "pirita_file")]
 pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
+
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
@@ -287,6 +319,7 @@ async fn download_pirita(
         whoami::platform(),
         whoami_distro(),
     );
+
     let mut response = client
         .get(download_url)
         .header(header::USER_AGENT, user_agent)
@@ -373,6 +406,8 @@ async fn download_pirita(
                 std::fs::remove_file(&target_file_path)?;
                 return Err(anyhow!("Error: remote package is not a PiritaFile"));
             }
+
+            println!("autoconverting!");
 
             // autoconvert .tar.gz => .pirita after download
             let _ = pirita::convert_targz_to_pirita(

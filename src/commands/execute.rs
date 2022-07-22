@@ -143,7 +143,7 @@ enum ExecuteArgParsingError {
     query_path = "graphql/queries/wax_get_command.graphql",
     response_derives = "Debug"
 )]
-struct WaxGetCommandQuery;
+pub struct WaxGetCommandQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(

@@ -134,6 +134,18 @@ impl WaxIndex {
         .into());
     }
 
+    pub fn remove_entry(&mut self, entry: &str) -> Result<(), WaxIndexError>{
+        let (package_name, version, _) = self.search_for_entry(entry.to_string())?;
+        let path = self.base_path().join(&format!("{package_name}@{version}"));
+        if path.exists() && path.is_dir() {
+            nuke_dir(path)
+            .map_err(|_| WaxIndexError::EntryCorrupt { entry: entry.to_string() })?;
+            self.index.remove(entry)
+            .ok_or(WaxIndexError::EntryNotFound { entry: entry.to_string() })?;
+        }
+        Ok(())
+    }
+
     /// Package installed, add it to the index.
     ///
     /// Returns true if an existing entry was updated.
@@ -149,6 +161,30 @@ impl WaxIndex {
     pub fn base_path(&self) -> &Path {
         &self.base_dir
     }
+}
+
+pub fn nuke_dir<P: AsRef<Path>>(path: P) -> Result<(), String> {
+    let path = path.as_ref();
+    for entry in fs::read_dir(path)
+    .map_err(|e| format!("{}: {}", path.display(), e))? {
+        let entry = entry
+        .map_err(|e| format!("{}: {}", path.display(), e))?;
+        let path = entry.path();
+
+        let file_type = entry.file_type()
+        .map_err(|e| format!("{}: {}", path.display(), e))?;
+
+        if file_type.is_dir() {
+            nuke_dir(&path)?;
+            std::fs::remove_dir(&path)
+            .map_err(|e| format!("{}: {}", path.display(), e))?;
+        } else {
+            std::fs::remove_file(&path)
+            .map_err(|e| format!("{}: {}", path.display(), e))?;
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Error)]

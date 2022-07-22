@@ -1,4 +1,6 @@
 use crate::config::Config;
+use crate::data::wax_index;
+use crate::data::manifest::PACKAGES_DIR_NAME;
 use crate::dataflow;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -32,9 +34,25 @@ pub fn uninstall(options: UninstallOpt) -> anyhow::Result<()> {
     // returned bool indicates if there was any to the lockfile. If this pacakge is uninstalled,
     // there will be a diff created, which causes update to return true. Because no other change
     // is made, we can assume any change resulted in successfully uninstalled package.
-    let result = dataflow::update(vec![], uninstalled_package_names, dir)?;
+    let result = dataflow::update(vec![], uninstalled_package_names, dir.clone())?;
 
-    if !result {
+    // Uninstall the package from /tmp/wax/...
+    let mut wax_uninstalled = false;
+    let mut wax_index = wax_index::WaxIndex::open()?;
+    if wax_index.search_for_entry(options.package.clone()).is_ok() {
+        wax_index.remove_entry(options.package.as_str())?;
+        wax_index.save()?;
+        wax_uninstalled = true;
+    }
+
+    let mut pirita_uninstalled = false;
+    let path = dir.join(PACKAGES_DIR_NAME).join(".bin").join(options.package.as_str());
+    if path.exists() {
+        std::fs::remove_file(&path)?;
+        pirita_uninstalled = true;
+    }
+
+    if !result && !wax_uninstalled && !pirita_uninstalled {
         info!("Package \"{}\" is not installed.", options.package);
     } else {
         info!("Package \"{}\" uninstalled.", options.package);

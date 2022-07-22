@@ -163,7 +163,7 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
         Err(e) => { return Err(e.into()); },
         Ok(o) => o,
     };
-
+    
     match command {
         find_command_result::Command::TarGz(find_command_result::TarGzCommand {
             source: source_path_buf,
