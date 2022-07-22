@@ -23,7 +23,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -44,7 +44,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be14c7498ea50828a38d0e24a765ed2effe92a705885b57d029cd67d45744072"
 dependencies = [
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -54,7 +54,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2e11f5e94c2f7d386164cc2aa1f97823fed6f259e486940a71c174dd01b0ce"
 dependencies = [
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -299,11 +299,23 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"
+dependencies = [
+ "block-padding 0.1.5",
+ "byte-tools",
+ "byteorder",
+ "generic-array 0.12.4",
+]
+
+[[package]]
+name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -312,7 +324,7 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bf7fe51849ea569fd452f37822f606a5cabb684dc918707a0193fd4664ff324"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -321,8 +333,17 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57a0e8073e8baa88212fb5823574c02ebccb395136ba9a164ab89379ec6072f0"
 dependencies = [
- "block-padding",
+ "block-padding 0.2.1",
  "cipher",
+]
+
+[[package]]
+name = "block-padding"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
+dependencies = [
+ "byte-tools",
 ]
 
 [[package]]
@@ -339,7 +360,7 @@ checksum = "32fa6a061124e37baba002e496d203e23ba3d7b73750be82dbfbc92913048a5b"
 dependencies = [
  "byteorder",
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -376,6 +397,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
 
 [[package]]
+name = "byte-tools"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -395,7 +422,7 @@ checksum = "1285caf81ea1f1ece6b24414c521e625ad0ec94d880625c20f2e65d8d3f78823"
 dependencies = [
  "byteorder",
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -438,7 +465,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f8e7987cbd042a63249497f41aed09f8e65add917ea6566effbc56578d6801"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -613,7 +640,7 @@ version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ccfd8c0ee4cce11e45b3fd6f9d5e69e0cc62912aa6a0cb1bf4617b0eba5a12f"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
  "typenum",
 ]
 
@@ -623,7 +650,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
  "subtle",
 ]
 
@@ -634,7 +661,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bff07008ec701e8028e2ceb8f83f0e4274ee62bd2dbdc4fefff2e9a91824081a"
 dependencies = [
  "cipher",
- "generic-array",
+ "generic-array 0.14.5",
  "subtle",
 ]
 
@@ -644,7 +671,7 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
  "subtle",
 ]
 
@@ -698,7 +725,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd2735a791158376708f9347fe8faba9667589d82427ef3aed6794a8981de3d9"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -740,7 +767,7 @@ checksum = "b24e7c748888aa2fa8bce21d8c64a52efc810663285315ac7476f7197a982fae"
 dependencies = [
  "byteorder",
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -762,11 +789,20 @@ checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "digest"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
+dependencies = [
+ "generic-array 0.12.4",
+]
+
+[[package]]
+name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -910,7 +946,7 @@ checksum = "c13e9b0c3c4170dcc2a12783746c4205d98e18957f57854251eea3f9750fe005"
 dependencies = [
  "bitvec",
  "ff",
- "generic-array",
+ "generic-array 0.14.5",
  "group",
  "pkcs8",
  "rand_core 0.6.3",
@@ -1027,6 +1063,12 @@ dependencies = [
  "syn",
  "synstructure",
 ]
+
+[[package]]
+name = "fake-simd"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
 name = "fallible-iterator"
@@ -1214,6 +1256,15 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdf9f34f1447443d37393cc6c2b8313aebddcd96906caf34e54c68d8e57d7bd"
+dependencies = [
+ "typenum",
 ]
 
 [[package]]
@@ -1554,7 +1605,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcdd4b114cf2265123bbdc5d32a39f96a343fbdf141267d2b5232b7e14caacb3"
 dependencies = [
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -1645,6 +1696,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "671a26f820db17c2a2750743f1dd03bafd15b98c9f30c7c2628c024c05d73397"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json5"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b0db21af676c1ce64250b5f40f3ce2cf27e4e47cb91ed91eb6fe9350b430c1"
+dependencies = [
+ "pest",
+ "pest_derive",
+ "serde",
 ]
 
 [[package]]
@@ -1807,7 +1869,7 @@ checksum = "7b5a279bb9607f9f53c22d496eade00d138d1bdcccd07d74650387cf94942a15"
 dependencies = [
  "block-buffer 0.9.0",
  "digest 0.9.0",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -2032,6 +2094,12 @@ checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
 name = "opaque-debug"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
+
+[[package]]
+name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
@@ -2179,6 +2247,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "pest_derive"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "833d1ae558dc601e9a60366421196a8d94bc0ac980476d0b67e1d0988d72b2d0"
+dependencies = [
+ "pest",
+ "pest_generator",
+]
+
+[[package]]
+name = "pest_generator"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
+dependencies = [
+ "pest",
+ "pest_meta",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "pest_meta"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
+dependencies = [
+ "maplit",
+ "pest",
+ "sha-1 0.8.2",
+]
+
+[[package]]
 name = "petgraph"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2212,8 +2314,10 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=dc448b936147fe7db3cbfad785ab5581487d312d#dc448b936147fe7db3cbfad785ab5581487d312d"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
 dependencies = [
+ "anyhow",
+ "wapm-targz-to-pirita",
  "webc",
  "webc-runner",
 ]
@@ -2553,7 +2657,7 @@ checksum = "2eca4ecc81b7f313189bf73ce724400a07da2a6dac19588b03c8bd76a2dcc251"
 dependencies = [
  "block-buffer 0.9.0",
  "digest 0.9.0",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -2892,7 +2996,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.0",
  "block-modes",
- "block-padding",
+ "block-padding 0.2.1",
  "blowfish",
  "buffered-reader",
  "cast5",
@@ -2904,7 +3008,7 @@ dependencies = [
  "eax",
  "ecdsa",
  "ed25519-dalek",
- "generic-array",
+ "generic-array 0.14.5",
  "getrandom 0.2.6",
  "idea",
  "idna 0.2.3",
@@ -2922,7 +3026,7 @@ dependencies = [
  "regex-syntax",
  "ripemd160",
  "rsa",
- "sha-1",
+ "sha-1 0.9.8",
  "sha1collisiondetection",
  "sha2 0.9.9",
  "thiserror",
@@ -3011,6 +3115,18 @@ dependencies = [
 
 [[package]]
 name = "sha-1"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7d94d0bede923b3cea61f3f1ff57ff8cdfd77b400fb8f9998949e0cf04163df"
+dependencies = [
+ "block-buffer 0.7.3",
+ "digest 0.8.1",
+ "fake-simd",
+ "opaque-debug 0.2.3",
+]
+
+[[package]]
+name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99cd6713db3cf16b6c84e06321e049a9b9f699826e16096d23bbcc44d15d51a6"
@@ -3019,7 +3135,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "digest 0.9.0",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -3029,7 +3145,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31bf4e9fe5cd8cea8e0887e2e4eb1b4d736ff11b776c8537bf0912a4b381285"
 dependencies = [
  "digest 0.9.0",
- "generic-array",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -3042,7 +3158,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "digest 0.9.0",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -3228,6 +3344,16 @@ name = "tar"
 version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b55807c0344e1e6c04d7c965f5289c39a8d94ae23ed5c0b57aabac549f871c6"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
+]
+
+[[package]]
+name = "tar"
+version = "0.4.38"
+source = "git+https://github.com/fschutt/tar-rs?rev=04ded46840bb195f6c14ca85c5a6d25b61ca349c#04ded46840bb195f6c14ca85c5a6d25b61ca349c"
 dependencies = [
  "filetime",
  "libc",
@@ -3553,7 +3679,7 @@ checksum = "0028f5982f23ecc9a1bc3008ead4c664f843ed5d78acd3d213b99ff50c441bc2"
 dependencies = [
  "byteorder",
  "cipher",
- "opaque-debug",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -3787,7 +3913,7 @@ dependencies = [
  "serde_yaml",
  "shellwords",
  "structopt",
- "tar",
+ "tar 0.4.38 (registry+https://github.com/rust-lang/crates.io-index)",
  "tar-wasi",
  "tempfile",
  "thiserror",
@@ -3801,7 +3927,7 @@ dependencies = [
  "wasm-bus-reqwest 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasmer-wasm-interface",
  "wasmparser",
- "whoami 1.2.1",
+ "whoami",
 ]
 
 [[package]]
@@ -3817,13 +3943,13 @@ dependencies = [
  "url 2.2.2",
  "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "whoami 1.2.1",
+ "whoami",
 ]
 
 [[package]]
 name = "wapm-resolve-url"
 version = "0.1.0"
-source = "git+https://github.com/wasmerio/wapm-cli?rev=0134b850f20af5b10dbd5b5958351dd64431c957#0134b850f20af5b10dbd5b5958351dd64431c957"
+source = "git+https://github.com/wasmerio/wapm-cli?rev=a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e#a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e"
 dependencies = [
  "anyhow",
  "graphql_client",
@@ -3834,8 +3960,29 @@ dependencies = [
  "url 2.2.2",
  "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "whoami 0.5.3",
- "whoami 1.2.1",
+ "whoami",
+]
+
+[[package]]
+name = "wapm-targz-to-pirita"
+version = "0.1.0"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
+dependencies = [
+ "anyhow",
+ "base64 0.13.0",
+ "flate2",
+ "indexmap",
+ "json5",
+ "rand 0.8.5",
+ "sequoia-openpgp",
+ "serde",
+ "serde_cbor",
+ "serde_derive",
+ "serde_json",
+ "sha2 0.10.2",
+ "tar 0.4.38 (git+https://github.com/fschutt/tar-rs?rev=04ded46840bb195f6c14ca85c5a6d25b61ca349c)",
+ "validator",
+ "webc",
 ]
 
 [[package]]
@@ -4156,7 +4303,7 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=dc448b936147fe7db3cbfad785ab5581487d312d#dc448b936147fe7db3cbfad785ab5581487d312d"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4179,7 +4326,7 @@ dependencies = [
 [[package]]
 name = "webc-runner"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=dc448b936147fe7db3cbfad785ab5581487d312d#dc448b936147fe7db3cbfad785ab5581487d312d"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=d1dbf285bee48c9d29057791ab34229008f46483#d1dbf285bee48c9d29057791ab34229008f46483"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -4192,7 +4339,7 @@ dependencies = [
  "serde_derive",
  "tokio",
  "url 2.2.2",
- "wapm-resolve-url 0.1.0 (git+https://github.com/wasmerio/wapm-cli?rev=0134b850f20af5b10dbd5b5958351dd64431c957)",
+ "wapm-resolve-url 0.1.0 (git+https://github.com/wasmerio/wapm-cli?rev=a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e)",
  "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
  "webc",
@@ -4216,12 +4363,6 @@ checksum = "f1c760f0d366a6c24a02ed7816e23e691f5d92291f94d15e836006fd11b04daf"
 dependencies = [
  "webpki",
 ]
-
-[[package]]
-name = "whoami"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7154f3f4488071a38189dfd63633df444e7be43b731cc12c41505308fc4972f3"
 
 [[package]]
 name = "whoami"

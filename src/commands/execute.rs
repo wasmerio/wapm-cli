@@ -411,7 +411,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             nocache: true,
             force_yes: true,
         };
-        crate::commands::install::install_pirita(install_opts)?;
+        crate::commands::install::install_pirita(&install_opts)?;
         let run_opts = crate::commands::run::RunOpt {
             command: command.command.clone(),
             pre_opened_directories: Vec::new(),

@@ -60,6 +60,16 @@ impl Default for Abi {
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
+pub fn get_dependencies(wapm: &str) -> Vec<(String, String)>{
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return Vec::new(); }, 
+    };
+    wapm.dependencies
+    .clone().unwrap_or_default()
+    .iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+}
+
 pub fn get_wapm_atom_file_paths(
     paths: &BTreeMap<&PathBuf, &Vec<u8>>
 ) -> Result<Vec<(String, PathBuf)>, anyhow::Error> {
@@ -426,17 +436,17 @@ pub struct Manifest {
 }
 
 // command name => (runner, annotations)
-pub type WebcCommand = (String, IndexMap<String, serde_cbor::Value>);
+pub type WebcCommand = (String, Vec<(String, serde_cbor::Value)>);
 
 pub fn get_commands(
     wapm: &str, 
     base_path: &PathBuf, 
     atom_kinds: &BTreeMap<String, String>
-) -> Result<BTreeMap<String, WebcCommand>, anyhow::Error> {
+) -> Result<Vec<(String, WebcCommand)>, anyhow::Error> {
 
     let wapm: Manifest = toml::from_str(wapm)?;
     let default_commands = Vec::new();
-    let mut commands = BTreeMap::new();
+    let mut commands = Vec::new();
     
     for command in wapm.command.as_ref().unwrap_or(&default_commands).iter() {
         match command {
@@ -446,7 +456,7 @@ pub fn get_commands(
                 let main_args = command.main_args.as_ref();
                 let package = command.package.as_ref();
 
-                if commands.contains_key(name) {
+                if commands.iter().any(|(k, _)| k == name) {
                     return Err(anyhow::anyhow!("Command {name} is defined more than once"));
                 }
 
@@ -462,23 +472,23 @@ pub fn get_commands(
 
                 let runner = runner.to_string();
                 let annotations = {
-                    let mut map = IndexMap::new();
-                    map.insert(
+                    let mut map = Vec::new();
+                    map.push((
                         annotations_str.to_string(),
                         transform_cmd_args(&TransformCmdArgs {
                             atom: module.clone(),
                             main_args: main_args.cloned(),
                             package: package.cloned(),
                         }),
-                    );
+                    ));
                     map
                 };
 
-                commands.insert(
+                commands.push((
                     name.clone(),
                     (runner, annotations)
-                );
-            }
+                ));
+            },
             Command::V2(command) => {
 
                 let runner = if validator::validate_url(&command.runner) {
@@ -488,22 +498,22 @@ pub fn get_commands(
                 };
 
                 let annotations = {
-                    let mut map = IndexMap::new();
+                    let mut map = Vec::new();
 
                     let annotations = command
                         .get_annotations(base_path)
                         .map_err(|e| anyhow::anyhow!("command {}: {e}", command.name))?;
 
                     if let Some(s) = annotations {
-                        map.insert(command.runner.clone(), s);
+                        map.push((command.runner.clone(), s));
                     }
                     map
                 };
 
-                commands.insert(
+                commands.push((
                     command.name.clone(),
                     (runner, annotations),
-                );
+                ));
             }
         }
     }

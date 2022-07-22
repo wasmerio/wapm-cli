@@ -203,33 +203,29 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
     rt.block_on(async {
         for p in installed_packages {
             
-            let pirita_url = p
-                .pirita_download_url
-                .ok_or(InstallError::NoPiritaFileForPackage {
-                    name: p.name.clone(),
-                    version: p.version.clone(),
-                })?;
-            
-            let pirita_download_result = download_pirita(
-                &p.name,
-                &p.version,
-                &pirita_url,
-                false,
-                &install_directory,
-                options.nocache || options.force_yes,
-            )
-            .await;
-
-            if pirita_download_result.is_err() {
-                download_pirita(
-                    &p.name,
-                    &p.version,
-                    &pirita_url,
-                    true, // autoconvert .tar.gz -> .pirita
-                    &install_directory,
-                    options.nocache || options.force_yes,
-                )
-                .await?
+            match p.pirita_download_url.as_ref() {
+                Some(pirita_url) => {
+                    download_pirita(
+                        &p.name,
+                        &p.version,
+                        &pirita_url,
+                        false,
+                        &install_directory,
+                        options.nocache || options.force_yes,
+                    )
+                    .await?;
+                },
+                None => {
+                    download_pirita(
+                        &p.name,
+                        &p.version,
+                        &p.download_url,
+                        true, // autoconvert .tar.gz -> .pirita
+                        &install_directory,
+                        options.nocache || options.force_yes,
+                    )
+                    .await?;
+                }
             }
         }
         Ok(())
@@ -372,14 +368,28 @@ async fn download_pirita(
 
         std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
 
-        if !pirita::PiritaFile::check_is_pirita_file(&temp_tar_gz_path) {
+        if !pirita::PiritaFile::load_mmap(temp_tar_gz_path.clone()).is_none() {
             if !autoconvert {
                 std::fs::remove_file(&target_file_path)?;
                 return Err(anyhow!("Error: remote package is not a PiritaFile"));
             }
 
             // autoconvert .tar.gz => .pirita after download
-            let _ = pirita::autoconvert_to_pirita(&temp_tar_gz_path, &target_file_path);
+            let _ = pirita::convert_targz_to_pirita(
+                &temp_tar_gz_path, 
+                &target_file_path,
+                None,
+                &pirita::TransformManifestFunctions {
+                    get_atoms_wapm_toml: wapm_toml::get_wapm_atom_file_paths,
+                    get_dependencies: wapm_toml::get_dependencies,
+                    get_package_annotations: wapm_toml::get_package_annotations,
+                    get_modules: wapm_toml::get_modules,
+                    get_commands: wapm_toml::get_commands,
+                    get_manifest_file_names: wapm_toml::get_manifest_file_names,
+                    get_metadata_paths: wapm_toml::get_metadata_paths,
+                    get_wapm_manifest_file_name: wapm_toml::get_wapm_manifest_file_name,
+                },
+            );
         }
     }
 
