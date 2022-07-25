@@ -5,6 +5,7 @@ rm -f $WASMER_DIR/.wax_index.toml
 # TODO force clear cache
 rm -f wapm.toml
 rm -f wapm.lock
+cargo build --release
 echo "pwd"
 pwd
 WORKDIR=$(pwd)

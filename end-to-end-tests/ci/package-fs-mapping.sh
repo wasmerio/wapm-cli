@@ -7,6 +7,7 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/package-fs-mapping.sh
+cargo build --release
 echo "pwd"
 pwd
 WORKDIR=$(pwd)

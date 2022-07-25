@@ -7,6 +7,7 @@ rm -f wapm.lock
 rm -f wapm.toml
 rm -rf wapm_packages
 chmod +x end-to-end-tests/manifest-validation.sh
+cargo build --release
 echo "pwd"
 pwd
 WORKDIR=$(pwd)

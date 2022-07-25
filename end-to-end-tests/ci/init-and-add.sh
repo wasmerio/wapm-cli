@@ -6,6 +6,7 @@ rm -f $WASMER_DIR/globals/wapm.lock
 rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
+cargo build --release
 echo "pwd"
 pwd
 WORKDIR=$(pwd)
