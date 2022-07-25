@@ -1,6 +1,5 @@
 [INFO] Installing mark2/coreutils@0.0.3
 aGVsbG8K
-[INFO] Installing mark2/coreutils@0.0.3
 hello
 [INFO] Installing namespace-example/cowsay@0.2.0
 Package installed successfully to wapm_packages!
