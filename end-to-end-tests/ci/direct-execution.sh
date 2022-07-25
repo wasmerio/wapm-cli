@@ -6,7 +6,7 @@ rm -f $WASMER_DIR/.wax_index.toml
 rm -f wapm.toml
 rm -f wapm.lock
 WAPM_EXE=target/release/wapm
-$WAPM_EXE uninstall base64
+$WAPM_EXE uninstall --global --all
 chmod +x end-to-end-tests/direct_execute.sh
 echo "RUNNING SCRIPT..."
 WAPM=$WAPM_EXE ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt

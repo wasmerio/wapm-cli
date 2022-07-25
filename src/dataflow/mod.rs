@@ -122,6 +122,14 @@ pub enum PackageKey<'a> {
 }
 
 impl<'a> PackageKey<'a> {
+    
+    pub fn get_name(&'a self) -> &'a str {
+        match self {
+            PackageKey::WapmPackage(a) => a.name.as_ref(),
+            PackageKey::WapmPackageRange(a) => a.name.as_ref(),
+        }
+    }
+
     /// Convenience constructor for wapm.io registry keys.
     pub fn new_registry_package<S>(name: S, version: Version) -> Self
     where

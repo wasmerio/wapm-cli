@@ -8,6 +8,7 @@ rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/package-fs-mapping.sh
 WAPM_EXE=target/release/wapm
+$WAPM_EXE uninstall --global --all
 echo "RUNNING SCRIPT..."
 WAPM=$WAPM_EXE ./end-to-end-tests/package-fs-mapping.sh &> /tmp/package-fs-mapping-out.txt
 echo "GENERATED OUTPUT:"

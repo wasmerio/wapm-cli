@@ -7,6 +7,7 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 WAPM_EXE=../target/release/wapm
+$WAPM_EXE uninstall --global --all
 chmod +x end-to-end-tests/init-and-add.sh
 echo "RUNNING SCRIPT..."
 WAPM=$WAPM_EXE ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt

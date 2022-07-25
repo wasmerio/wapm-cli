@@ -161,6 +161,11 @@ impl WaxIndex {
     pub fn base_path(&self) -> &Path {
         &self.base_dir
     }
+
+    /// Returns a list of all currently installed packages
+    pub fn get_all_entries(&self) -> Vec<String> {
+        self.index.keys().cloned().collect()
+    }
 }
 
 pub fn nuke_dir<P: AsRef<Path>>(path: P) -> Result<(), String> {

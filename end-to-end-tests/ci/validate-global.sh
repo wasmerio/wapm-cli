@@ -8,6 +8,7 @@ rm -f wapm.toml
 rm -rf wapm_packages
 chmod +x end-to-end-tests/validate-global.sh
 WAPM_EXE=target/release/wapm
+$WAPM_EXE uninstall --global --all
 echo "RUNNING SCRIPT..."
 WAPM=$WAPM_EXE ./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
 echo "GENERATED OUTPUT:"
