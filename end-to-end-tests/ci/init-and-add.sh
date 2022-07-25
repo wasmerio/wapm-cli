@@ -6,7 +6,11 @@ rm -f $WASMER_DIR/globals/wapm.lock
 rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
-WAPM_EXE=../target/release/wapm
+echo "pwd"
+pwd
+WORKDIR=$(pwd)
+WAPM_EXE=$(readlink -m $WORKDIR/target/release/wapm)
+echo $WAPM_EXE
 $WAPM_EXE uninstall --global --all
 chmod +x end-to-end-tests/init-and-add.sh
 echo "RUNNING SCRIPT..."

@@ -7,7 +7,11 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/install.sh
-WAPM_EXE=target/release/wapm
+echo "pwd"
+pwd
+WORKDIR=$(pwd)
+WAPM_EXE=$(readlink -m $WORKDIR/target/release/wapm)
+echo $WAPM_EXE
 $WAPM_EXE uninstall --global --all
 echo "RUNNING SCRIPT..."
 WAPM=$WAPM_EXE ./end-to-end-tests/install.sh &> /tmp/install-out.txt

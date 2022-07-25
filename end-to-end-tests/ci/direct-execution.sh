@@ -5,7 +5,11 @@ rm -f $WASMER_DIR/.wax_index.toml
 # TODO force clear cache
 rm -f wapm.toml
 rm -f wapm.lock
-WAPM_EXE=target/release/wapm
+echo "pwd"
+pwd
+WORKDIR=$(pwd)
+WAPM_EXE=$(readlink -m $WORKDIR/target/release/wapm)
+echo $WAPM_EXE
 $WAPM_EXE uninstall --global --all
 chmod +x end-to-end-tests/direct_execute.sh
 echo "RUNNING SCRIPT..."
