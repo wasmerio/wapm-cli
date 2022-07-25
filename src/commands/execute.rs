@@ -385,7 +385,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     loop {
         use crate::commands::run::PiritaRunError;
 
-        if opt.offline {
+        if opt.offline || std::env::var("USE_PIRITA") != Ok("1".to_string()) {
             break;
         }
 
