@@ -178,7 +178,7 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
 
         let pv = package_version.clone();
         let pv = pv.as_ref().map(|s| s.as_str());
-        let (targz_url, version) = match get_tar_gz_url_of_package(&registry_url, &package_name, pv) {
+        let targz_info = match get_tar_gz_url_of_package(&registry_url, &package_name, pv) {
             Some(s) => s,
             None => {
                 if let Some((wax_package_name, wax_package_version)) = get_wax_package_name(package_name) {
@@ -196,13 +196,13 @@ fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<Wap
             }
         };
 
-        let pirita_url = get_pirita_url_of_package(&registry_url, &package_name, Some(&version));
+        let pirita_info = get_pirita_url_of_package(&registry_url, &package_name, Some(&targz_info.resolved_version));
 
         let package_to_download = WapmDistribution {
-            name: package_name.to_string(),
-            version: version.to_string(),
-            download_url: format!("{targz_url}"),
-            pirita_download_url: pirita_url.map(|(u, _)| format!("{u}")),
+            name: targz_info.resolved_name.to_string(),
+            version: targz_info.resolved_version.to_string(),
+            download_url: format!("{}", targz_info.url),
+            pirita_download_url: pirita_info.map(|i| format!("{}", i.url)),
             is_last_version: package_version.is_none(),
         };
 
