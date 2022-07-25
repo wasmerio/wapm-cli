@@ -194,6 +194,11 @@ jobs:
           tar -xzf `pwd`/artifacts/wapm-linux-amd64/wapm-cli.tar.gz
           cp ./bin/wapm /home/runner/.wasmer/bin/wapm
           chmod +x /home/runner/.wasmer/bin/wapm
+      - name: Configure cargo data directory + private access tokens
+        run: |
+          echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
+          echo https://wasmer:${{ secrets.GH_PAT }}@github.com > creds.txt
+          git config --global credential.helper "store --file creds.txt"
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
