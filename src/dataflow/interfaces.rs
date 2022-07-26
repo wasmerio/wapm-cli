@@ -33,10 +33,10 @@ impl InterfaceFromServer {
     }
 
     pub fn get(name: String, version: String) -> anyhow::Result<Self> {
-        let response = Self::get_response(name, version)?;
+        let response = Self::get_response(name.clone(), version.clone())?;
         let response_val = response
             .interface
-            .ok_or_else(|| anyhow!("Error downloading Interface from the server"))?;
+            .ok_or_else(|| anyhow!("Error downloading Interface from the server: {name}@{version}"))?;
         Ok(Self {
             name: response_val.interface.name,
             version: response_val.version,
