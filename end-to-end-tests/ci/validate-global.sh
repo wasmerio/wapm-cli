@@ -7,15 +7,9 @@ rm -f wapm.lock
 rm -f wapm.toml
 rm -rf wapm_packages
 chmod +x end-to-end-tests/validate-global.sh
-cargo build --release
-echo "pwd"
-pwd
-WORKDIR=$(pwd)
-WAPM_EXE=$(readlink -m $WORKDIR/target/release/wapm)
-echo $WAPM_EXE
-$WAPM_EXE uninstall --global --all
+wapm uninstall --global --all
 echo "RUNNING SCRIPT..."
-WAPM=$WAPM_EXE ./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
+./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/validate-global-out.txt
 echo "EXPECTED OUTPUT:"

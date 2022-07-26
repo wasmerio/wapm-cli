@@ -6,16 +6,10 @@ rm -f $WASMER_DIR/globals/wapm.lock
 rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
-cargo build --release
-echo "pwd"
-pwd
-WORKDIR=$(pwd)
-WAPM_EXE=$(readlink -m $WORKDIR/target/release/wapm)
-echo $WAPM_EXE
-$WAPM_EXE uninstall --global --all
+wapm uninstall --global --all
 chmod +x end-to-end-tests/init-and-add.sh
 echo "RUNNING SCRIPT..."
-WAPM=$WAPM_EXE ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
+./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/init-and-add-out.txt
 echo "EXPECTED OUTPUT:"
