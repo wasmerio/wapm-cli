@@ -2314,7 +2314,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "wapm-targz-to-pirita",
@@ -3941,8 +3941,8 @@ dependencies = [
  "serde_json",
  "thiserror",
  "url 2.2.2",
- "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
+ "wasm-bus-process 0.1.0",
+ "wasm-bus-reqwest 0.1.0",
  "whoami",
 ]
 
@@ -3966,7 +3966,7 @@ dependencies = [
 [[package]]
 name = "wapm-targz-to-pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4094,6 +4094,25 @@ checksum = "d554b7f530dee5964d9a9468d95c1f8b8acae4f282807e7d27d4b03099a46744"
 
 [[package]]
 name = "wasm-bus"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb298c970d0f4532c3d80448e2191b873d6cee4bd00cd3efed077926b2a06ab9"
+dependencies = [
+ "base64 0.13.0",
+ "bincode",
+ "cooked-waker",
+ "derivative",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "wasm-bus-macros 0.1.0",
+ "wasm-bus-types 0.1.0",
+]
+
+[[package]]
+name = "wasm-bus"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48eee32170b503989510f4a0c14cf9a2341d881dfa915e975dfd2e271e305f2f"
@@ -4132,6 +4151,20 @@ dependencies = [
 
 [[package]]
 name = "wasm-bus-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "996fa338855d96f5cdb8a6d8999f5a315b281d9019b9b2ad0a62570f64dc89fd"
+dependencies = [
+ "convert_case",
+ "derivative",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "wasm-bus-types 0.1.0",
+]
+
+[[package]]
+name = "wasm-bus-macros"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0494ab8c698d102060f38c36685c353dd796909223b9af9b0da94d0fe515310"
@@ -4155,6 +4188,21 @@ dependencies = [
  "quote",
  "syn",
  "wasm-bus-types 1.1.0",
+]
+
+[[package]]
+name = "wasm-bus-process"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bff68e7e17fe033e2cbb5d4c87319fe8877275e0166d9be523e3d20ef6ad1b2"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "dummy-waker",
+ "serde",
+ "tokio",
+ "tracing",
+ "wasm-bus 0.4.1",
 ]
 
 [[package]]
@@ -4184,6 +4232,30 @@ dependencies = [
  "tokio",
  "tracing",
  "wasm-bus 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
+]
+
+[[package]]
+name = "wasm-bus-reqwest"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c19653892885942813c20a381bda8fd12f689c0719d62c9898ee9b048cec54b"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "formdata",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "mime_guess",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "url 2.2.2",
+ "urlencoding",
+ "wasm-bus 0.4.1",
 ]
 
 [[package]]
@@ -4232,6 +4304,12 @@ dependencies = [
  "urlencoding",
  "wasm-bus 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
 ]
+
+[[package]]
+name = "wasm-bus-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "407ce28d552f155838b2c1038e3779668901228142a4a47176323851099af107"
 
 [[package]]
 name = "wasm-bus-types"
@@ -4303,7 +4381,7 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4326,7 +4404,7 @@ dependencies = [
 [[package]]
 name = "webc-runner"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
 dependencies = [
  "anyhow",
  "futures-util",
