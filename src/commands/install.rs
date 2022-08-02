@@ -246,7 +246,6 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
                         options.nocache || options.force_yes,
                     )
                     .await {
-                        println!("download with autoconversion!");
                         download_pirita(
                             &p.name,
                             &p.version,
@@ -410,7 +409,7 @@ async fn download_pirita(
 
         pb.finish_and_clear();
 
-        std::fs::rename(&temp_tar_gz_path, &target_file_path)?;
+        std::fs::copy(&temp_tar_gz_path, &target_file_path)?;
 
         if autoconvert && pirita::PiritaFile::load_mmap(temp_tar_gz_path.clone()).is_none() {
 
