@@ -63,7 +63,7 @@ serde_yaml = { version = "^0.8" }
 # Due to issues with SSH, the URL has to be in HTTPS format
 [dependencies.pirita]
 git = "https://github.com/wasmerio/pirita.git"
-rev = "f1aa2f79243c02197715b4c35524aad60de83ec9"
+rev = "39b90ff364337b60b38047f53e1ef3db3fdbd125"
 default-features = false
 features = ["autoconvert"]
 optional = true
