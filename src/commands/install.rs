@@ -237,6 +237,7 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
             
             match p.pirita_download_url.as_ref() {
                 Some(pirita_url) => {
+                    println!("downloading {pirita_url}");
                     if let Err(_) = download_pirita(
                         &p.name,
                         &p.version,
@@ -246,6 +247,7 @@ pub fn install_pirita(options: &InstallOpt) -> anyhow::Result<()> {
                         options.nocache || options.force_yes,
                     )
                     .await {
+                        println!("downloading with autoconvert!");
                         download_pirita(
                             &p.name,
                             &p.version,
@@ -351,6 +353,19 @@ async fn download_pirita(
         .and_then(|c| c.to_str().ok()?.parse().ok())
         .unwrap_or(u64::MAX);
 
+    let temp_dir =
+    create_temp_dir()
+    .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+
+    let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
+
+    std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
+        .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
+
+    let temp_tar_gz_path = tmp_dir_path
+        .join("wapm_package_install")
+        .join("package.pirita");
+
     if nocache || autoconvert || (
        target_file_path.exists() &&
        target_file_path.metadata()?.len() == total_size &&
@@ -359,19 +374,6 @@ async fn download_pirita(
         .default(false)
         .interact()?
     ) {
-
-        let temp_dir =
-            create_temp_dir()
-            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
-
-        let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
-
-        std::fs::create_dir_all(tmp_dir_path.join("wapm_package_install"))
-            .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
-
-        let temp_tar_gz_path = tmp_dir_path
-            .join("wapm_package_install")
-            .join("package.pirita");
 
         let mut dest = OpenOptions::new()
             .read(true)
@@ -408,29 +410,36 @@ async fn download_pirita(
         }
 
         pb.finish_and_clear();
+        println!("downloaded: {download_url} to {}", temp_tar_gz_path.display());
 
         std::fs::copy(&temp_tar_gz_path, &target_file_path)?;
+    }
 
-        if autoconvert && pirita::Pirita::load_mmap(temp_tar_gz_path.clone()).is_none() {
+    println!("file downloaded: {autoconvert}, {}", pirita::Pirita::load_mmap(temp_tar_gz_path.clone()).is_none());
 
-            std::fs::remove_file(&target_file_path)?;
+    if autoconvert && pirita::Pirita::load_mmap(temp_tar_gz_path.clone()).is_none() {
 
-            // autoconvert .tar.gz => .pirita after download
-            let _ = pirita::convert_targz_to_pirita(
-                &temp_tar_gz_path, 
-                &target_file_path,
-                None,
-                &pirita::TransformManifestFunctions {
-                    get_atoms_wapm_toml: wapm_toml::get_wapm_atom_file_paths,
-                    get_dependencies: wapm_toml::get_dependencies,
-                    get_package_annotations: wapm_toml::get_package_annotations,
-                    get_modules: wapm_toml::get_modules,
-                    get_commands: wapm_toml::get_commands,
-                    get_manifest_file_names: wapm_toml::get_manifest_file_names,
-                    get_metadata_paths: wapm_toml::get_metadata_paths,
-                    get_wapm_manifest_file_name: wapm_toml::get_wapm_manifest_file_name,
-                },
-            );
+        std::fs::remove_file(&target_file_path)?;
+
+        // autoconvert .tar.gz => .pirita after download
+        let e = pirita::convert_targz_to_pirita(
+            &temp_tar_gz_path, 
+            &target_file_path,
+            None,
+            &pirita::TransformManifestFunctions {
+                get_atoms_wapm_toml: wapm_toml::get_wapm_atom_file_paths,
+                get_dependencies: wapm_toml::get_dependencies,
+                get_package_annotations: wapm_toml::get_package_annotations,
+                get_modules: wapm_toml::get_modules,
+                get_commands: wapm_toml::get_commands,
+                get_manifest_file_names: wapm_toml::get_manifest_file_names,
+                get_metadata_paths: wapm_toml::get_metadata_paths,
+                get_wapm_manifest_file_name: wapm_toml::get_wapm_manifest_file_name,
+            },
+        );
+
+        if let Err(e) = e {
+            println!("{e}");
         }
     }
 
