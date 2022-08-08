@@ -64,17 +64,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
 
 [[package]]
-name = "ahash"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
-dependencies = [
- "getrandom 0.2.6",
- "once_cell",
- "version_check 0.9.4",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1412,7 +1401,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 dependencies = [
- "ahash 0.4.7",
+ "ahash",
 ]
 
 [[package]]
@@ -1420,10 +1409,6 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-dependencies = [
- "ahash 0.7.6",
- "serde",
-]
 
 [[package]]
 name = "hashlink"
@@ -1879,15 +1864,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
-name = "memmap2"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a79b39c93a7a5a27eeaf9a23b5ff43f1b9e0ad6b1cdd441140ae53c35613fc7"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "memsec"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2137,15 +2113,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
-name = "openssl-src"
-version = "111.20.0+1.1.1o"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92892c4f87d56e376e469ace79f1128fdaded07646ddf73aa0be4706ff712dec"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "openssl-sys"
 version = "0.9.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2154,7 +2121,6 @@ dependencies = [
  "autocfg 1.1.0",
  "cc",
  "libc",
- "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -2192,12 +2158,6 @@ dependencies = [
  "smallvec",
  "windows-sys",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c520e05135d6e763148b6426a837e239041653ba7becd2e538c076c738025fc"
 
 [[package]]
 name = "path-clean"
@@ -2314,12 +2274,11 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
 dependencies = [
  "anyhow",
  "wapm-targz-to-pirita",
  "webc",
- "webc-runner",
 ]
 
 [[package]]
@@ -2661,28 +2620,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rmp"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44519172358fd6d58656c86ab8e7fbc9e1490c3e8f14d35ed78ca0dd07403c9f"
-dependencies = [
- "byteorder",
- "num-traits",
- "paste",
-]
-
-[[package]]
-name = "rmp-serde"
-version = "0.15.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723ecff9ad04f4ad92fe1c8ca6c20d2196d9286e9c60727c4cb5511629260e9d"
-dependencies = [
- "byteorder",
- "rmp",
- "serde",
-]
-
-[[package]]
 name = "rpassword"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2814,6 +2751,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "399f290ffc409596022fce5ea5d4138184be4784f2b28c62c59f0d8389059a15"
 dependencies = [
  "cipher",
+]
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -3043,18 +2989,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-xml-rs"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65162e9059be2f6a3421ebbb4fef3e74b7d9e7c60c50a0e292c6239f19f1edfa"
-dependencies = [
- "log 0.4.17",
- "serde",
- "thiserror",
- "xml-rs",
 ]
 
 [[package]]
@@ -3867,6 +3801,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
+name = "walkdir"
+version = "2.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "808cf2735cd4b6866113f648b791c6adc5714537bc222d9347bb203386ffda56"
+dependencies = [
+ "same-file",
+ "winapi",
+ "winapi-util",
+]
+
+[[package]]
 name = "want"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3921,10 +3866,10 @@ dependencies = [
  "tokio",
  "toml",
  "url 2.2.2",
- "wapm-resolve-url 0.1.0",
+ "wapm-resolve-url",
  "wapm-toml",
- "wasm-bus-process 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "wasm-bus-reqwest 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wasm-bus-process 1.1.0",
+ "wasm-bus-reqwest 1.2.0",
  "wasmer-wasm-interface",
  "wasmparser",
  "whoami",
@@ -3947,31 +3892,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "wapm-resolve-url"
-version = "0.1.0"
-source = "git+https://github.com/wasmerio/wapm-cli?rev=a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e#a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e"
-dependencies = [
- "anyhow",
- "graphql_client",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "url 2.2.2",
- "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "whoami",
-]
-
-[[package]]
 name = "wapm-targz-to-pirita"
 version = "0.1.0"
-source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
  "flate2",
- "indexmap",
  "json5",
  "rand 0.8.5",
  "sequoia-openpgp",
@@ -4019,12 +3946,6 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "wasix"
-version = "0.11.36"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3fb76de32c72156fd25fa56776b4ed3d02fcafddfa36d24fac6b135bc7e9bca"
 
 [[package]]
 name = "wasm-bindgen"
@@ -4126,27 +4047,8 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "wasm-bus-macros 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wasm-bus-macros 1.1.0",
  "wasm-bus-types 1.0.0",
-]
-
-[[package]]
-name = "wasm-bus"
-version = "1.1.0"
-source = "git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2#77b2bca4264e1fcb3d977650c09bb228a782b6f2"
-dependencies = [
- "async-trait",
- "base64 0.13.0",
- "cooked-waker",
- "derivative",
- "once_cell",
- "serde",
- "sha2 0.10.2",
- "tokio",
- "tracing",
- "wasix",
- "wasm-bus-macros 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "wasm-bus-types 1.1.0",
 ]
 
 [[package]]
@@ -4178,19 +4080,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-bus-macros"
-version = "1.1.0"
-source = "git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2#77b2bca4264e1fcb3d977650c09bb228a782b6f2"
-dependencies = [
- "convert_case",
- "derivative",
- "proc-macro2",
- "quote",
- "syn",
- "wasm-bus-types 1.1.0",
-]
-
-[[package]]
 name = "wasm-bus-process"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4217,21 +4106,7 @@ dependencies = [
  "serde",
  "tokio",
  "tracing",
- "wasm-bus 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "wasm-bus-process"
-version = "1.1.0"
-source = "git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2#77b2bca4264e1fcb3d977650c09bb228a782b6f2"
-dependencies = [
- "async-trait",
- "bytes",
- "dummy-waker",
- "serde",
- "tokio",
- "tracing",
- "wasm-bus 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
+ "wasm-bus 1.1.0",
 ]
 
 [[package]]
@@ -4279,30 +4154,7 @@ dependencies = [
  "tracing",
  "url 2.2.2",
  "urlencoding",
- "wasm-bus 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "wasm-bus-reqwest"
-version = "1.2.0"
-source = "git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2#77b2bca4264e1fcb3d977650c09bb228a782b6f2"
-dependencies = [
- "async-trait",
- "bytes",
- "formdata",
- "futures-core",
- "futures-util",
- "http",
- "http-body",
- "mime_guess",
- "pin-project-lite",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "url 2.2.2",
- "urlencoding",
- "wasm-bus 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
+ "wasm-bus 1.1.0",
 ]
 
 [[package]]
@@ -4316,19 +4168,6 @@ name = "wasm-bus-types"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d49ff958a0d83cacc3dc470ded238af5e1d316dcdc6d74322d2b7b2a438046d"
-
-[[package]]
-name = "wasm-bus-types"
-version = "1.1.0"
-source = "git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2#77b2bca4264e1fcb3d977650c09bb228a782b6f2"
-dependencies = [
- "bincode",
- "rmp-serde",
- "serde",
- "serde-xml-rs",
- "serde_json",
- "serde_yaml",
-]
 
 [[package]]
 name = "wasmer-wasm-interface"
@@ -4381,16 +4220,14 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
- "hashbrown 0.11.2",
  "indexmap",
  "leb128",
  "lexical-sort",
  "memchr",
- "memmap2",
  "path-clean",
  "rand 0.8.5",
  "sequoia-openpgp",
@@ -4399,28 +4236,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "url 2.2.2",
-]
-
-[[package]]
-name = "webc-runner"
-version = "0.1.0"
-source = "git+git://git@github.com/wasmerio/pirita.git?rev=1f898dca174c1a4effab78c16159a4b5515b8cdb#1f898dca174c1a4effab78c16159a4b5515b8cdb"
-dependencies = [
- "anyhow",
- "futures-util",
- "lazy_static",
- "libc",
- "log 0.4.17",
- "regex",
- "reqwest",
- "serde",
- "serde_derive",
- "tokio",
- "url 2.2.2",
- "wapm-resolve-url 0.1.0 (git+https://github.com/wasmerio/wapm-cli?rev=a4f4f0d9dc2ba58627ee1051843367a4e5ffcf4e)",
- "wasm-bus-process 1.1.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "wasm-bus-reqwest 1.2.0 (git+https://github.com/tokera-com/ate?rev=77b2bca4264e1fcb3d977650c09bb228a782b6f2)",
- "webc",
+ "walkdir",
 ]
 
 [[package]]
@@ -4467,6 +4283,15 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
+dependencies = [
+ "winapi",
+]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"
@@ -4551,12 +4376,6 @@ checksum = "6d1526bbe5aaeb5eb06885f4d987bcdfa5e23187055de9b83fe00156a821fabc"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "xml-rs"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
 
 [[package]]
 name = "xxhash-rust"
