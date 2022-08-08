@@ -130,11 +130,8 @@ fn run_pirita(args: &[String], rt_args: &[OsString]) -> Result<(), anyhow::Error
 pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
 
     if std::env::var("USE_PIRITA") == Ok("1".to_string()) {
-        match try_run_pirita(&run_options) {
-            Ok(()) => return Ok(()),
-            Err(PiritaRunError::Initialize(_)) => { },
-            Err(PiritaRunError::Run(e)) => return Err(e),
-        }
+        return try_run_pirita(&run_options)
+        .map_err(|e| anyhow::anyhow!("{e}"));
     }
 
     let command_name = run_options.command.as_str();

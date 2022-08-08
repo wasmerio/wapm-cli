@@ -1864,6 +1864,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
+name = "memmap2"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a79b39c93a7a5a27eeaf9a23b5ff43f1b9e0ad6b1cdd441140ae53c35613fc7"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "memsec"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2274,7 +2283,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1#5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1"
 dependencies = [
  "anyhow",
  "wapm-targz-to-pirita",
@@ -3894,7 +3903,7 @@ dependencies = [
 [[package]]
 name = "wapm-targz-to-pirita"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1#5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4220,7 +4229,7 @@ dependencies = [
 [[package]]
 name = "webc"
 version = "0.1.0"
-source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=f1aa2f79243c02197715b4c35524aad60de83ec9#f1aa2f79243c02197715b4c35524aad60de83ec9"
+source = "git+ssh://git@github.com/wasmerio/pirita.git?rev=5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1#5881dd2fac5f9b2a13e3c8020ed6eb30504cbfa1"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -4228,6 +4237,7 @@ dependencies = [
  "leb128",
  "lexical-sort",
  "memchr",
+ "memmap2",
  "path-clean",
  "rand 0.8.5",
  "sequoia-openpgp",

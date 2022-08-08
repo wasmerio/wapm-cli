@@ -392,7 +392,7 @@ async fn download_pirita(
         if let Some(first_chunk) = response.chunk().await? {
             let new = (downloaded + first_chunk.len() as u64).min(total_size);
             downloaded = new;
-            if !autoconvert && !pirita::PiritaFile::check_is_pirita_file(&first_chunk) {
+            if !autoconvert && !pirita::Pirita::check_is_pirita_file(&first_chunk) {
                 pb.finish_and_clear();
                 return Err(anyhow!("Error: remote package is not a PiritaFile"));
             }
@@ -411,7 +411,7 @@ async fn download_pirita(
 
         std::fs::copy(&temp_tar_gz_path, &target_file_path)?;
 
-        if autoconvert && pirita::PiritaFile::load_mmap(temp_tar_gz_path.clone()).is_none() {
+        if autoconvert && pirita::Pirita::load_mmap(temp_tar_gz_path.clone()).is_none() {
 
             std::fs::remove_file(&target_file_path)?;
 
@@ -434,7 +434,7 @@ async fn download_pirita(
         }
     }
 
-    let parsed_file = pirita::PiritaFile::load_mmap(target_file_path.clone()).ok_or(anyhow!(
+    let parsed_file = pirita::Pirita::load_mmap(target_file_path.clone()).ok_or(anyhow!(
         "Could not parse {key:?} ({target_file_path:?}): not a PiritaFile"
     ))?;
 
