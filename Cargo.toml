@@ -49,7 +49,7 @@ wapm-resolve-url = { version = "0.1.0", path = "./wapm-resolve-url" }
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 atty = "0.2"
-reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"], optional = true }
+reqwest = { version = "0.11.0", default-features = false, features = ["rustls-tls", "blocking"], optional = true }
 tar = { version = "0.4" }
 tokio = { version = "1.19.2", features = ["full"] }
 
