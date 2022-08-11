@@ -460,14 +460,19 @@ pub fn get_commands(
                     return Err(anyhow::anyhow!("Command {name} is defined more than once"));
                 }
 
-                let runner = match atom_kinds.get(module).map(|s| s.as_str()) {
+                let abi = atom_kinds.get(module).map(|s| s.as_str());
+                let runner = match abi {
                     Some("emscripten") => "https://webc.org/runner/emscripten/command@unstable_",
-                    _ => "https://webc.org/runner/wasi/command@unstable_",
+                    Some("wasm4") => "https://webc.org/runner/wasm4/command@unstable_",
+                    Some("wasi") => "https://webc.org/runner/wasi/command@unstable_",
+                    _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
                 };
 
-                let annotations_str = match atom_kinds.get(module).map(|s| s.as_str()) {
+                let annotations_str = match abi {
                     Some("emscripten") => "emscripten",
-                    _ => "wasi",
+                    Some("wasm4") => "wasm4",
+                    Some("wasi") => "wasi",
+                    _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
                 };
 
                 let runner = runner.to_string();
