@@ -25,17 +25,6 @@ enum GraphQLError {
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-
-#[cfg(target_os = "wasi")]
-pub fn execute_query_modifier<R, V, F>(registry: &Url, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
-where
-    for<'de> R: serde::Deserialize<'de>,
-    V: serde::Serialize,
-    F: FnOnce(Form) -> Form,
-{
-    Err(anyhow::anyhow!("networking is not implemented on wasm32-wasi"))
-}
-
 #[cfg(not(target_os = "wasi"))]
 pub fn execute_query_modifier<R, V, F>(registry: &Url, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
 where
@@ -94,10 +83,20 @@ where
     Ok(response_body.data.expect("missing response data"))
 }
 
+#[cfg(not(target_os = "wasi"))]
 pub fn execute_query<R, V>(registry: &Url, query: &QueryBody<V>) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
 {
     execute_query_modifier(registry, query, |f| f)
+}
+
+#[cfg(target_os = "wasi")]
+pub fn execute_query<R, V>(registry: &Url, query: &QueryBody<V>) -> anyhow::Result<R>
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+{
+    Err(anyhow::anyhow!("networking is not implemented on wasm32-wasi"))
 }
