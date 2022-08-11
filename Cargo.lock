@@ -3936,6 +3936,7 @@ dependencies = [
  "thiserror",
  "toml",
  "validator",
+ "wapm-resolve-url",
 ]
 
 [[package]]

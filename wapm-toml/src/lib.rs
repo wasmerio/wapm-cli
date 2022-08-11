@@ -65,9 +65,27 @@ pub fn get_dependencies(wapm: &str) -> Vec<(String, String)>{
         Ok(o) => o,
         Err(_) => { return Vec::new(); }, 
     };
-    wapm.dependencies
+    let mut dependencies = wapm.dependencies
     .clone().unwrap_or_default()
-    .iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    .iter().map(|(k, v)| (k.clone(), v.clone()))
+    .collect::<Vec<_>>();
+
+    let current_registry = wapm_resolve_url::get_current_wapm_registry();
+
+    for (k, _) in dependencies.iter_mut() {
+        if k.split("/").count() == 1 {
+            // Somebody only specified the package / command as the dependency instead
+            // of using the owner/package format
+            if let Some(r) = current_registry.as_ref() {
+                let package_info = wapm_resolve_url::get_tar_gz_url_of_package(r, k, None);
+                if let Some(pi) = package_info {
+                    *k = pi.resolved_name.clone();
+                }
+            }
+        }
+    }
+
+    dependencies
 }
 
 pub fn get_wapm_atom_file_paths(

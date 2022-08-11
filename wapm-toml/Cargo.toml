@@ -17,6 +17,7 @@ serde_yaml = "0.8.24"
 serde_cbor = "0.11.2"
 indexmap = { version = "1.6", features = ["serde"] }
 validator = "0.15.0"
+wapm-resolve-url = { version = "0.1.0", path = "../wapm-resolve-url" }
 
 [features]
 integration_tests = []
