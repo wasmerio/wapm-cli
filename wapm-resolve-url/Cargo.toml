@@ -15,6 +15,6 @@ whoami = "1.2.1"
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 reqwest = { version = "0.11.0", default-features = false, features = ["rustls-tls", "blocking", "json", "gzip","socks", "multipart"] }
 
-[target.'cfg(target_os = "wasi")'.dependencies]
-wasm-bus-reqwest = "0.1.0"
-wasm-bus-process = "0.1.0"
+# [target.'cfg(target_os = "wasi")'.dependencies]
+# wasm-bus-reqwest = "0.1.0"
+# wasm-bus-process = "0.1.0"
