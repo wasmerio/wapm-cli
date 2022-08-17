@@ -3,8 +3,8 @@
 use semver::Version;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
+use std::fmt;
 use std::path::{Path, PathBuf};
-use std::{fmt, fs};
 use thiserror::Error;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
@@ -305,7 +305,7 @@ pub struct Module {
     #[serde(default)]
     pub kind: Option<String>,
     #[cfg(feature = "package")]
-    pub fs: Option<Table>,
+    pub fs: Option<toml::value::Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interfaces: Option<HashMap<String, String>>,
 }
@@ -354,6 +354,7 @@ pub mod integration_tests {
     }
 }
 impl Manifest {
+    #[cfg(not(feature = "integration_tests"))]
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
         for filename in candidates {
             let path_buf = path.join(filename);
@@ -373,7 +374,7 @@ impl Manifest {
             ));
         }
         let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
-        let contents = fs::read_to_string(&manifest_path_buf).map_err(|_e| {
+        let contents = std::fs::read_to_string(&manifest_path_buf).map_err(|_e| {
             ManifestError::MissingManifest(manifest_path_buf.to_string_lossy().to_string())
         })?;
         let mut manifest: Self = toml::from_str(contents.as_str())
@@ -447,7 +448,7 @@ impl Manifest {
     pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
-        fs::write(manifest_path, &manifest_string)
+        std::fs::write(manifest_path, &manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
     }
@@ -509,7 +510,8 @@ pub enum ValidationError {
 
 #[cfg(test)]
 mod serialization_tests {
-    use crate::data::manifest::Manifest;
+    use super::*;
+    use toml::toml;
 
     #[test]
     fn get_manifest() {
@@ -528,7 +530,8 @@ mod serialization_tests {
 
 #[cfg(test)]
 mod command_tests {
-    use crate::data::manifest::Manifest;
+    use super::*;
+    use toml::toml;
 
     #[test]
     fn get_commands() {
@@ -561,14 +564,17 @@ mod command_tests {
 
 #[cfg(test)]
 mod dependency_tests {
-    use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
-    use crate::util::create_temp_dir;
-    use std::fs::File;
-    use std::io::Write;
+    use super::*;
+    use std::{fs::File, io::Write};
+    use toml::toml;
 
     #[test]
+    #[cfg_attr(
+        feature = "integration_tests",
+        ignore = "Requires the actual Manifest::find_in_directory() implementation which has been mocked out"
+    )]
     fn add_new_dependency() {
-        let tmp_dir = create_temp_dir().unwrap();
+        let tmp_dir = tempfile::tempdir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         let manifest_path = tmp_dir_path.join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();

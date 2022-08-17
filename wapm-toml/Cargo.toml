@@ -19,3 +19,6 @@ serde_cbor = "0.11.2"
 [features]
 integration_tests = []
 package = []
+
+[dev-dependencies]
+tempfile = "3.3.0"
