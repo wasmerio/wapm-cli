@@ -9,7 +9,7 @@ use thiserror::Error;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Abi {
     #[serde(rename = "emscripten")]
     Emscripten,
@@ -31,7 +31,7 @@ impl Abi {
         }
     }
     pub fn is_none(&self) -> bool {
-        return self == &Abi::None;
+        self == &Abi::None
     }
     pub fn from_str(name: &str) -> Self {
         match name.to_lowercase().as_ref() {
@@ -58,7 +58,7 @@ impl Default for Abi {
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
-pub static README_PATHS: &[&'static str; 5] = &[
+pub static README_PATHS: &[&str; 5] = &[
     "README",
     "README.md",
     "README.markdown",
@@ -66,7 +66,7 @@ pub static README_PATHS: &[&'static str; 5] = &[
     "README.mkdn",
 ];
 
-pub static LICENSE_PATHS: &[&'static str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
+pub static LICENSE_PATHS: &[&str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -211,7 +211,7 @@ pub fn toml_to_cbor_value(val: &toml::Value) -> serde_cbor::Value {
         toml::Value::Boolean(b) => serde_cbor::Value::Bool(*b),
         toml::Value::Datetime(d) => serde_cbor::Value::Text(format!("{}", d)),
         toml::Value::Array(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(toml_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(toml_to_cbor_value).collect())
         }
         toml::Value::Table(m) => serde_cbor::Value::Map(
             m.iter()
@@ -238,7 +238,7 @@ pub fn json_to_cbor_value(val: &serde_json::Value) -> serde_cbor::Value {
         }
         serde_json::Value::String(s) => serde_cbor::Value::Text(s.clone()),
         serde_json::Value::Array(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(json_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(json_to_cbor_value).collect())
         }
         serde_json::Value::Object(m) => serde_cbor::Value::Map(
             m.iter()
@@ -265,7 +265,7 @@ pub fn yaml_to_cbor_value(val: &serde_yaml::Value) -> serde_cbor::Value {
         }
         serde_yaml::Value::String(s) => serde_cbor::Value::Text(s.clone()),
         serde_yaml::Value::Sequence(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(yaml_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(yaml_to_cbor_value).collect())
         }
         serde_yaml::Value::Mapping(m) => serde_cbor::Value::Map(
             m.iter()
@@ -283,7 +283,7 @@ pub enum CommandAnnotations {
     Raw(toml::Value),
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct FileCommandAnnotations {
     pub file: PathBuf,
     pub kind: FileKind,
@@ -297,7 +297,7 @@ pub enum FileKind {
     Json,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
@@ -313,7 +313,7 @@ pub struct Module {
 }
 
 /// The interface exposed by a [`Module`].
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Bindings {
     /// The `*.wit` file's location on disk.
     pub wit: PathBuf,
@@ -430,7 +430,7 @@ impl Manifest {
 
         if let Some(ref commands) = self.command {
             for command in commands {
-                if let Some(ref module) = module_map.get(&command.get_module()) {
+                if let Some(module) = module_map.get(&command.get_module()) {
                     if module.abi == Abi::None && module.interfaces.is_none() {
                         return Err(ManifestError::ValidationError(ValidationError::MissingABI(
                             command.get_name(),
