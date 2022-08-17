@@ -324,7 +324,7 @@ pub struct Export {
 impl Export {
     /// Get all `*.wit` files that make up this interface.
     ///
-    /// This includes the [`Exports::wit`] field, but also anything it may
+    /// This includes the [`Export::wit`] field, but also anything it may
     /// recursively depend on.
     pub fn referenced_files(&self, _base_directory: &Path) -> Vec<PathBuf> {
         // TODO: Parse `self.wit` to find any `*.wit` files we might
