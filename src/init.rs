@@ -107,6 +107,7 @@ pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
                 abi: Abi::default(),
                 interfaces: None,
                 kind: None,
+                bindings: None,
             }]),
             command: None,
         }
@@ -158,6 +159,7 @@ Press ^C at any time to quit."
                         abi: Abi::default(),
                         interfaces: None,
                         kind: None,
+                        bindings: None,
                     }
                 }
             };

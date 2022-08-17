@@ -87,9 +87,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             .append_path(normalized_path)
             .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
 
-        if let Some(exports) = module.exports {
-            for path in exports.referenced_files(&manifest.base_directory_path) {
-                let normalized_path = normalize_path(&manifest.base_directory_path, &module.source);
+        if let Some(bindings) = &module.bindings {
+            for path in bindings.referenced_files(&manifest.base_directory_path) {
+                let normalized_path = normalize_path(&manifest.base_directory_path, &path);
                 normalized_path
                     .metadata()
                     .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;

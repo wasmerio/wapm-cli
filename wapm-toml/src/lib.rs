@@ -309,22 +309,22 @@ pub struct Module {
     pub fs: Option<toml::value::Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interfaces: Option<HashMap<String, String>>,
-    pub exports: Option<Export>,
+    pub bindings: Option<Bindings>,
 }
 
 /// The interface exposed by a [`Module`].
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub struct Export {
+pub struct Bindings {
     /// The `*.wit` file's location on disk.
     pub wit: PathBuf,
     /// The version of the WIT format being used.
     pub wit_bindgen: Version,
 }
 
-impl Export {
+impl Bindings {
     /// Get all `*.wit` files that make up this interface.
     ///
-    /// This includes the [`Export::wit`] field, but also anything it may
+    /// This includes the [`Bindings::wit`] field, but also anything it may
     /// recursively depend on.
     pub fn referenced_files(&self, _base_directory: &Path) -> Vec<PathBuf> {
         // TODO: Parse `self.wit` to find any `*.wit` files we might
@@ -661,7 +661,7 @@ interfaces = {"wasi" = "0.0.0-unstable"}
 [[module]]
 name = "mod-with-exports"
 source = "target/wasm32-wasi/release/mod-with-exports.wasm"
-exports = { wit = "exports.wit", wit_bindgen = "0.0.0" }
+bindings = { wit = "exports.wit", wit_bindgen = "0.0.0" }
 
 [[command]]
 name = "command"
@@ -684,7 +684,7 @@ module = "mod"
                 interfaces: None,
                 #[cfg(feature = "package")]
                 fs: None,
-                exports: Some(Export {
+                bindings: Some(Bindings {
                     wit: PathBuf::from("exports.wit"),
                     wit_bindgen: "0.0.0".parse().unwrap()
                 }),
