@@ -91,8 +91,9 @@ pub struct Package {
     pub disable_command_rename: bool,
     /// Unlike, `disable-command-rename` which prevents `wapm run <Module name>`,
     /// this flag enables the command rename of `wapm run <COMMAND_NAME>` into
-    /// just `<COMMAND_NAME>. This is useful for programs that need to inspect
-    /// their argv[0] names and when the command name matches their executable name.
+    /// just `<COMMAND_NAME>`. This is useful for programs that need to inspect
+    /// their `argv[0]` names and when the command name matches their executable
+    /// name.
     #[serde(
         rename = "rename-commands-to-raw-command-name",
         default,
@@ -296,7 +297,7 @@ pub enum FileKind {
     Json,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
@@ -308,6 +309,18 @@ pub struct Module {
     pub fs: Option<toml::value::Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interfaces: Option<HashMap<String, String>>,
+    pub exports: Option<Export>,
+}
+
+/// The interface exposed by a [`Module`].
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct Export {
+    /// The `*.wit` file's location on disk.
+    pub wit: PathBuf,
+    /// The version of the WIT format being used.
+    pub wit_bindgen: Version,
+}
+
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -631,18 +644,37 @@ name = "mod"
 source = "target/wasm32-wasi/release/mod.wasm"
 interfaces = {"wasi" = "0.0.0-unstable"}
 
+[[module]]
+name = "mod-with-exports"
+source = "target/wasm32-wasi/release/mod-with-exports.wasm"
+exports = { wit = "exports.wit", wit_bindgen = "0.0.0" }
+
 [[command]]
 name = "command"
 module = "mod"
 "#;
         let manifest: Manifest = toml::from_str(manifest_str).unwrap();
+        let modules = manifest.module.as_deref().unwrap();
         assert_eq!(
-            manifest.module.unwrap()[0]
-                .interfaces
-                .as_ref()
-                .unwrap()
-                .get("wasi"),
+            modules[0].interfaces.as_ref().unwrap().get("wasi"),
             Some(&"0.0.0-unstable".to_string())
-        )
+        );
+
+        assert_eq!(
+            modules[1],
+            Module {
+                name: "mod-with-exports".to_string(),
+                source: PathBuf::from("target/wasm32-wasi/release/mod-with-exports.wasm"),
+                abi: Abi::None,
+                kind: None,
+                interfaces: None,
+                #[cfg(feature = "package")]
+                fs: None,
+                exports: Some(Export {
+                    wit: PathBuf::from("exports.wit"),
+                    wit_bindgen: "0.0.0".parse().unwrap()
+                }),
+            },
+        );
     }
 }
