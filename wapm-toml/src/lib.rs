@@ -321,6 +321,20 @@ pub struct Export {
     pub wit_bindgen: Version,
 }
 
+impl Export {
+    /// Get all `*.wit` files that make up this interface.
+    ///
+    /// This includes the [`Exports::wit`] field, but also anything it may
+    /// recursively depend on.
+    pub fn referenced_files(&self, _base_directory: &Path) -> Vec<PathBuf> {
+        // TODO: Parse `self.wit` to find any `*.wit` files we might
+        // transitively depend on and resolve them relative to self.wit's
+        // parent directory.
+        //
+        // For now, any `*.wit` files that import other files will error out
+        // further down the track.
+        vec![self.wit.clone()]
+    }
 }
 
 /// The manifest represents the file used to describe a Wasm package.
