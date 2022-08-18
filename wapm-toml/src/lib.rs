@@ -482,6 +482,16 @@ pub struct Manifest {
     pub base_directory_path: PathBuf,
 }
 
+pub type WebcBinding = (String, String, serde_cbor::Value);
+
+pub fn get_bindings(
+    wapm: &str, 
+    base_path: &PathBuf, 
+    atom_kinds: &BTreeMap<String, String>
+) -> Result<Vec<WebcBinding>, anyhow::Error> {
+    Ok(Vec::new())
+}
+
 // command name => (runner, annotations)
 pub type WebcCommand = (String, Vec<(String, serde_cbor::Value)>);
 
