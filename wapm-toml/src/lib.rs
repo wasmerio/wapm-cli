@@ -94,10 +94,14 @@ pub fn get_wapm_atom_file_paths(
     paths: &BTreeMap<&PathBuf, &Vec<u8>>
 ) -> Result<Vec<(String, PathBuf)>, anyhow::Error> {
     
-    let wapm_toml: Manifest = paths.get(&Path::new(MANIFEST_FILE_NAME).to_path_buf())
-    .and_then(|t| toml::from_slice(t).ok())
+    println!("searching for {MANIFEST_FILE_NAME:?} in {:#?}", paths.keys().collect::<Vec<_>>());
+
+    let wapm_toml = paths.get(&Path::new(MANIFEST_FILE_NAME).to_path_buf())
     .ok_or(anyhow::anyhow!("Could not find wapm.toml in FileMap"))?;
-    
+
+    let wapm_toml: Manifest = toml::from_slice(&wapm_toml)
+    .map_err(|e| anyhow::anyhow!("Could not parse wapm.toml: {e}"))?;
+
     Ok(wapm_toml.module.clone().unwrap_or_default().into_iter().map(|m| {
         (m.name.clone(), Path::new(&m.source).to_path_buf())
     }).collect())
@@ -550,14 +554,14 @@ pub fn get_commands(
                 let runner = match abi {
                     Some("emscripten") => "https://webc.org/runner/emscripten/command@unstable_",
                     Some("wasm4") => "https://webc.org/runner/wasm4/command@unstable_",
-                    Some("wasi") => "https://webc.org/runner/wasi/command@unstable_",
+                    Some("wasi") | Some("generic") => "https://webc.org/runner/wasi/command@unstable_",
                     _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
                 };
 
                 let annotations_str = match abi {
                     Some("emscripten") => "emscripten",
                     Some("wasm4") => "wasm4",
-                    Some("wasi") => "wasi",
+                    Some("wasi") | Some("generic") => "wasi",
                     _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
                 };
 
@@ -616,7 +620,7 @@ pub fn get_manifest_file_names() -> Vec<PathBuf> {
     vec![Path::new(MANIFEST_FILE_NAME).to_path_buf()]
 }
 
-pub fn get_metadata_paths() -> Vec<PathBuf> {
+pub fn get_metadata_paths(bindings: &[serde_cbor::Value]) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     for p in README_PATHS.iter() {
         paths.push(Path::new(p).to_path_buf());
