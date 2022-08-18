@@ -622,6 +622,13 @@ pub fn get_manifest_file_names() -> Vec<PathBuf> {
 
 pub fn get_metadata_paths(bindings: &[serde_cbor::Value]) -> Vec<PathBuf> {
     let mut paths = Vec::new();
+    
+    for b in bindings {
+        if let Ok(wit) = serde_cbor::from_slice::<WitBindingsExtended>(&serde_cbor::to_vec(b).unwrap()) {
+            paths.push(Path::new(&wit.wit.exports.replacen("metadata://", "", 1)));
+        }
+    }
+
     for p in README_PATHS.iter() {
         paths.push(Path::new(p).to_path_buf());
     }
