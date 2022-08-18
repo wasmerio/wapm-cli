@@ -625,7 +625,7 @@ pub fn get_metadata_paths(bindings: &[serde_cbor::Value]) -> Vec<PathBuf> {
     
     for b in bindings {
         if let Ok(wit) = serde_cbor::from_slice::<WitBindingsExtended>(&serde_cbor::to_vec(b).unwrap()) {
-            paths.push(Path::new(&wit.wit.exports.replacen("metadata://", "", 1)));
+            paths.push(Path::new(&wit.wit.exports.replacen("metadata://", "", 1)).to_path_buf());
         }
     }
 
