@@ -14,7 +14,7 @@ pub static MAX_NAME_LENGTH: usize = 50;
 pub enum NameError {
     #[error("Please enter a name")]
     Empty,
-    #[error("The name \"{0}\" is too long. It must be {} characters or fewer")]
+    #[error("The name \"{0}\" is too long. It must be {1} characters or fewer")]
     NameTooLong(String, usize),
     #[error(
         "The name \"{0}\" contains invalid characters. Please use alpha-numeric characters, '-', and '_'",

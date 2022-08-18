@@ -3,15 +3,15 @@
 use semver::Version;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
+use std::fmt;
 use std::path::{Path, PathBuf};
-use std::{fmt, fs};
 use thiserror::Error;
 use indexmap::IndexMap;
 use std::collections::BTreeMap;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Abi {
     #[serde(rename = "emscripten")]
     Emscripten,
@@ -33,7 +33,7 @@ impl Abi {
         }
     }
     pub fn is_none(&self) -> bool {
-        return self == &Abi::None;
+        self == &Abi::None
     }
     pub fn from_str(name: &str) -> Self {
         match name.to_lowercase().as_ref() {
@@ -107,7 +107,7 @@ pub fn get_wapm_manifest_file_name() -> PathBuf {
     Path::new(MANIFEST_FILE_NAME).to_path_buf()
 }
 
-pub static README_PATHS: &[&'static str; 5] = &[
+pub static README_PATHS: &[&str; 5] = &[
     "README",
     "README.md",
     "README.markdown",
@@ -115,7 +115,7 @@ pub static README_PATHS: &[&'static str; 5] = &[
     "README.mkdn",
 ];
 
-pub static LICENSE_PATHS: &[&'static str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
+pub static LICENSE_PATHS: &[&str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
 
 pub fn get_modules(wapm: &str) -> Vec<(String, String, String)> {
     let wapm: Manifest = match toml::from_str(wapm) {
@@ -213,8 +213,9 @@ pub struct Package {
     pub disable_command_rename: bool,
     /// Unlike, `disable-command-rename` which prevents `wapm run <Module name>`,
     /// this flag enables the command rename of `wapm run <COMMAND_NAME>` into
-    /// just `<COMMAND_NAME>. This is useful for programs that need to inspect
-    /// their argv[0] names and when the command name matches their executable name.
+    /// just `<COMMAND_NAME>`. This is useful for programs that need to inspect
+    /// their `argv[0]` names and when the command name matches their executable
+    /// name.
     #[serde(
         rename = "rename-commands-to-raw-command-name",
         default,
@@ -332,7 +333,7 @@ pub fn toml_to_cbor_value(val: &toml::Value) -> serde_cbor::Value {
         toml::Value::Boolean(b) => serde_cbor::Value::Bool(*b),
         toml::Value::Datetime(d) => serde_cbor::Value::Text(format!("{}", d)),
         toml::Value::Array(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(toml_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(toml_to_cbor_value).collect())
         }
         toml::Value::Table(m) => serde_cbor::Value::Map(
             m.iter()
@@ -359,7 +360,7 @@ pub fn json_to_cbor_value(val: &serde_json::Value) -> serde_cbor::Value {
         }
         serde_json::Value::String(s) => serde_cbor::Value::Text(s.clone()),
         serde_json::Value::Array(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(json_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(json_to_cbor_value).collect())
         }
         serde_json::Value::Object(m) => serde_cbor::Value::Map(
             m.iter()
@@ -386,7 +387,7 @@ pub fn yaml_to_cbor_value(val: &serde_yaml::Value) -> serde_cbor::Value {
         }
         serde_yaml::Value::String(s) => serde_cbor::Value::Text(s.clone()),
         serde_yaml::Value::Sequence(sq) => {
-            serde_cbor::Value::Array(sq.into_iter().map(yaml_to_cbor_value).collect())
+            serde_cbor::Value::Array(sq.iter().map(yaml_to_cbor_value).collect())
         }
         serde_yaml::Value::Mapping(m) => serde_cbor::Value::Map(
             m.iter()
@@ -404,7 +405,7 @@ pub enum CommandAnnotations {
     Raw(toml::Value),
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct FileCommandAnnotations {
     pub file: PathBuf,
     pub kind: FileKind,
@@ -418,7 +419,7 @@ pub enum FileKind {
     Json,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
@@ -427,9 +428,35 @@ pub struct Module {
     #[serde(default)]
     pub kind: Option<String>,
     #[cfg(feature = "package")]
-    pub fs: Option<Table>,
+    pub fs: Option<toml::value::Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interfaces: Option<HashMap<String, String>>,
+    pub bindings: Option<Bindings>,
+}
+
+/// The interface exposed by a [`Module`].
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Bindings {
+    /// The `*.wit` file's location on disk.
+    pub wit: PathBuf,
+    /// The version of the WIT format being used.
+    pub wit_bindgen: Version,
+}
+
+impl Bindings {
+    /// Get all `*.wit` files that make up this interface.
+    ///
+    /// This includes the [`Bindings::wit`] field, but also anything it may
+    /// recursively depend on.
+    pub fn referenced_files(&self, _base_directory: &Path) -> Vec<PathBuf> {
+        // TODO: Parse `self.wit` to find any `*.wit` files we might
+        // transitively depend on and resolve them relative to self.wit's
+        // parent directory.
+        //
+        // For now, any `*.wit` files that import other files will error out
+        // further down the track.
+        vec![self.wit.clone()]
+    }
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -597,6 +624,7 @@ pub mod integration_tests {
 }
 
 impl Manifest {
+    #[cfg(not(feature = "integration_tests"))]
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
         for filename in candidates {
             let path_buf = path.join(filename);
@@ -616,7 +644,7 @@ impl Manifest {
             ));
         }
         let manifest_path_buf = path.as_ref().join(MANIFEST_FILE_NAME);
-        let contents = fs::read_to_string(&manifest_path_buf).map_err(|_e| {
+        let contents = std::fs::read_to_string(&manifest_path_buf).map_err(|_e| {
             ManifestError::MissingManifest(manifest_path_buf.to_string_lossy().to_string())
         })?;
         let mut manifest: Self = toml::from_str(contents.as_str())
@@ -645,7 +673,7 @@ impl Manifest {
 
         if let Some(ref commands) = self.command {
             for command in commands {
-                if let Some(ref module) = module_map.get(&command.get_module()) {
+                if let Some(module) = module_map.get(&command.get_module()) {
                     if module.abi == Abi::None && module.interfaces.is_none() {
                         return Err(ManifestError::ValidationError(ValidationError::MissingABI(
                             command.get_name(),
@@ -690,7 +718,7 @@ impl Manifest {
     pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
-        fs::write(manifest_path, &manifest_string)
+        std::fs::write(manifest_path, &manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
     }
@@ -752,7 +780,8 @@ pub enum ValidationError {
 
 #[cfg(test)]
 mod serialization_tests {
-    use crate::data::manifest::Manifest;
+    use super::*;
+    use toml::toml;
 
     #[test]
     fn get_manifest() {
@@ -771,7 +800,8 @@ mod serialization_tests {
 
 #[cfg(test)]
 mod command_tests {
-    use crate::data::manifest::Manifest;
+    use super::*;
+    use toml::toml;
 
     #[test]
     fn get_commands() {
@@ -804,14 +834,17 @@ mod command_tests {
 
 #[cfg(test)]
 mod dependency_tests {
-    use crate::data::manifest::{Manifest, MANIFEST_FILE_NAME};
-    use crate::util::create_temp_dir;
-    use std::fs::File;
-    use std::io::Write;
+    use super::*;
+    use std::{fs::File, io::Write};
+    use toml::toml;
 
     #[test]
+    #[cfg_attr(
+        feature = "integration_tests",
+        ignore = "Requires the actual Manifest::find_in_directory() implementation which has been mocked out"
+    )]
     fn add_new_dependency() {
-        let tmp_dir = create_temp_dir().unwrap();
+        let tmp_dir = tempfile::tempdir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         let manifest_path = tmp_dir_path.join(MANIFEST_FILE_NAME);
         let mut file = File::create(&manifest_path).unwrap();
@@ -868,18 +901,37 @@ name = "mod"
 source = "target/wasm32-wasi/release/mod.wasm"
 interfaces = {"wasi" = "0.0.0-unstable"}
 
+[[module]]
+name = "mod-with-exports"
+source = "target/wasm32-wasi/release/mod-with-exports.wasm"
+bindings = { wit = "exports.wit", wit_bindgen = "0.0.0" }
+
 [[command]]
 name = "command"
 module = "mod"
 "#;
         let manifest: Manifest = toml::from_str(manifest_str).unwrap();
+        let modules = manifest.module.as_deref().unwrap();
         assert_eq!(
-            manifest.module.unwrap()[0]
-                .interfaces
-                .as_ref()
-                .unwrap()
-                .get("wasi"),
+            modules[0].interfaces.as_ref().unwrap().get("wasi"),
             Some(&"0.0.0-unstable".to_string())
-        )
+        );
+
+        assert_eq!(
+            modules[1],
+            Module {
+                name: "mod-with-exports".to_string(),
+                source: PathBuf::from("target/wasm32-wasi/release/mod-with-exports.wasm"),
+                abi: Abi::None,
+                kind: None,
+                interfaces: None,
+                #[cfg(feature = "package")]
+                fs: None,
+                bindings: Some(Bindings {
+                    wit: PathBuf::from("exports.wit"),
+                    wit_bindgen: "0.0.0".parse().unwrap()
+                }),
+            },
+        );
     }
 }

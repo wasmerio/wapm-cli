@@ -63,11 +63,11 @@ pub enum Error {
     )]
     ErrorReadingLocalDirectory(String, String),
     #[error(
-        "Command \"{0}\" exists in lockfile, but corresponding module \"{}\" not found in lockfile.",
+        "Command \"{0}\" exists in lockfile, but corresponding module \"{1}\" not found in lockfile.",
     )]
     CommandFoundButCorrespondingModuleIsMissing(String, String),
     #[error(
-        "Failed to get command \"{0}\" because there was an error opening the global installation directory. {}",
+        "Failed to get command \"{0}\" because there was an error opening the global installation directory. {1}",
     )]
     CouldNotOpenGlobalsDirectory(String, String),
 }

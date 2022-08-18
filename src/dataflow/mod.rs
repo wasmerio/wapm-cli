@@ -75,7 +75,7 @@ pub struct WapmDistribution {
 }
 
 /// A range of versions for a package in the wapm.io registry.
-#[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct WapmPackageRange<'a> {
     pub name: Cow<'a, str>,
     pub version_req: VersionReq,
@@ -115,7 +115,7 @@ pub fn detect_duplicate_packages(packages: &HashSet<PackageKey>) -> Result<(), E
 /// A package key can be anything reference to a package, be it a wapm.io registry, a local directory.
 /// Currently, only wapm.io keys are supported.
 #[allow(dead_code)]
-#[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PackageKey<'a> {
     WapmPackage(WapmPackageKey<'a>),
     WapmPackageRange(WapmPackageRange<'a>),
