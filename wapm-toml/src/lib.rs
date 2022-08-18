@@ -482,14 +482,43 @@ pub struct Manifest {
     pub base_directory_path: PathBuf,
 }
 
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WitBindingsExtended {
+    pub wit: WitBindings,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WitBindings {
+    pub exports: String,
+    pub module: String,
+}
+
 pub type WebcBinding = (String, String, serde_cbor::Value);
 
 pub fn get_bindings(
     wapm: &str, 
-    base_path: &PathBuf, 
-    atom_kinds: &BTreeMap<String, String>
+    _base_path: &PathBuf, 
+    _atom_kinds: &BTreeMap<String, String>
 ) -> Result<Vec<WebcBinding>, anyhow::Error> {
-    Ok(Vec::new())
+
+    let wapm: Manifest = toml::from_str(wapm)?;
+    let default_modules = Vec::new();
+    let mut bindings = Vec::new();
+
+    for module in wapm.module.as_ref().unwrap_or(&default_modules).iter() {
+        if let Some(b) = module.bindings.as_ref() {
+            let value = serde_cbor::from_slice(&serde_cbor::to_vec(&WitBindingsExtended {
+                wit: WitBindings { 
+                    exports: format!("metadata://{}", b.wit.display()), 
+                    module: format!("atoms://{}", module.name), 
+                }
+            })?)?;
+            bindings.push(("library-bindings".to_string(), format!("wit@{}", b.wit_bindgen), value));
+        }
+    }
+
+    Ok(bindings)
 }
 
 // command name => (runner, annotations)
