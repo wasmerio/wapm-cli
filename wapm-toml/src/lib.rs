@@ -423,7 +423,7 @@ pub enum FileKind {
     Json,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
