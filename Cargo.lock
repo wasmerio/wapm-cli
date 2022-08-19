@@ -1877,7 +1877,7 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
 dependencies = [
- "semver",
+ "semver 0.11.0",
 ]
 
 [[package]]
@@ -1953,6 +1953,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
  "semver-parser",
+]
+
+[[package]]
+name = "semver"
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93f6841e709003d68bb2deee8c343572bf446003ec20a583e76f7b15cebf3711"
+dependencies = [
  "serde",
 ]
 
@@ -2709,7 +2717,7 @@ dependencies = [
  "reqwest",
  "rpassword-wasi",
  "rusqlite",
- "semver",
+ "semver 1.0.13",
  "sentry",
  "serde",
  "serde_derive",
@@ -2737,12 +2745,13 @@ name = "wapm-toml"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "semver",
+ "semver 1.0.13",
  "serde",
  "serde_cbor",
  "serde_derive",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "thiserror",
  "toml",
 ]
