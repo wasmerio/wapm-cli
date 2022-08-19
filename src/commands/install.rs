@@ -432,6 +432,7 @@ async fn download_pirita(
                 get_package_annotations: wapm_toml::get_package_annotations,
                 get_modules: wapm_toml::get_modules,
                 get_commands: wapm_toml::get_commands,
+                get_bindings: wapm_toml::get_bindings,
                 get_manifest_file_names: wapm_toml::get_manifest_file_names,
                 get_metadata_paths: wapm_toml::get_metadata_paths,
                 get_wapm_manifest_file_name: wapm_toml::get_wapm_manifest_file_name,
