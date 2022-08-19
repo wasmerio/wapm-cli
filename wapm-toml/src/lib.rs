@@ -314,9 +314,10 @@ pub struct Module {
 
 /// The interface exposed by a [`Module`].
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Bindings {
     /// The `*.wit` file's location on disk.
-    pub wit: PathBuf,
+    pub wit_exports: PathBuf,
     /// The version of the WIT format being used.
     pub wit_bindgen: Version,
 }
@@ -333,7 +334,7 @@ impl Bindings {
         //
         // For now, any `*.wit` files that import other files will error out
         // further down the track.
-        vec![self.wit.clone()]
+        vec![self.wit_exports.clone()]
     }
 }
 
@@ -661,7 +662,7 @@ interfaces = {"wasi" = "0.0.0-unstable"}
 [[module]]
 name = "mod-with-exports"
 source = "target/wasm32-wasi/release/mod-with-exports.wasm"
-bindings = { wit = "exports.wit", wit_bindgen = "0.0.0" }
+bindings = { wit-exports = "exports.wit", wit-bindgen = "0.0.0" }
 
 [[command]]
 name = "command"
@@ -685,7 +686,7 @@ module = "mod"
                 #[cfg(feature = "package")]
                 fs: None,
                 bindings: Some(Bindings {
-                    wit: PathBuf::from("exports.wit"),
+                    wit_exports: PathBuf::from("exports.wit"),
                     wit_bindgen: "0.0.0".parse().unwrap()
                 }),
             },
