@@ -4,6 +4,9 @@ IS_WINDOWS := 0
 IS_AMD64 := 0
 IS_AARCH64 := 0
 
+CARGO_BINARY ?= cargo
+CARGO_TARGET ?=
+
 # Test Windows apart because it doesn't support `uname -s`.
 ifeq ($(OS), Windows_NT)
 	# We can assume it will likely be in amd64.
@@ -40,17 +43,17 @@ else
 endif
 
 ifeq ($(IS_DARWIN), 1)
-	TARGET_DIR := target/*/release
+	TARGET_DIR ?= target/*/release
 else
-	TARGET_DIR := target/release
+	TARGET_DIR ?= target/release
 endif
 
 build-release:
 ifeq ($(IS_DARWIN), 1)
 	# We build it without bundling sqlite, as is included by default in macos
-	cargo build --release --no-default-features --features "full packagesigning telemetry update-notifications"
+	$(CARGO_BINARY) build $(CARGO_TARGET) --release --no-default-features --features "full packagesigning telemetry update-notifications"
 else
-	cargo build --release --features "telemetry update-notifications"
+	$(CARGO_BINARY) build $(CARGO_TARGET) --release --features "telemetry update-notifications"
 endif
 
 release: build-release
@@ -77,7 +80,7 @@ endif
 	mv wapm-cli.tar.gz dist/
 
 integration-tests:
-	cargo test --features "integration_tests" integration_tests::
+	$(CARGO_BINARY) test --features "integration_tests" integration_tests::
 
 regression-tests:
 	chmod +x end-to-end-tests/ci/direct-execution.sh
