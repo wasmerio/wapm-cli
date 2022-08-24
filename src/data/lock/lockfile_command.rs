@@ -17,7 +17,7 @@ pub struct LockfileCommand {
 fn test_lockfile_command_ok() {
     use wapm_toml::CommandV1;
     assert_eq!(LockfileCommand::from_command("Micheal-F-Bryan/wit-pack", Version::new(1, 0, 0), &Command::V1(CommandV1 {
-        name: "Micheal-F-Bryan/wit-pack".to_string(),
+        name: "wit-pack".to_string(),
         module: "wit-pack".to_string(),
         main_args: None,
         package: None,
