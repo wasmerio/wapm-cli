@@ -11,6 +11,10 @@ use graphql_client::*;
 pub struct LoginOpt {
     /// Provide the token
     token: Option<String>,
+    /// Username
+    user: Option<String>,
+    /// Password
+    password: Option<String>,
 }
 
 #[derive(GraphQLQuery)]
@@ -34,14 +38,23 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    print!("Username: ");
-    stdout().flush().ok().expect("Could not flush stdout");
+    let username = if let Some(u) = login_options.user.as_ref() {
+        u.to_string()
+    } else {
+        print!("Username: ");
+        stdout().flush().ok().expect("Could not flush stdout");
+    
+        let buffer = &mut String::new();
+        stdin().read_line(buffer)?;
+        buffer.trim_end().to_string()
+    };
 
-    let buffer = &mut String::new();
-    stdin().read_line(buffer)?;
-    let username = buffer.trim_end();
-
-    let password = rpassword::prompt_password("Password: ").expect("Can't get password");
+    let password = if let Some(p) = login_options.password.as_ref() {
+        p.to_string()
+    } else {
+        rpassword::prompt_password("Password: ")
+        .expect("Can't get password")
+    };
 
     let q = LoginMutation::build_query(login_mutation::Variables {
         username: username.to_string(),
