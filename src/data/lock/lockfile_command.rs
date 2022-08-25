@@ -23,7 +23,7 @@ fn test_lockfile_command_ok() {
         package: None,
     })),
         Ok(LockfileCommand {
-            name: "Micheal-F-Bryan/wit-pack".to_string(),
+            name: "wit-pack".to_string(),
             package_name: "Micheal-F-Bryan/wit-pack".to_string(),
             package_version: Version::new(1, 0, 0),
             module: "wit-pack".to_string(),
