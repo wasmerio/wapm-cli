@@ -515,7 +515,7 @@ pub fn get_bindings(
         if let Some(b) = module.bindings.as_ref() {
             let value = serde_cbor::from_slice(&serde_cbor::to_vec(&WitBindingsExtended {
                 wit: WitBindings { 
-                    exports: format!("metadata://{}", b.wit.display()), 
+                    exports: format!("metadata://{}", b.wit_exports.display()), 
                     module: format!("atoms://{}", module.name), 
                 }
             })?)?;
