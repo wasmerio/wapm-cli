@@ -2,6 +2,7 @@
     not(feature = "full"),
     allow(dead_code, unused_imports, unused_variables)
 )]
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -27,7 +28,7 @@ pub struct Config {
     pub wax_cooldown: i32,
 
     /// The registry that wapm will connect to.
-    pub registry: Registry,
+    pub registry: Registries,
 
     /// Whether or not telemetry is enabled.
     #[cfg(feature = "telemetry")]
@@ -49,7 +50,103 @@ pub const fn wax_default_cooldown() -> i32 {
     5 * 60
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum Registries {
+    Single(Registry),
+    Multi(MultiRegistry),
+}
+
+impl Registries {
+
+    /// Gets the current (active) registry URL
+    pub fn clear_current_registry_token(&mut self) {
+        match self {
+            Registries::Single(s) => { s.token = None; },
+            Registries::Multi(m) => { m.tokens.remove(&m.current); },
+        }
+    }
+
+    pub fn get_graphql_url(&self) -> String {
+        let registry = self.get_current_registry();
+        if registry.ends_with("/") {
+            format!("{}graphql", registry)
+        } else {
+            format!("{}/graphql", registry)
+        }
+    }
+
+    /// Gets the current (active) registry URL
+    pub fn get_current_registry(&self) -> String {
+        match self {
+            Registries::Single(s) => s.url.clone(),
+            Registries::Multi(m) => m.current.clone(),
+        }
+    }
+
+    /// Sets the current (active) registry URL
+    pub fn set_current_registry(&mut self, registry: &str) {
+        match self {
+            Registries::Single(s) => s.url = registry.to_string(),
+            Registries::Multi(m) => m.current = registry.to_string(),
+        }
+    }
+
+    /// Returns the login token for the registry
+    pub fn get_login_token_for_registry(&self, registry: &str) -> Option<String> {
+        match self {
+            Registries::Single(s) if s.url == registry => s.token.clone(),
+            Registries::Multi(m) => m.tokens.get(registry).cloned(),
+            _ => None,
+        }
+    }
+
+    /// Sets the login token for the registry URL
+    pub fn set_login_token_for_registry(&mut self, registry: &str, token: &str, update_current_registry: UpdateRegistry) {
+        let new_map = match self {
+            Registries::Single(s) => {
+                if s.url == registry {
+                    Registries::Single(Registry {
+                        url: registry.to_string(),
+                        token: Some(token.to_string()),
+                    })
+                } else {
+                    let mut map = BTreeMap::new();
+                    if let Some(token) = s.token.clone() {
+                        map.insert(s.url.clone(), token);
+                    }
+                    map.insert(registry.to_string(), token.to_string());
+                    Registries::Multi(MultiRegistry { current: s.url.clone(), tokens: map })
+                }
+            },
+            Registries::Multi(m) => {
+                m.tokens.insert(registry.to_string(), token.to_string());
+                if update_current_registry == UpdateRegistry::Update {
+                    m.current = registry.to_string();
+                }
+                Registries::Multi(m.clone())
+            }
+        };
+        *self = new_map;
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum UpdateRegistry {
+    Update,
+    LeaveAsIs,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+pub struct MultiRegistry {
+    /// Currently active registry
+    pub current: String,
+    /// Map from "RegistryUrl" to "LoginToken", in order to
+    /// be able to be able to easily switch between registries
+    pub tokens: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct Registry {
     pub url: String,
     pub token: Option<String>,
@@ -93,10 +190,10 @@ pub struct Proxy {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            registry: Registry {
+            registry: Registries::Single(Registry {
                 url: "https://registry.wapm.io".to_string(),
                 token: None,
-            },
+            }),
             #[cfg(feature = "telemetry")]
             telemetry: Telemetry::default(),
             #[cfg(feature = "update-notifications")]
@@ -220,17 +317,6 @@ impl Config {
     }
 }
 
-impl Registry {
-    pub fn get_graphql_url(self: &Self) -> String {
-        let url = &self.url;
-        if url.ends_with("/") {
-            format!("{}graphql", url)
-        } else {
-            format!("{}/graphql", url)
-        }
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum GlobalConfigError {
     #[error("Error while reading config: [{0}]")]
@@ -256,14 +342,12 @@ pub enum ConfigError {
 pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()> {
     match key.as_ref() {
         "registry.url" => {
-            if config.registry.url != value {
-                config.registry.url = value;
-                // Resets the registry token automatically
-                config.registry.token = None;
+            if config.registry.get_current_registry() != value {
+                config.registry.set_current_registry(&value);
             }
         }
         "registry.token" => {
-            config.registry.token = Some(value);
+            config.registry.set_login_token_for_registry(&config.registry.get_current_registry(), &value, UpdateRegistry::LeaveAsIs);
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => {
@@ -293,10 +377,10 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
 
 pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
     let value = match key.as_ref() {
-        "registry.url" => config.registry.url.clone(),
+        "registry.url" => config.registry.get_current_registry(),
         "registry.token" => {
-            unimplemented!()
-            // &(config.registry.token.as_ref().map_or("".to_string(), |n| n.to_string()).to_owned())
+            config.registry.get_login_token_for_registry(&config.registry.get_current_registry())
+            .ok_or(anyhow::anyhow!("Not logged into {:?}", config.registry.get_current_registry()))?
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => config.telemetry.enabled.clone(),
