@@ -74,6 +74,9 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
             UpdateRegistry::Update,
         );
         config.save()?;
+        if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
+            println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+        }
     }
     Ok(())
 }
