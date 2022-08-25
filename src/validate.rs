@@ -7,7 +7,11 @@ use crate::database;
 use crate::dataflow::{interfaces::InterfaceFromServer, manifest_packages::ManifestResult};
 #[cfg(feature = "full")]
 use crate::interfaces;
-use std::{fs, io::Read, path::PathBuf};
+use std::{
+    fs,
+    io::Read,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 use wasmer_wasm_interface::{validate, Interface};
 
@@ -38,6 +42,10 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
                     error: format!("{}", err),
                 }
             })?;
+
+            if let Some(bindings) = &module.bindings {
+                validate_bindings(bindings, &manifest.base_directory_path)?;
+            }
 
             // hack, short circuit if no interface for now
             if module.interfaces.is_none() {
@@ -83,6 +91,21 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
         }
     }
     debug!("package at path {:#?} validated", &pkg_path);
+
+    Ok(())
+}
+
+fn validate_bindings(
+    bindings: &wapm_toml::Bindings,
+    base_directory_path: &Path,
+) -> Result<(), ValidationError> {
+    for file in bindings.referenced_files(base_directory_path) {
+        if !file.exists() {
+            return Err(ValidationError::MissingFile {
+                file: file.display().to_string(),
+            });
+        }
+    }
 
     Ok(())
 }
