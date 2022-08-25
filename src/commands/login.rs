@@ -24,7 +24,11 @@ struct LoginMutation;
 pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
     if let Some(token) = login_options.token {
         let mut config = Config::from_file()?;
-        config.registry.set_login_token_for_registry(&config.registry.get_current_registry(), &token, UpdateRegistry::Update);
+        config.registry.set_login_token_for_registry(
+            &config.registry.get_current_registry(),
+            &token,
+            UpdateRegistry::Update,
+        );
         config.save()?;
         println!("Login for WAPM saved");
         return Ok(());
@@ -51,7 +55,11 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
     if let Some(token) = token {
         // Save the token
         let mut config = Config::from_file()?;
-        config.registry.set_login_token_for_registry(&config.registry.get_current_registry(), &token, UpdateRegistry::Update);
+        config.registry.set_login_token_for_registry(
+            &config.registry.get_current_registry(),
+            &token,
+            UpdateRegistry::Update,
+        );
         config.save()?;
     }
     Ok(())

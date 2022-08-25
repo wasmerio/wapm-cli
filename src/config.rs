@@ -58,12 +58,15 @@ pub enum Registries {
 }
 
 impl Registries {
-
     /// Gets the current (active) registry URL
     pub fn clear_current_registry_token(&mut self) {
         match self {
-            Registries::Single(s) => { s.token = None; },
-            Registries::Multi(m) => { m.tokens.remove(&m.current); },
+            Registries::Single(s) => {
+                s.token = None;
+            }
+            Registries::Multi(m) => {
+                m.tokens.remove(&m.current);
+            }
         }
     }
 
@@ -102,7 +105,12 @@ impl Registries {
     }
 
     /// Sets the login token for the registry URL
-    pub fn set_login_token_for_registry(&mut self, registry: &str, token: &str, update_current_registry: UpdateRegistry) {
+    pub fn set_login_token_for_registry(
+        &mut self,
+        registry: &str,
+        token: &str,
+        update_current_registry: UpdateRegistry,
+    ) {
         let new_map = match self {
             Registries::Single(s) => {
                 if s.url == registry {
@@ -116,9 +124,12 @@ impl Registries {
                         map.insert(s.url.clone(), token);
                     }
                     map.insert(registry.to_string(), token.to_string());
-                    Registries::Multi(MultiRegistry { current: s.url.clone(), tokens: map })
+                    Registries::Multi(MultiRegistry {
+                        current: s.url.clone(),
+                        tokens: map,
+                    })
                 }
-            },
+            }
             Registries::Multi(m) => {
                 m.tokens.insert(registry.to_string(), token.to_string());
                 if update_current_registry == UpdateRegistry::Update {
@@ -347,7 +358,11 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
             }
         }
         "registry.token" => {
-            config.registry.set_login_token_for_registry(&config.registry.get_current_registry(), &value, UpdateRegistry::LeaveAsIs);
+            config.registry.set_login_token_for_registry(
+                &config.registry.get_current_registry(),
+                &value,
+                UpdateRegistry::LeaveAsIs,
+            );
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => {
@@ -378,10 +393,13 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
 pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
     let value = match key.as_ref() {
         "registry.url" => config.registry.get_current_registry(),
-        "registry.token" => {
-            config.registry.get_login_token_for_registry(&config.registry.get_current_registry())
-            .ok_or(anyhow::anyhow!("Not logged into {:?}", config.registry.get_current_registry()))?
-        }
+        "registry.token" => config
+            .registry
+            .get_login_token_for_registry(&config.registry.get_current_registry())
+            .ok_or(anyhow::anyhow!(
+                "Not logged into {:?}",
+                config.registry.get_current_registry()
+            ))?,
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => config.telemetry.enabled.clone(),
         #[cfg(feature = "update-notifications")]

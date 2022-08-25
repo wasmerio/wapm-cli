@@ -67,8 +67,12 @@ where
         .post(registry_url)
         .multipart(form)
         .bearer_auth(
-            env::var("WAPM_REGISTRY_TOKEN")
-                .unwrap_or(config.registry.get_login_token_for_registry(&config.registry.get_current_registry()).unwrap_or_else(|| "".to_string())),
+            env::var("WAPM_REGISTRY_TOKEN").unwrap_or(
+                config
+                    .registry
+                    .get_login_token_for_registry(&config.registry.get_current_registry())
+                    .unwrap_or_else(|| "".to_string()),
+            ),
         )
         .header(USER_AGENT, user_agent)
         .send()?;
