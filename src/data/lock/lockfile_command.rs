@@ -13,6 +13,26 @@ pub struct LockfileCommand {
     pub main_args: Option<String>,
 }
 
+#[test]
+fn test_lockfile_command_ok() {
+    use wapm_toml::CommandV1;
+    assert_eq!(LockfileCommand::from_command("Micheal-F-Bryan/wit-pack", Version::new(1, 0, 0), &Command::V1(CommandV1 {
+        name: "wit-pack".to_string(),
+        module: "wit-pack".to_string(),
+        main_args: None,
+        package: None,
+    })),
+        Ok(LockfileCommand {
+            name: "wit-pack".to_string(),
+            package_name: "Micheal-F-Bryan/wit-pack".to_string(),
+            package_version: Version::new(1, 0, 0),
+            module: "wit-pack".to_string(),
+            is_top_level_dependency: true,
+            main_args: None,
+        })
+    )
+}
+
 impl<'a> LockfileCommand {
     pub fn from_command(
         local_package_name: &str,
@@ -33,6 +53,7 @@ impl<'a> LockfileCommand {
                         let package_version = Version::parse(package_version).unwrap();
                         (package_name, package_version)
                     }
+                    [package_name] => (package_name, local_package_version.clone()),
                     _ => {
                         return Err(Error::CouldNotParsePackageVersionForCommand(
                             package_string.clone(),
@@ -56,7 +77,7 @@ impl<'a> LockfileCommand {
     }
 }
 
-#[derive(Clone, Debug, Error)]
+#[derive(Clone, PartialEq, Eq, Debug, Error)]
 pub enum Error {
     #[error("The module for this command does not exist. Did you modify the wapm.lock?")]
     ModuleForCommandDoesNotExist,
