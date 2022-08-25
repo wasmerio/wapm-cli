@@ -69,27 +69,41 @@ pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameE
         .collect())
 }
 
-pub fn init(dir: PathBuf, force_yes: bool) -> anyhow::Result<()> {
+pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>) -> anyhow::Result<()> {
     let manifest_location = {
-        let mut dir = dir.clone();
+        let mut dir = match initial_project_name.as_ref() {
+            Some(s) => dir.join(s),
+            None => dir.clone(),
+        };
         dir.push(MANIFEST_FILE_NAME);
         dir
     };
     let mut manifest = if manifest_location.exists() {
         Manifest::find_in_directory(dir)?
     } else {
+        let package_name = initial_project_name.clone().unwrap_or_else(|| {
+            dir
+            .clone()
+            .as_path()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string() 
+        });
+        let username = crate::util::get_username().ok().and_then(|s| s.clone());
+        let name = match username {
+            Some(s) => format!("{s}/{package_name}"),
+            None => package_name,
+        };
         Manifest {
-            base_directory_path: dir.clone(),
+            base_directory_path: match initial_project_name.as_ref() {
+                Some(s) => dir.join(s),
+                None => dir.clone(),
+            },
             fs: None,
             package: Package {
-                name: dir
-                    .clone()
-                    .as_path()
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string(),
-                description: "".to_owned(),
+                name: name.clone(),
+                description: format!("Package description for {name}"),
                 version: Version::parse("1.0.0").unwrap(),
                 repository: None,
                 license: Some("ISC".to_owned()),
@@ -123,11 +137,15 @@ save it as a dependency in the wapm.toml file.
 
 Press ^C at any time to quit."
         );
-        manifest.package.name = ask_until_valid(
-            "Package name",
-            Some(manifest.package.name),
-            util::validate_name,
-        )?;
+
+        if initial_project_name.is_none() {
+            manifest.package.name = ask_until_valid(
+                "Package name",
+                Some(manifest.package.name),
+                util::validate_name,
+            )?;
+        }
+
         manifest.package.version = ask_until_valid(
             "Version",
             Some(manifest.package.version.to_string()),
@@ -301,11 +319,13 @@ Press ^C at any time to quit."
             .default(true)
             .interact()?
     {
+        let _ = std::fs::create_dir_all(&manifest.base_directory_path);
         manifest.save()?;
         #[allow(unused_must_use)]
         {
             init_gitignore(manifest.base_directory_path);
         }
+        println!("Successfully initialized project {:?}", manifest.package.name);
     } else {
         println!("Aborted.")
     }
