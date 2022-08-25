@@ -34,7 +34,11 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
             UpdateRegistry::Update,
         );
         config.save()?;
-        println!("Login for WAPM saved");
+        if let Some(s) = crate::util::get_username().ok().and_then(|o| o) {
+            println!("Login for WAPM user {:?} saved", s);
+        } else {
+            println!("Login for WAPM user saved");
+        }
         return Ok(());
     }
 
