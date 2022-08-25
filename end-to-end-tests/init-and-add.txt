@@ -2,7 +2,7 @@
 [package]
 name = "test-package"
 version = "1.0.0"
-description = ""
+"Package description for test-package"
 license = "ISC"
 
 [[module]]
