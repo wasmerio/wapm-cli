@@ -69,6 +69,7 @@ impl Default for Registries {
 #[test]
 fn test_registries_switch_token() {
     let mut registries = Registries::default();
+
     registries.set_current_registry("https://wapm.dev");
     assert_eq!(registries.get_current_registry(), "https://wapm.dev/graphql".to_string());
     registries.set_login_token_for_registry(
@@ -82,7 +83,6 @@ fn test_registries_switch_token() {
     assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), Some("token1".to_string()));
     registries.clear_current_registry_token();
     assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
-
 }
 
 fn format_graphql(registry: &str) -> String {
@@ -104,6 +104,7 @@ impl Registries {
             }
             Registries::Multi(m) => {
                 m.tokens.remove(&m.current);
+                m.tokens.remove(&format_graphql(&m.current));
             }
         }
     }
