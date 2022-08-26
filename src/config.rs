@@ -388,6 +388,9 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
             if config.registry.get_current_registry() != value {
                 config.registry.set_current_registry(&value);
             }
+            if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
+                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+            }
         }
         "registry.token" => {
             config.registry.set_login_token_for_registry(
@@ -395,6 +398,9 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 &value,
                 UpdateRegistry::LeaveAsIs,
             );
+            if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
+                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+            }
         }
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => {
