@@ -158,7 +158,7 @@ impl Registries {
                     if let Some(token) = s.token.clone() {
                         map.insert(format_graphql(&s.url), token);
                     }
-                    map.insert(registry.to_string(), token.to_string());
+                    map.insert(format_graphql(registry), token.to_string());
                     Registries::Multi(MultiRegistry {
                         current: format_graphql(&s.url),
                         tokens: map,
@@ -166,7 +166,7 @@ impl Registries {
                 }
             }
             Registries::Multi(m) => {
-                m.tokens.insert(registry.to_string(), token.to_string());
+                m.tokens.insert(format_graphql(registry), token.to_string());
                 if update_current_registry == UpdateRegistry::Update {
                     m.current = format_graphql(registry);
                 }
