@@ -10,7 +10,8 @@ name = "entry"
 source = "entry.wasm"
 
 
-Error: Package "this-package-does-not-exist" was not found
+Successfully initialized project "test-package"
+[ERROR] Package "this-package-does-not-exist" was not found
 Error: There were problems adding packages
 [INFO] Adding mark2/python@0.0.4
 [INFO] Adding mark2/dog2@0.0.13
