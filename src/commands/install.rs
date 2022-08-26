@@ -7,8 +7,8 @@ use graphql_client::*;
 use crate::config::Config;
 use crate::dataflow;
 use crate::util;
-use std::borrow::Cow;
 use std::path::Path;
+use std::{borrow::Cow, path::PathBuf};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -84,78 +84,88 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             return Err(InstallError::MustSupplyPackagesWithGlobalFlag.into());
         }
         (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => {
-            // install all packages locally
-            let added_packages = vec![];
-            dataflow::update(added_packages, vec![], &current_directory)
-                .map_err(|err| InstallError::FailureInstallingPackages(err))?;
-            println!("Packages installed to wapm_packages!");
+            local_install_from_lockfile(&current_directory)?;
         }
         (_, package_args::SOME_PACKAGES) => {
-            let mut packages = vec![];
-            for name in options.packages {
-                let name_with_version: Vec<&str> = name.split("@").collect();
+            install_packages(&options.packages, options.global, current_directory)?;
+        }
+    }
+    Ok(())
+}
 
-                match &name_with_version[..] {
-                    [package_name, package_version] => {
-                        packages.push((package_name.to_string(), package_version.to_string()));
-                    }
-                    [name] => {
-                        let q = GetPackageQuery::build_query(get_package_query::Variables {
-                            name: name.to_string(),
-                        });
-                        let response: get_package_query::ResponseData = execute_query(&q)?;
-                        let package = response.package.ok_or(InstallError::PackageNotFound {
+fn install_packages(
+    package_names: &[String],
+    global: bool,
+    current_directory: PathBuf,
+) -> Result<(), anyhow::Error> {
+    let mut packages = vec![];
+    for name in package_names {
+        let name_with_version: Vec<&str> = name.split("@").collect();
+
+        match &name_with_version[..] {
+            [package_name, package_version] => {
+                packages.push((package_name.to_string(), package_version.to_string()));
+            }
+            [name] => {
+                let q = GetPackageQuery::build_query(get_package_query::Variables {
+                    name: name.to_string(),
+                });
+                let response: get_package_query::ResponseData = execute_query(&q)?;
+                let package = response.package.ok_or(InstallError::PackageNotFound {
+                    name: name.to_string(),
+                })?;
+                let last_version =
+                    package
+                        .last_version
+                        .ok_or(InstallError::NoVersionsAvailable {
                             name: name.to_string(),
                         })?;
-                        let last_version =
-                            package
-                                .last_version
-                                .ok_or(InstallError::NoVersionsAvailable {
-                                    name: name.to_string(),
-                                })?;
-                        let package_name = package.name.clone();
-                        let package_version = last_version.version.clone();
-                        packages.push((package_name, package_version));
-                    }
-                    _ => {
-                        return Err(
-                            InstallError::InvalidPackageIdentifier { name: name.clone() }.into(),
-                        );
-                    }
-                }
+                let package_name = package.name.clone();
+                let package_version = last_version.version.clone();
+                packages.push((package_name, package_version));
             }
-
-            let installed_packages: Vec<(&str, &str)> = packages
-                .iter()
-                .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
-                .collect();
-
-            // the install directory will determine which wapm.lock we are updating. For now, we
-            // look in the local directory, or the global install directory
-            let install_directory: Cow<Path> = match options.global {
-                true => {
-                    let folder = Config::get_globals_directory()?;
-                    Cow::Owned(folder)
-                }
-                false => Cow::Borrowed(&current_directory),
-            };
-            std::fs::create_dir_all(install_directory.clone())
-                .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
-
-            let changes_applied =
-                dataflow::update(installed_packages.clone(), vec![], install_directory)
-                    .map_err(|err| InstallError::CannotRegenLockFile(err))?;
-
-            if changes_applied {
-                if options.global {
-                    println!("Global package installed successfully!");
-                } else {
-                    println!("Package installed successfully to wapm_packages!");
-                }
-            } else {
-                println!("No packages to install")
+            _ => {
+                return Err(InstallError::InvalidPackageIdentifier { name: name.clone() }.into());
             }
         }
     }
+    let installed_packages: Vec<(&str, &str)> = packages
+        .iter()
+        .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
+        .collect();
+
+    // the install directory will determine which wapm.lock we are updating. For now, we
+    // look in the local directory, or the global install directory
+    let install_directory: Cow<Path> = match global {
+        true => {
+            let folder = Config::get_globals_directory()?;
+            Cow::Owned(folder)
+        }
+        false => Cow::Borrowed(&current_directory),
+    };
+
+    std::fs::create_dir_all(install_directory.clone())
+        .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
+    let changes_applied = dataflow::update(installed_packages.clone(), vec![], install_directory)
+        .map_err(|err| InstallError::CannotRegenLockFile(err))?;
+
+    if changes_applied {
+        if global {
+            println!("Global package installed successfully!");
+        } else {
+            println!("Package installed successfully to wapm_packages!");
+        }
+    } else {
+        println!("No packages to install");
+    }
+
+    Ok(())
+}
+
+fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::Error> {
+    let added_packages = vec![];
+    dataflow::update(added_packages, vec![], current_directory)
+        .map_err(|err| InstallError::FailureInstallingPackages(err))?;
+    println!("Packages installed to wapm_packages!");
     Ok(())
 }
