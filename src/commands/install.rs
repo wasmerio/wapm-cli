@@ -5,12 +5,18 @@ use crate::{
     dataflow::bindings::Language, graphql::execute_query,
 };
 
+use anyhow::Context;
 use graphql_client::*;
 
 use crate::config::Config;
 use crate::dataflow;
 use crate::util;
-use std::{borrow::Cow, convert::TryInto, path::PathBuf};
+use std::{
+    borrow::Cow,
+    convert::TryInto,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 use std::{convert::TryFrom, path::Path};
 use structopt::StructOpt;
 use thiserror::Error;
@@ -26,14 +32,17 @@ pub struct InstallOpt {
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
     /// Add the JavaScript bindings using "yarn add".
-    #[structopt(long, group = "bindings", conflicts_with = "global")]
+    #[structopt(long, groups = &["bindings", "js"], conflicts_with = "global")]
     yarn: bool,
     /// Add the JavaScript bindings using "npm install".
-    #[structopt(long, group = "bindings", conflicts_with = "global")]
+    #[structopt(long, groups = &["bindings", "js"], conflicts_with = "global")]
     npm: bool,
-    /// Add the JavaScript package using yarn.
+    /// Add the package as a dev dependency (JavaScript only)
+    #[structopt(long, requires = "js")]
+    dev: bool,
+    /// Add the Python bindings using "pip install".
     #[structopt(long, group = "bindings", conflicts_with = "global")]
-    python: bool,
+    pip: bool,
     #[structopt(long, requires = "bindings")]
     module: Option<String>,
 }
@@ -97,6 +106,7 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
             language,
             &options.packages,
             options.module.as_deref(),
+            options.dev,
             current_directory,
         ),
         None => wapm_install(options, current_directory),
@@ -107,6 +117,7 @@ fn install_bindings(
     target: Target,
     packages: &[String],
     module: Option<&str>,
+    dev: bool,
     current_directory: PathBuf,
 ) -> Result<(), anyhow::Error> {
     let VersionedPackage { name, version } = match packages {
@@ -118,7 +129,26 @@ fn install_bindings(
     let url =
         dataflow::bindings::link_to_package_bindings(name, version, target.language(), module)?;
 
-    todo!("Handle {:?}", url)
+    let mut cmd = target.command(url.as_str(), dev);
+
+    // Note: We explicitly want to show the command output to users so they can
+    // troubleshoot any failures.
+    let status = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .current_dir(&current_directory)
+        .status()
+        .with_context(|| {
+            format!(
+                "Unable to start \"{}\". Is it installed?",
+                cmd.get_program().to_string_lossy()
+            )
+        })?;
+
+    anyhow::ensure!(status.success(), "Command failed: {:?}", cmd);
+
+    Ok(())
 }
 
 fn wapm_install(options: InstallOpt, current_directory: PathBuf) -> Result<(), anyhow::Error> {
@@ -249,19 +279,17 @@ fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::E
 enum Target {
     Npm,
     Yarn,
-    Python,
+    Pip,
 }
 
 impl Target {
     fn from_options(options: &InstallOpt) -> Option<Self> {
-        let InstallOpt {
-            yarn, npm, python, ..
-        } = options;
+        let InstallOpt { yarn, npm, pip, .. } = options;
 
-        match (yarn, npm, python) {
+        match (yarn, npm, pip) {
             (true, false, false) => Some(Target::Yarn),
             (false, true, false) => Some(Target::Npm),
-            (false, false, true) => Some(Target::Python),
+            (false, false, true) => Some(Target::Pip),
             (false, false, false) => None,
             _ => unreachable!("Already rejected by clap"),
         }
@@ -270,7 +298,35 @@ impl Target {
     fn language(&self) -> Language {
         match self {
             Target::Npm | Target::Yarn => Language::JavaScript,
-            Target::Python => Language::Python,
+            Target::Pip => Language::Python,
+        }
+    }
+
+    fn command(&self, url: &str, dev: bool) -> Command {
+        match self {
+            Target::Npm => {
+                let mut cmd = Command::new("npm");
+                cmd.arg("install");
+                if dev {
+                    cmd.arg("--save-dev");
+                }
+                cmd.arg(url);
+                cmd
+            }
+            Target::Yarn => {
+                let mut cmd = Command::new("yarn");
+                cmd.arg("add");
+                if dev {
+                    cmd.arg("--dev");
+                }
+                cmd.arg(url);
+                cmd
+            }
+            Target::Pip => {
+                let mut cmd = Command::new("pip");
+                cmd.arg("install").arg(url);
+                cmd
+            }
         }
     }
 }

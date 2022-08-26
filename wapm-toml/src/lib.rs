@@ -325,8 +325,8 @@ pub struct Bindings {
 impl Bindings {
     /// Get all `*.wit` files that make up this interface.
     ///
-    /// This includes the [`Bindings::wit`] field, but also anything it may
-    /// recursively depend on.
+    /// This includes the [`Bindings::wit_exports`] field, but also anything it
+    /// may recursively depend on.
     pub fn referenced_files(&self, base_directory: &Path) -> Vec<PathBuf> {
         // TODO: Parse `self.wit` to find any `*.wit` files we might
         // transitively depend on and resolve them relative to self.wit's
