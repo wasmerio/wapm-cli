@@ -1,0 +1,16 @@
+query GetBindingsQuery ($name: String!, $version: String = "latest") {
+  packageVersion: getPackageVersion(name:$name, version:$version) {
+    version
+    bindings {
+      module
+        __typename
+
+      ... on PackageVersionNPMBinding {
+        npmDefaultInstallPackageName
+      }
+      ... on PackageVersionPythonBinding {
+        pythonDefaultInstallPackageName
+      }
+    }
+  }
+}
