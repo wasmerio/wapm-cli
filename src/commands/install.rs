@@ -7,8 +7,8 @@ use graphql_client::*;
 use crate::config::Config;
 use crate::dataflow;
 use crate::util;
-use std::path::Path;
 use std::{borrow::Cow, path::PathBuf};
+use std::{path::Path, str::FromStr};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -137,38 +137,12 @@ fn install_packages(
 ) -> Result<(), anyhow::Error> {
     let mut packages = vec![];
     for name in package_names {
-        let name_with_version: Vec<&str> = name.split("@").collect();
-
-        match &name_with_version[..] {
-            [package_name, package_version] => {
-                packages.push((package_name.to_string(), package_version.to_string()));
-            }
-            [name] => {
-                let q = GetPackageQuery::build_query(get_package_query::Variables {
-                    name: name.to_string(),
-                });
-                let response: get_package_query::ResponseData = execute_query(&q)?;
-                let package = response.package.ok_or(InstallError::PackageNotFound {
-                    name: name.to_string(),
-                })?;
-                let last_version =
-                    package
-                        .last_version
-                        .ok_or(InstallError::NoVersionsAvailable {
-                            name: name.to_string(),
-                        })?;
-                let package_name = package.name.clone();
-                let package_version = last_version.version.clone();
-                packages.push((package_name, package_version));
-            }
-            _ => {
-                return Err(InstallError::InvalidPackageIdentifier { name: name.clone() }.into());
-            }
-        }
+        packages.push(VersionedPackage::from_str(name)?);
     }
+
     let installed_packages: Vec<(&str, &str)> = packages
         .iter()
-        .map(|(s1, s2)| (s1.as_str(), s2.as_str()))
+        .map(|pkg| (pkg.name.as_str(), pkg.version.as_str()))
         .collect();
 
     // the install directory will determine which wapm.lock we are updating. For now, we
@@ -197,6 +171,52 @@ fn install_packages(
     }
 
     Ok(())
+}
+
+#[derive(Debug)]
+struct VersionedPackage {
+    name: String,
+    version: String,
+}
+
+impl FromStr for VersionedPackage {
+    type Err = anyhow::Error;
+
+    fn from_str(package_specifier: &str) -> Result<Self, Self::Err> {
+        let name_and_version: Vec<_> = package_specifier.split('@').collect();
+
+        match name_and_version.as_slice() {
+            [name, version] => Ok(VersionedPackage {
+                name: name.to_string(),
+                version: version.to_string(),
+            }),
+            [name] => {
+                let q = GetPackageQuery::build_query(get_package_query::Variables {
+                    name: name.to_string(),
+                });
+                let response: get_package_query::ResponseData = execute_query(&q)?;
+                let package = response.package.ok_or(InstallError::PackageNotFound {
+                    name: name.to_string(),
+                })?;
+                let last_version =
+                    package
+                        .last_version
+                        .ok_or(InstallError::NoVersionsAvailable {
+                            name: name.to_string(),
+                        })?;
+                let package_name = package.name.clone();
+                let package_version = last_version.version.clone();
+                Ok(VersionedPackage {
+                    name: package_name,
+                    version: package_version,
+                })
+            }
+            _ => Err(InstallError::InvalidPackageIdentifier {
+                name: package_specifier.to_string(),
+            }
+            .into()),
+        }
+    }
 }
 
 fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::Error> {
