@@ -22,6 +22,17 @@ pub struct InstallOpt {
     /// Agree to all prompts. Useful for non-interactive uses. (WARNING: this may cause undesired behavior)
     #[structopt(long = "force-yes", short = "y")]
     force_yes: bool,
+    /// Add the JavaScript bindings using "yarn add".
+    #[structopt(long, group = "bindings", conflicts_with = "global")]
+    yarn: bool,
+    /// Add the JavaScript bindings using "npm install".
+    #[structopt(long, group = "bindings", conflicts_with = "global")]
+    npm: bool,
+    /// Add the JavaScript package using yarn.
+    #[structopt(long, group = "bindings", conflicts_with = "global")]
+    python: bool,
+    #[structopt(long, requires = "bindings")]
+    module: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -78,19 +89,45 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
         "this function should only be called once!"
     );
 
+    match Bindings::from_options(&options) {
+        Some(language) => install_bindings(
+            language,
+            &options.packages,
+            options.module.as_deref(),
+            current_directory,
+        ),
+        None => wapm_install(options, current_directory),
+    }
+}
+
+fn install_bindings(
+    language: Bindings,
+    packages: &[String],
+    module: Option<&str>,
+    current_directory: PathBuf,
+) -> Result<(), anyhow::Error> {
+    let package = match packages {
+        [p] => p.as_str(),
+        [] => anyhow::bail!("No package provided"),
+        [..] => anyhow::bail!("Bindings can only be installed for one package at a time"),
+    };
+
+    todo!()
+}
+
+fn wapm_install(options: InstallOpt, current_directory: PathBuf) -> Result<(), anyhow::Error> {
     match (options.global, options.packages.is_empty()) {
         (global_flag::GLOBAL_INSTALL, package_args::NO_PACKAGES) => {
             // install all global packages - unacceptable use case
-            return Err(InstallError::MustSupplyPackagesWithGlobalFlag.into());
+            Err(InstallError::MustSupplyPackagesWithGlobalFlag.into())
         }
         (global_flag::LOCAL_INSTALL, package_args::NO_PACKAGES) => {
-            local_install_from_lockfile(&current_directory)?;
+            local_install_from_lockfile(&current_directory)
         }
         (_, package_args::SOME_PACKAGES) => {
-            install_packages(&options.packages, options.global, current_directory)?;
+            install_packages(&options.packages, options.global, current_directory)
         }
     }
-    Ok(())
 }
 
 fn install_packages(
@@ -168,4 +205,27 @@ fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::E
         .map_err(|err| InstallError::FailureInstallingPackages(err))?;
     println!("Packages installed to wapm_packages!");
     Ok(())
+}
+
+#[derive(Debug)]
+enum Bindings {
+    Npm,
+    Yarn,
+    Python,
+}
+
+impl Bindings {
+    fn from_options(options: &InstallOpt) -> Option<Self> {
+        let InstallOpt {
+            yarn, npm, python, ..
+        } = options;
+
+        match (yarn, npm, python) {
+            (true, false, false) => Some(Bindings::Yarn),
+            (false, true, false) => Some(Bindings::Npm),
+            (false, false, true) => Some(Bindings::Python),
+            (false, false, false) => None,
+            _ => unreachable!("Already rejected by clap"),
+        }
+    }
 }
