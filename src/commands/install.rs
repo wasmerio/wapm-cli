@@ -43,6 +43,8 @@ pub struct InstallOpt {
     /// Add the Python bindings using "pip install".
     #[structopt(long, group = "bindings", conflicts_with = "global")]
     pip: bool,
+    /// The module to install bindings for (useful if a package contains more
+    /// than one)
     #[structopt(long, requires = "bindings")]
     module: Option<String>,
 }
