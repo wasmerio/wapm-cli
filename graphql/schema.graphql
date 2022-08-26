@@ -829,7 +829,6 @@ type PublishPublicKeyPayload {
 }
 
 type Query {
-  GetBindingsQuery (name: String!, version: String = "latest"): PackageVersion
   getCommand(name: String!): Command
   getCommands(names: [String!]!): [Command]
   getContract(name: String!): Interface @deprecated(reason: "Please use getInterface instead")
