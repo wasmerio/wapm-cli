@@ -71,16 +71,16 @@ impl Default for Registries {
 fn test_registries_switch_token() {
     let mut registries = Registries::default();
 
-    registries.set_current_registry("https://wapm.dev");
-    assert_eq!(registries.get_current_registry(), "https://wapm.dev/graphql".to_string());
+    registries.set_current_registry("https://registry.wapm.dev");
+    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
     registries.set_login_token_for_registry(
-        "https://wapm.io",
+        "https://registry.wapm.io",
         "token1",
         UpdateRegistry::LeaveAsIs,
     );
-    assert_eq!(registries.get_current_registry(), "https://wapm.dev/graphql".to_string());
+    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
     assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
-    registries.set_current_registry("https://wapm.io");
+    registries.set_current_registry("https://registry.wapm.io");
     assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), Some("token1".to_string()));
     registries.clear_current_registry_token();
     assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
@@ -125,10 +125,11 @@ impl Registries {
 
     /// Sets the current (active) registry URL
     pub fn set_current_registry(&mut self, registry: &str) {
-        if let Err(e) = test_if_registry_present(registry) {
+        let registry = format_graphql(registry);
+        if let Err(e) = test_if_registry_present(&registry) {
             println!("Error when trying to ping registry {registry:?}: {e}");
             if registry.contains("wapm.dev") {
-                println!("NOTE: The correct URL for wapm.io is https://registry.wapm.dev, not {registry}");
+                println!("NOTE: The correct URL for wapm.dev is https://registry.wapm.dev, not {registry}");
             } else if registry.contains("wapm.io") {
                 println!("NOTE: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
             }
@@ -136,8 +137,8 @@ impl Registries {
             return;
         }
         match self {
-            Registries::Single(s) => s.url = format_graphql(registry),
-            Registries::Multi(m) => m.current = format_graphql(registry),
+            Registries::Single(s) => s.url = registry,
+            Registries::Multi(m) => m.current = registry,
         }
     }
 
