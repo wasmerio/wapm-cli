@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 wapm config set registry.url "https://registry.wapm.dev"
 

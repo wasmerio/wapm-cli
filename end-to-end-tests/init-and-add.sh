@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 mkdir test-package
 cd test-package

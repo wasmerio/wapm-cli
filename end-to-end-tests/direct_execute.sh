@@ -1,5 +1,5 @@
 #!/bin/sh
-
+set -x
 export RUST_BACKTRACE=1
 ln -sf `which wapm` wax
 wapm config set registry.url "https://registry.wapm.dev"

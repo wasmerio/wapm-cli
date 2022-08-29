@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 export RUST_BACKTRACE=1
 wapm config set registry.url "https://registry.wapm.dev"
