@@ -10,6 +10,10 @@ echo "RUNNING SCRIPT..."
 ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/direct_execute.txt
+echo "-----"
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/direct_execute.txt
+echo "-----"
 echo "COMPARING..."
 diff -Bba end-to-end-tests/direct_execute.txt /tmp/direct_execute.txt
 export OUT=$?
