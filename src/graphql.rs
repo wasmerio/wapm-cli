@@ -33,6 +33,17 @@ where
     V: serde::Serialize,
     F: FnOnce(Form) -> Form,
 {
+    let config = Config::from_file()?;
+    let registry_url = &config.registry.get_graphql_url();
+    execute_query_modifier_inner(registry_url, query, form_modifier)
+}
+
+pub fn execute_query_modifier_inner<R, V, F>(registry_url: &str, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+    F: FnOnce(Form) -> Form,
+{
     let client = {
         let builder = Client::builder();
 
@@ -46,7 +57,6 @@ where
     };
     let config = Config::from_file()?;
 
-    let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();
 
     let form = Form::new()
@@ -94,4 +104,12 @@ where
     V: serde::Serialize,
 {
     execute_query_modifier(query, |f| f)
+}
+
+pub fn execute_query_custom_registry<R, V>(registry_url: &str, query: &QueryBody<V>) -> anyhow::Result<R>
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+{
+    execute_query_modifier_inner(registry_url, query, |f| f)
 }

@@ -7,6 +7,7 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use graphql_client::GraphQLQuery;
 use thiserror::Error;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os = "wasi") {
@@ -124,6 +125,16 @@ impl Registries {
 
     /// Sets the current (active) registry URL
     pub fn set_current_registry(&mut self, registry: &str) {
+        if let Err(e) = test_if_registry_present(registry) {
+            println!("Error when trying to ping registry {registry:?}: {e}");
+            if registry.contains("wapm.dev") {
+                println!("NOTE: The correct URL for wapm.io is https://registry.wapm.dev, not {registry}");
+            } else if registry.contains("wapm.io") {
+                println!("NOTE: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
+            }
+            println!("Falling back to using registry {}", self.get_current_registry());
+            return;
+        }
         match self {
             Registries::Single(s) => s.url = format_graphql(registry),
             Registries::Multi(m) => m.current = format_graphql(registry),
@@ -175,6 +186,23 @@ impl Registries {
         };
         *self = new_map;
     }
+}
+
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/test_if_registry_present.graphql",
+    response_derives = "Debug"
+)]
+struct TestIfRegistryPresent;
+
+fn test_if_registry_present(registry: &str) -> Result<(), String> {
+    let q = TestIfRegistryPresent::build_query(test_if_registry_present::Variables {});
+    let response: test_if_registry_present::ResponseData = 
+        crate::graphql::execute_query_custom_registry(registry, &q)
+        .map_err(|e| format!("{e}"))?;
+    Ok(())
 }
 
 #[derive(PartialEq, Copy, Clone)]
