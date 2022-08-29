@@ -693,6 +693,7 @@ type PackageTransferRequestEdge {
 }
 
 type PackageVersion implements Node {
+  bindings: [PackageVersionBinding]!
   commands: [Command!]!
   createdAt: DateTime!
   description: String!
@@ -719,6 +720,19 @@ type PackageVersion implements Node {
   signature: Signature
   updatedAt: DateTime!
   version: String!
+}
+
+interface PackageVersionBinding {
+  # The module these bindings are associated with.
+  module: String!
+}
+
+type PackageVersionNPMBinding implements PackageVersionBinding {
+  npmDefaultInstallPackageName: String!
+}
+
+type PackageVersionPythonBinding implements PackageVersionBinding {
+  pythonDefaultInstallPackageName: String!
 }
 
 type PackageVersionConnection {
