@@ -205,7 +205,7 @@ fn install_packages(
             println!("Package installed successfully to wapm_packages!");
         }
     } else {
-        println!("No packages to install");
+        println!("No packages to install (package already installed?)");
     }
 
     Ok(())
