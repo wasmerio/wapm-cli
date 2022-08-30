@@ -96,6 +96,7 @@ mod package_args {
 
 /// Run the install command
 pub fn install(options: InstallOpt) -> anyhow::Result<()> {
+    println!("wapm install: start: {options:#?}");
     let current_directory = crate::config::Config::get_current_dir()?;
     let _value = util::set_wapm_should_accept_all_prompts(options.force_yes);
     debug_assert!(
@@ -104,14 +105,22 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     );
 
     match Target::from_options(&options) {
-        Some(language) => install_bindings(
-            language,
-            &options.packages,
-            options.module.as_deref(),
-            options.dev,
-            current_directory,
-        ),
-        None => wapm_install(options, current_directory),
+        Some(language) => {
+            let result = install_bindings(
+                language.clone(),
+                &options.packages,
+                options.module.as_deref(),
+                options.dev,
+                current_directory,
+            );
+            println!("install bindings (language = {language:?}): {result:?}");
+            result
+        },
+        None => {
+            let result = wapm_install(options, current_directory);
+            println!("install bindings (language = None): {result:?}");
+            result
+        }
     }
 }
 
@@ -292,7 +301,7 @@ fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::E
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Target {
     Npm,
     Yarn,
