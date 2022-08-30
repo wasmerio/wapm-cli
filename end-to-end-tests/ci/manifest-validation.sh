@@ -11,6 +11,8 @@ echo "RUNNING SCRIPT..."
 ./end-to-end-tests/manifest-validation.sh &> /tmp/manifest-validation-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/manifest-validation-out.txt
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/manifest-validation.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/manifest-validation.txt /tmp/manifest-validation-out.txt
 export OUT=$?

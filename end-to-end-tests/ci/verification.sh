@@ -11,6 +11,8 @@ echo "RUNNING SCRIPT..."
 ./end-to-end-tests/verification.sh &> /tmp/verification-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/verification-out.txt
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/verification.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/verification.txt /tmp/verification-out.txt
 export OUT=$?

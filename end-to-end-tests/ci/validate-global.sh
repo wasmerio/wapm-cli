@@ -11,6 +11,8 @@ echo "RUNNING SCRIPT..."
 ./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/validate-global-out.txt
+echo "EXPECTED OUTPUT:"
+cat ./end-to-end-tests/validate-global.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/validate-global.txt /tmp/validate-global-out.txt
 export OUT=$?

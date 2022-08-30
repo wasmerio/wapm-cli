@@ -1,9 +1,18 @@
++ export RUST_BACKTRACE=1
++ which wapm
++ ln -sf /home/runner/.wasmer/bin/wapm wax
++ wapm config set registry.url https://registry.wapm.dev
++ echo hello
++ wapm execute base64
 [INFO] Installing mark2/coreutils@0.0.3
++ ./wax echo hello
 aGVsbG8K
 [INFO] Installing mark2/coreutils@0.0.3
 hello
++ wapm install namespace-example/cowsay
 [INFO] Installing namespace-example/cowsay@0.2.0
 Package installed successfully to wapm_packages!
++ ./wax --emscripten cowsay hello
  _______
 < hello >
  -------
@@ -12,13 +21,20 @@ Package installed successfully to wapm_packages!
             (__)\       )\/\
                ||----w |
                 ||     ||
++ wapm uninstall namespace-example/cowsay
 [INFO] Package "namespace-example/cowsay" uninstalled.
++ wapm install lolcat
 [INFO] Installing syrusakbary/lolcat@0.1.1
 Package installed successfully to wapm_packages!
++ wapm run lolcat -V
 lolcat 1.0.1
++ ./wax lolcat -V
 lolcat 1.0.1
++ wapm uninstall lolcat
 [INFO] Package "lolcat" is not installed.
++ ./wax lolcat -V
 lolcat 1.0.1
++ wapm list -a
 LOCAL PACKAGES:
  PACKAGE            | VERSION | MODULE | ABI 
  syrusakbary/lolcat | 0.1.1   | lolcat | wasi 
@@ -27,6 +43,11 @@ LOCAL COMMANDS:
  COMMAND | PACKAGE            | VERSION 
  lolcat  | syrusakbary/lolcat | 0.1.1 
 
++ wapm list -a
 lolcat 1.0.1
++ ./wax lolcat -V
 lolcat 1.0.1
++ WAPM_RUNTIME=echo ./wax ls
++ grep \-\-command-name
++ echo Success: command-name not found
 Success: command-name not found

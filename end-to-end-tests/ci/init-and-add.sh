@@ -9,13 +9,15 @@ rm -f wapm.lock
 chmod +x end-to-end-tests/init-and-add.sh
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
-echo "GENERATED OUTPUT:"
-cat /tmp/init-and-add-out.txt
 echo "ADJUSTING OUTPUT"
 # removes the absolute path
 tail -n +3 /tmp/init-and-add-out.txt > /tmp/init-and-add-out2.txt
 cat /tmp/init-and-add-out2.txt
 mv /tmp/init-and-add-out2.txt /tmp/init-and-add-out.txt
+echo "GENERATED OUTPUT:"
+cat /tmp/init-and-add-out.txt
+echo "EXPECTED OUTPUT:"
+cat ./end-to-end-tests/init-and-add.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
 export OUT=$?

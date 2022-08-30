@@ -11,6 +11,8 @@ echo "RUNNING SCRIPT..."
 ./end-to-end-tests/install.sh &> /tmp/install-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/install-out.txt
+echo "EXPECTED OUTPUT:"
+cat ./end-to-end-tests/install.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/install.txt /tmp/install-out.txt
 export OUT=$?
