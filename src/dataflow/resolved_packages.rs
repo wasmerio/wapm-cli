@@ -189,8 +189,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
                     exact_package_lookup
                     .iter()
                     .find(|(k, _)| k.version == wapm_package_key.version)
-                    .map(|(_, v)| v)
-                    .map(|(d, s)| (wapm_package_key, (d.clone(), s.clone())))
+                    .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
                 },
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
