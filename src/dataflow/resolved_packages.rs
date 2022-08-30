@@ -182,9 +182,15 @@ impl<'a> Resolve<'a> for RegistryResolver {
             .into_iter()
             .filter_map(|added_package| match added_package {
                 // if exact, then use the lookup table
-                PackageKey::WapmPackage(wapm_package_key) => exact_package_lookup
-                    .get(&wapm_package_key)
-                    .map(|(d, s)| (wapm_package_key, (d.clone(), s.clone()))),
+                PackageKey::WapmPackage(wapm_package_key) => {
+                    // Sometimes the name does not match exactly when we haven't specified the user
+                    // for example "syrusakbary/lolcat" can also match "_/lolcat". Since we trust
+                    // the registry not to select wrong packages, we only need to select for the version to match.
+                    exact_package_lookup
+                    .iter()
+                    .find(|(k, _)| k.version == wapm_package_key.version)
+                    .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
+                },
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
                     let matching_version: Option<Version> = package_versions_lookup

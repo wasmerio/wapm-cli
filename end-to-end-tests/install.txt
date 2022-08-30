@@ -1,6 +1,6 @@
 [INFO] Installing namespace-example/cowsay@0.1.2
 Package installed successfully to wapm_packages!
-No packages to install
+No packages to install (package already installed?)
  ______________
 < hello, world >
  --------------

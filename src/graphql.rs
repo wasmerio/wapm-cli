@@ -33,6 +33,17 @@ where
     V: serde::Serialize,
     F: FnOnce(Form) -> Form,
 {
+    let config = Config::from_file()?;
+    let registry_url = &config.registry.get_graphql_url();
+    execute_query_modifier_inner(registry_url, query, form_modifier)
+}
+
+pub fn execute_query_modifier_inner<R, V, F>(registry_url: &str, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+    F: FnOnce(Form) -> Form,
+{
     let client = {
         let builder = Client::builder()
         .timeout(std::time::Duration::from_secs(500));
@@ -47,7 +58,6 @@ where
     };
     let config = Config::from_file()?;
 
-    let registry_url = &config.registry.get_graphql_url();
     let vars = serde_json::to_string(&query.variables).unwrap();
 
     let form = Form::new()
@@ -68,8 +78,12 @@ where
         .post(registry_url)
         .multipart(form)
         .bearer_auth(
-            env::var("WAPM_REGISTRY_TOKEN")
-                .unwrap_or(config.registry.token.unwrap_or_else(|| "".to_string())),
+            env::var("WAPM_REGISTRY_TOKEN").unwrap_or(
+                config
+                    .registry
+                    .get_login_token_for_registry(&config.registry.get_current_registry())
+                    .unwrap_or_else(|| "".to_string()),
+            ),
         )
         .header(USER_AGENT, user_agent)
         .send()?;
@@ -91,4 +105,12 @@ where
     V: serde::Serialize,
 {
     execute_query_modifier(query, |f| f)
+}
+
+pub fn execute_query_custom_registry<R, V>(registry_url: &str, query: &QueryBody<V>) -> anyhow::Result<R>
+where
+    for<'de> R: serde::Deserialize<'de>,
+    V: serde::Serialize,
+{
+    execute_query_modifier_inner(registry_url, query, |f| f)
 }
