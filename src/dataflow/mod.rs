@@ -189,7 +189,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     directory: P,
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
-) -> Result<bool, Error> {
+) -> Result<Result<(), String>, Error> {
     let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
@@ -241,9 +241,9 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
         final_lockfile_data
             .generate_lockfile(&directory)
             .map_err(Error::GenerateLockfileError)?;
-        Ok(true)
+        Ok(Ok(()))
     } else {
-        Ok(false)
+        Ok(Err(format!("update with no manifest: final package keys != initial package keys: {final_package_keys:#?} {initial_package_keys:#?}")))
     }
 }
 
@@ -255,7 +255,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     manifest: Manifest,
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
-) -> Result<bool, Error> {
+) -> Result<Result<(), String>, Error> {
     let directory = directory.as_ref();
 
     let mut manifest_packages =
@@ -329,9 +329,9 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // update the manifest, if applicable
     if final_package_keys != initial_package_keys {
         update_manifest(manifest.clone(), &added_packages, &removed_packages)?;
-        Ok(true)
+        Ok(Ok(()))
     } else {
-        Ok(false)
+        Ok(Err(format!("update with manifest: final package keys != initial package keys: {final_package_keys:#?} {initial_package_keys:#?}")))
     }
 }
 
@@ -341,7 +341,7 @@ pub fn update<P: AsRef<Path>>(
     added_packages: Vec<(&str, &str)>,
     removed_packages: Vec<&str>,
     directory: P,
-) -> Result<bool, Error> {
+) -> Result<Result<(), String>, Error> {
     let directory = directory.as_ref();
     let added_packages =
         AddedPackages::new_from_str_pairs(added_packages).map_err(Error::AddError)?;

@@ -198,16 +198,30 @@ fn install_packages(
     let changes_applied = dataflow::update(installed_packages.clone(), vec![], install_directory)
         .map_err(|err| InstallError::CannotRegenLockFile(err))?;
 
-    if changes_applied {
-        if global {
-            println!("Global package installed successfully!");
-        } else {
-            println!("Package installed successfully to wapm_packages!");
+    match changes_applied {
+        Ok(()) => {
+            if global {
+                println!("Global package installed successfully!");
+            } else {
+                println!("Package installed successfully to wapm_packages!");
+            }
+        },
+        Err(e) => {
+            if packages.len() == 1 {
+                if global {
+                    println!("Failed to install package {:?} globally: {e}", packages[0]);
+                } else {
+                    println!("Failed to install package {:?}: {e}", packages[0]);
+                }
+            } else {
+                if global {
+                    println!("Failed to install packages {packages:?} globally: {e}");
+                } else {
+                    println!("Failed to install packages {packages:?}: {e}");
+                }
+            }
         }
-    } else {
-        println!("No packages to install");
     }
-
     Ok(())
 }
 
@@ -272,7 +286,8 @@ fn parse_package_and_version(package_specifier: &str) -> Result<(String, String)
 fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::Error> {
     let added_packages = vec![];
     dataflow::update(added_packages, vec![], current_directory)
-        .map_err(|err| InstallError::FailureInstallingPackages(err))?;
+        .map_err(|err| InstallError::FailureInstallingPackages(err))?
+        .map_err(|e| anyhow!("Error installing package to wapm_packages: {e}"))?;
     println!("Packages installed to wapm_packages!");
     Ok(())
 }

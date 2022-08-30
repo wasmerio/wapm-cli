@@ -5,8 +5,8 @@
 + echo hello
 + wapm execute base64
 [INFO] Installing mark2/coreutils@0.0.3
-+ ./wax echo hello
 aGVsbG8K
++ ./wax echo hello
 [INFO] Installing mark2/coreutils@0.0.3
 hello
 + wapm install namespace-example/cowsay
@@ -45,7 +45,7 @@ LOCAL COMMANDS:
 
 + wapm list -a
 lolcat 1.0.1
-+ ./wax lolcat -V
++ ./wax --offline lolcat -V
 lolcat 1.0.1
 + WAPM_RUNTIME=echo ./wax ls
 + grep \-\-command-name

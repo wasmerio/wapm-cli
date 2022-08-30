@@ -34,10 +34,9 @@ pub fn uninstall(options: UninstallOpt) -> anyhow::Result<()> {
     // is made, we can assume any change resulted in successfully uninstalled package.
     let result = dataflow::update(vec![], uninstalled_package_names, dir)?;
 
-    if !result {
-        info!("Package \"{}\" is not installed.", options.package);
-    } else {
-        info!("Package \"{}\" uninstalled.", options.package);
+    match result {
+        Ok(()) => { info!("Package \"{}\" uninstalled.", options.package); },
+        Err(e) => { info!("Failed to uninstall package \"{}\": {e}", options.package); },
     }
 
     Ok(())
