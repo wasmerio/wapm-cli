@@ -2,7 +2,7 @@
 
 use crate::{
     commands::install::get_package_query::GetPackageQueryPackageLastVersion,
-    dataflow::bindings::Language, graphql::execute_query,
+    dataflow::{WapmDistribution, bindings::Language}, graphql::execute_query,
 };
 
 use anyhow::Context;
@@ -83,7 +83,20 @@ enum InstallError {
         version
     )]
     NoPiritaFileForPackage { name: String, version: String },
+    #[error(
+        "No versions available for package {0}",
+        name
+    )]
+    NoVersionsAvailable { name: String },
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/get_package.graphql",
+    response_derives = "Debug"
+)]
+struct GetPackageQuery;
 
 mod global_flag {
     pub const GLOBAL_INSTALL: bool = true;
@@ -184,9 +197,18 @@ fn install_packages(
         packages.push(parse_package_and_version(name)?);
     }
 
-    let installed_packages: Vec<(&str, &str)> = packages
+    let installed_packages: Vec<WapmDistribution> = packages
         .iter()
-        .map(|(name, version)| (name.as_str(), version.as_str()))
+        .map(|(name, version)| {
+            // TODO: correct?
+            WapmDistribution {
+                name: name.clone(),
+                version: version.clone(),
+                download_url: String::new(),
+                pirita_download_url: None,
+                is_last_version: true,
+            }
+        })
         .collect();
 
     // the install directory will determine which wapm.lock we are updating. For now, we
@@ -339,6 +361,7 @@ impl Target {
     }
 }
 
+#[cfg(target_feature = "pirita_file")]
 fn get_packages_with_versions(package_args: &[String]) -> anyhow::Result<Vec<WapmDistribution>> {
 
     use wapm_resolve_url::get_tar_gz_url_of_package;
