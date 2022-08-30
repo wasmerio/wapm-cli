@@ -190,20 +190,25 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     added_packages: AddedPackages,
     removed_packages: RemovedPackages,
 ) -> Result<Result<(), String>, Error> {
+    println!("add package {added_packages:#?}, remove packages {removed_packages:?}");
     let directory = directory.as_ref();
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(&directory);
+    println!("add lockfile_result {lockfile_result:#?}");
     let mut lockfile_packages =
         LockfilePackages::new_from_result(lockfile_result).map_err(Error::LockfileError)?;
+    println!("lockfile_packages {lockfile_packages:#?}");
     detect_duplicate_packages(&added_packages.packages)?;
 
     // capture the initial lockfile keys before any modifications
     let initial_package_keys: HashSet<_> = lockfile_packages.package_keys();
+    println!("initial_package_keys {initial_package_keys:#?}");
 
     let removed_lockfile_packages = RemovedLockfilePackages::from_removed_packages_and_lockfile(
         &removed_packages,
         &lockfile_packages,
     );
+    println!("removed_lockfile_packages {removed_lockfile_packages:#?}");
 
     // cleanup any old artifacts
     removed_lockfile_packages
@@ -215,35 +220,51 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
 
     // check that the added packages are not already installed
     let lockfile_package_keys = lockfile_packages.package_keys();
+    println!("lockfile_package_keys {lockfile_package_keys:#?}");
+
     let added_packages = added_packages.prune_already_installed_packages(lockfile_package_keys);
+    println!("added_packages {added_packages:#?}");
+
     // check for missing packages e.g. deleting stuff from wapm_packages
     // install any missing or newly added packages
     let missing_packages = lockfile_packages.find_missing_packages(&directory);
+    println!("missing_packages {missing_packages:#?}");
+
     let added_packages = added_packages.add_missing_packages(missing_packages);
+    println!("added_packages {added_packages:#?}");
 
     let resolved_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
             .map_err(Error::ResolveError)?;
+    println!("resolved_packages {resolved_packages:#?}");
+
     let installed_packages =
         InstalledPackages::install::<RegistryInstaller>(&directory, resolved_packages, false)
             .map_err(Error::InstallError)?;
+    println!("installed_packages {installed_packages:#?}");
+
     let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
         .map_err(Error::LockfileError)?;
+    println!("added_lockfile_data {added_lockfile_data:#?}");
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
+    println!("retained_lockfile_packages {retained_lockfile_packages:#?}");
 
     // merge the lockfile data, and generate the new lockfile
     let final_lockfile_data =
         MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
+    println!("final_lockfile_data {final_lockfile_data:#?}");
     let final_package_keys: HashSet<_> = final_lockfile_data.packages.keys().cloned().collect();
+    println!("final_package_keys {final_package_keys:#?}");
+
     if final_package_keys != initial_package_keys {
         final_lockfile_data
             .generate_lockfile(&directory)
             .map_err(Error::GenerateLockfileError)?;
         Ok(Ok(()))
     } else {
-        Ok(Err(format!("update with no manifest: final package keys != initial package keys: {final_package_keys:#?} {initial_package_keys:#?}")))
+        Ok(Err(format!("update with no manifest: final package keys == initial package keys (no new packages installed): {final_package_keys:#?} {initial_package_keys:#?}")))
     }
 }
 

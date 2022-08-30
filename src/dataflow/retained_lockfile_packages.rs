@@ -4,6 +4,7 @@ use crate::dataflow::PackageKey;
 use std::collections::hash_set::HashSet;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct RetainedLockfilePackages<'a> {
     pub packages: HashMap<PackageKey<'a>, LockfilePackage>,
 }

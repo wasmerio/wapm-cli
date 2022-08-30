@@ -42,6 +42,7 @@ impl<'a> ResolvedPackages<'a> {
         Resolver: Resolve<'a>,
     {
         let wapm_pkgs: Vec<PackageKey> = packages.into_iter().collect();
+        println!("ResolvedPackages::new: package keys = {wapm_pkgs:#?}");
         // return early if no packages to resolve
         if wapm_pkgs.is_empty() {
             return Ok(Self::default());
@@ -102,8 +103,10 @@ impl<'a> Resolve<'a> for RegistryResolver {
         )>,
         Error,
     > {
+        println!("RegistryResolver::sync_packages(added = {added_packages:#?}");
         // fetch data from graphql server
         let response = Self::get_response(added_packages.clone());
+        println!("response: {:#?}", response);
         let all_packages_and_download_urls: Vec<(
             String,
             Version,
@@ -151,6 +154,8 @@ impl<'a> Resolve<'a> for RegistryResolver {
                     .map_err(|e| Error::CouldNotResolvePackages(e.to_string()))
             })
             .collect::<Result<Vec<(_, _, _, _)>, Error>>()?;
+        
+        println!("all_packages_and_download_urls: {:#?}", all_packages_and_download_urls);
 
         // lookup by exact package key
         let exact_package_lookup: HashMap<_, _> = all_packages_and_download_urls
@@ -166,6 +171,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
                 )
             })
             .collect();
+        println!("exact_package_lookup: {:#?}", exact_package_lookup);
 
         // lookup versions by name, used for matching package version ranges
         let mut package_versions_lookup: HashMap<String, Vec<Version>> = HashMap::new();
@@ -173,6 +179,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
             let versions = package_versions_lookup.entry(name).or_default();
             versions.push(version);
         }
+        println!("package_versions_lookup: {:#?}", package_versions_lookup);
 
         // filter all the package-versions + download_urls by exact version or version range
         let packages_and_download_urls: Vec<(
@@ -182,9 +189,17 @@ impl<'a> Resolve<'a> for RegistryResolver {
             .into_iter()
             .filter_map(|added_package| match added_package {
                 // if exact, then use the lookup table
-                PackageKey::WapmPackage(wapm_package_key) => exact_package_lookup
-                    .get(&wapm_package_key)
-                    .map(|(d, s)| (wapm_package_key, (d.clone(), s.clone()))),
+                PackageKey::WapmPackage(wapm_package_key) => {
+                    
+                    let result = exact_package_lookup
+                    .iter()
+                    .find(|(k, _)| k.version == wapm_package_key.version)
+                    .map(|(_, v)| v);
+                    
+                    println!("exact (lookup table): {exact_package_lookup:#?}: {wapm_package_key:#?}: {result:#?}");
+                    result
+                    .map(|(d, s)| (wapm_package_key, (d.clone(), s.clone())))
+                },
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
                     let matching_version: Option<Version> = package_versions_lookup
@@ -197,6 +212,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
                                 .max(); // get the max version number after filtering by version requirement
                             max_version
                         });
+                    println!("wapm package range: {:?}: {:?}", range, matching_version);
                     // join the key with the download url by using the package-key lookup table
                     let key_and_data: Option<(
                         WapmPackageKey,
@@ -214,6 +230,8 @@ impl<'a> Resolve<'a> for RegistryResolver {
                 }
             })
             .collect();
+        println!("packages_and_download_urls: {:#?}", packages_and_download_urls);
+
         Ok(packages_and_download_urls)
     }
 }
