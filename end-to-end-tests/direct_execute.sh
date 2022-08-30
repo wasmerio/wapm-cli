@@ -1,4 +1,7 @@
 #!/bin/sh
+mkdir test
+chmod 777 ./test
+cd test
 set -x
 export RUST_BACKTRACE=1
 ln -sf `which wapm` wax
@@ -19,3 +22,5 @@ rm -rf $(./wax --which lolcat)/wapm_packages/_/lolcat@0.1.1/*
 ./wax lolcat -V
 ./wax --offline lolcat -V
 WAPM_RUNTIME=echo ./wax ls | grep "\-\-command-name" || echo "Success: command-name not found"
+cd ..
+rm -rf ./test

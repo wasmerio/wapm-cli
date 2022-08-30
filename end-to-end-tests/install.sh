@@ -1,6 +1,10 @@
 #!/bin/sh
+mkdir install
+chmod 777 install
+cd install
 set -x
-
+export RUST_BACKTRACE=1
+ln -sf `which wapm` wax
 wapm config set registry.url "https://registry.wapm.dev"
 wapm install namespace-example/cowsay@0.1.2
 wapm install namespace-example/cowsay@0.1.2
@@ -22,3 +26,5 @@ wapm uninstall mark/wapm-override-test
 wapm run wapm-override-test
 wapm uninstall -g mark/wapm-override-test
 wapm install namespace-example/cowsay@0.1.1 namespace-example/cowsay@0.1.2
+cd ..
+rm -rf ./install

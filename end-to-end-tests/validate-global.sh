@@ -1,8 +1,11 @@
 #!/bin/sh
+mkdir validate_global
+chmod 777 validate_global
+cd validate_global
 set -x
-
+export RUST_BACKTRACE=1
+ln -sf `which wapm` wax
 wapm config set registry.url "https://registry.wapm.dev"
-
 # test that the command name is overriden by default
 wapm install -g mark2/binary-name-matters@0.0.3 -y
 wapm run binary-name-matters
@@ -18,3 +21,5 @@ wapm uninstall -g mark2/binary-name-matters-2
 wapm install mark2/binary-name-matters-2 -y
 wapm run binary-name-matters-2
 wapm uninstall mark2/binary-name-matters-2
+cd ..
+rm -rf ./validate_global

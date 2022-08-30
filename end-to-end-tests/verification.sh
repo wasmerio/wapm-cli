@@ -1,7 +1,10 @@
 #!/bin/sh
+mkdir verification
+chmod 777 verification
+cd verification
 set -x
-
 export RUST_BACKTRACE=1
+ln -sf `which wapm` wax
 wapm config set registry.url "https://registry.wapm.dev"
 # redirect stderr to /dev/null so we can capture important stderr
 yes no 2> /dev/null | wapm install mark2/dog2@0.0.0
@@ -16,3 +19,5 @@ rm $HOME/.wasmer/wapm.sqlite &> /dev/null
 wapm install syrusakbary/dog3@0.0.0 --force-yes
 wapm uninstall syrusakbary/dog3
 wapm install syrusakbary/dog3@0.0.0 --force-yes
+cd ..
+rm -rf ./verification
