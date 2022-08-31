@@ -200,6 +200,8 @@ jobs:
           chmod +x /home/runner/.wasmer/bin/wapm
       - name: Configure cargo data directory + private access tokens
         run: |
+          export CARGO_NET_GIT_FETCH_WITH_CLI=true
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
           echo "CARGO_HOME=$(pwd)/.cargo_home" >> $GITHUB_ENV
           echo https://wasmer:${{ secrets.GH_PAT }}@github.com > creds.txt
           git config --global credential.helper "store --file creds.txt"
