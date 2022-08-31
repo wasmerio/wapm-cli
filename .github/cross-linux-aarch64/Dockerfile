@@ -3,7 +3,7 @@ FROM rust:1
 
 # set CROSS_DOCKER_IN_DOCKER to inform `cross` that it is executed from within a container
 ENV CROSS_DOCKER_IN_DOCKER=true
-
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 RUN cargo install cross
 RUN dpkg --add-architecture arm64 && \
     apt-get update && \
