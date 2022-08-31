@@ -176,7 +176,7 @@ jobs:
       - name: Release to crates.io
         if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest'
         run: |
-          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+          cargo publish --allow-dirty --token ${{ secrets.CRATES_IO_TOKEN }}
 
   regression_tests:
     strategy:
