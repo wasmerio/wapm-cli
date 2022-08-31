@@ -254,12 +254,14 @@ jobs:
            docker build -t wasmer/aarch64 ${GITHUB_WORKSPACE}/.github/cross-linux-aarch64/
          env:
            CROSS_DOCKER_IN_DOCKER: true
+           CARGO_NET_GIT_FETCH_WITH_CLI: true
        - name: Build wapm binary
          run: |
            make release
          env:
            CARGO_BINARY: docker run -v /var/run/docker.sock:/var/run/docker.sock -v ${GITHUB_WORKSPACE}:/project -w /project wasmer/aarch64 cross
            CROSS_DOCKER_IN_DOCKER: true
+           CARGO_NET_GIT_FETCH_WITH_CLI: true
            CARGO_TARGET: --target aarch64-unknown-linux-gnu
            PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
            PKG_CONFIG_ALLOW_CROSS: true
