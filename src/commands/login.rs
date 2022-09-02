@@ -12,8 +12,10 @@ pub struct LoginOpt {
     /// Provide the token
     token: Option<String>,
     /// Username
+    #[structopt(long)]
     user: Option<String>,
     /// Password
+    #[structopt(long)]
     password: Option<String>,
 }
 
