@@ -3,6 +3,9 @@ use serde;
 use std::env;
 use std::string::ToString;
 use thiserror::Error;
+use crate::whoami_distro;
+use url::Url;
+
 #[cfg(not(target_os = "wasi"))]
 use {
     crate::proxy,
@@ -11,12 +14,8 @@ use {
         header::USER_AGENT,
     },
 };
-#[cfg(target_os = "wasi")]
-use {wasm_bus_reqwest::prelude::header::*, wasm_bus_reqwest::prelude::*};
-
-use crate::util::whoami_distro;
-
-use super::config::Config;
+// #[cfg(target_os = "wasi")]
+// use {wasm_bus_reqwest::prelude::header::*, wasm_bus_reqwest::prelude::*};
 
 #[derive(Debug, Error)]
 enum GraphQLError {
@@ -25,28 +24,16 @@ enum GraphQLError {
 }
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub type DateTime = String;
 
-pub fn execute_query_modifier<R, V, F>(query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
-where
-    for<'de> R: serde::Deserialize<'de>,
-    V: serde::Serialize,
-    F: FnOnce(Form) -> Form,
-{
-    let config = Config::from_file()?;
-    let registry_url = &config.registry.get_graphql_url();
-    execute_query_modifier_inner(registry_url, query, form_modifier)
-}
-
-pub fn execute_query_modifier_inner<R, V, F>(registry_url: &str, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
+#[cfg(not(target_os = "wasi"))]
+pub fn execute_query_modifier<R, V, F>(registry: &Url, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
     F: FnOnce(Form) -> Form,
 {
     let client = {
-        let builder = Client::builder()
-        .timeout(std::time::Duration::from_secs(500));
+        let builder = Client::builder();
 
         #[cfg(not(target_os = "wasi"))]
         let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()? {
@@ -56,7 +43,8 @@ where
         };
         builder.build()?
     };
-    let config = Config::from_file()?;
+
+    let registry_url = registry;
 
     let vars = serde_json::to_string(&query.variables).unwrap();
 
@@ -75,15 +63,11 @@ where
     );
 
     let res = client
-        .post(registry_url)
+        .post(registry_url.clone())
         .multipart(form)
         .bearer_auth(
-            env::var("WAPM_REGISTRY_TOKEN").unwrap_or(
-                config
-                    .registry
-                    .get_login_token_for_registry(&config.registry.get_current_registry())
-                    .unwrap_or_else(|| "".to_string()),
-            ),
+            env::var("WAPM_REGISTRY_TOKEN")
+            .unwrap_or_default()
         )
         .header(USER_AGENT, user_agent)
         .send()?;
@@ -99,18 +83,20 @@ where
     Ok(response_body.data.expect("missing response data"))
 }
 
-pub fn execute_query<R, V>(query: &QueryBody<V>) -> anyhow::Result<R>
+#[cfg(not(target_os = "wasi"))]
+pub fn execute_query<R, V>(registry: &Url, query: &QueryBody<V>) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
 {
-    execute_query_modifier(query, |f| f)
+    execute_query_modifier(registry, query, |f| f)
 }
 
-pub fn execute_query_custom_registry<R, V>(registry_url: &str, query: &QueryBody<V>) -> anyhow::Result<R>
+#[cfg(target_os = "wasi")]
+pub fn execute_query<R, V>(registry: &Url, query: &QueryBody<V>) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
 {
-    execute_query_modifier_inner(registry_url, query, |f| f)
+    Err(anyhow::anyhow!("networking is not implemented on wasm32-wasi"))
 }

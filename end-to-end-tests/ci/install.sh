@@ -7,10 +7,13 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/install.sh
+wapm uninstall --global --all
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/install.sh &> /tmp/install-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/install-out.txt
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/install.txt
 echo "COMPARING..."
 diff -Bba end-to-end-tests/install.txt /tmp/install-out.txt
 export OUT=$?

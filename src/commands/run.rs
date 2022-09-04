@@ -7,6 +7,7 @@ use crate::dataflow::find_command_result::get_command_from_anywhere;
 use crate::dataflow::manifest_packages::ManifestResult;
 use crate::util::get_runtime_with_args;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "wasi"))]
 use std::process::Command;
@@ -18,16 +19,121 @@ use wasm_bus_process::prelude::Command;
 #[derive(StructOpt, Debug)]
 pub struct RunOpt {
     /// Command name
-    command: String,
+    pub(crate) command: String,
     /// WASI pre-opened directory
     #[structopt(long = "dir", multiple = true, group = "wasi")]
-    pre_opened_directories: Vec<String>,
+    pub(crate) pre_opened_directories: Vec<String>,
     /// Application arguments
     #[structopt(multiple = true, parse(from_os_str))]
-    args: Vec<OsString>,
+    pub(crate) args: Vec<OsString>,
+}
+
+#[derive(Debug)]
+pub enum PiritaRunError {
+    Initialize(PiritaInitializeError),
+    Run(anyhow::Error),
+}
+impl fmt::Display for PiritaRunError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::PiritaRunError::*;
+        match self {
+            Initialize(i) => write!(f, "initialize: {i}"),
+            Run(r) => write!(f, "run: {r}"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum PiritaInitializeError {
+    NotAWasmerRunCommand,
+    InvalidCommand(anyhow::Error),
+    CannotGetCurrentDir(std::io::Error),
+    CouldNotFindCommandInDotBin(std::io::Error),
+}
+
+impl fmt::Display for PiritaInitializeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::PiritaInitializeError::*;
+        match self {
+            NotAWasmerRunCommand => write!(f, "not a wasmer run command"),
+            InvalidCommand(e) => write!(f, "invalid command: {e}"),
+            CannotGetCurrentDir(e) => write!(f, "cannot get current dir: {e}"),
+            CouldNotFindCommandInDotBin(e) => write!(f, "could not find command in .bin directory: {e}"),
+        }
+    }
+}
+
+pub fn try_run_pirita(run_options: &RunOpt) -> Result<(), PiritaRunError> {
+    
+    let command_name = run_options.command.as_str();
+    let args = &run_options.args;
+    let current_dir = crate::config::Config::get_current_dir()
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CannotGetCurrentDir(e)))?;
+    
+    let cmd = std::fs::read_to_string(current_dir.join("wapm_packages").join(".bin").join(command_name))
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::CouldNotFindCommandInDotBin(e)))?;
+
+    try_run_pirita_cmd(&cmd, command_name, args.as_ref())
+}
+
+pub(crate) fn try_run_pirita_cmd(cmd: &str, command_name: &str, args: &[OsString]) -> Result<(), PiritaRunError> {
+
+    let mut sw = shellwords::split(&cmd)
+    .map_err(|e| PiritaRunError::Initialize(PiritaInitializeError::InvalidCommand(e.into())))?;
+    
+    if sw.get(0).map(|s| s.as_str()) != Some("wasmer") || sw.get(1).map(|s| s.as_str()) != Some("run") {
+        return Err(PiritaRunError::Initialize(PiritaInitializeError::NotAWasmerRunCommand));
+    }
+
+    sw.remove(0);
+    sw.remove(0);
+
+    run_pirita(&sw, args)
+    .map_err(|e| PiritaRunError::Run(e))
+}
+
+fn run_pirita(args: &[String], rt_args: &[OsString]) -> Result<(), anyhow::Error> {
+        
+    let (runtime, runtime_args) = get_runtime_with_args();
+    let mut command = std::process::Command::new(runtime);
+    
+    for arg in runtime_args {
+        command.arg(arg);
+    }
+
+    command.arg("run");
+    
+    for arg in args {
+        command.arg(arg);
+    }
+
+    for arg in rt_args {
+        command.arg(arg);
+    }
+
+    let output = command.spawn()?;
+
+    let output = output
+    .wait_with_output()
+    .expect("failed to wait on child");
+
+    if !output.stderr.is_empty() {
+        Err(anyhow!("{}", String::from_utf8_lossy(&output.stderr)))
+    } else if !output.stdout.is_empty() {
+        println!("{}", String::from_utf8_lossy(&output.stderr));
+        Ok(())
+    } else {
+        Ok(())
+    }
 }
 
 pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
+
+    if std::env::var("USE_PIRITA") == Ok("1".to_string()) {
+        return try_run_pirita(&run_options)
+        .map_err(|e| anyhow::anyhow!("{e}"));
+    }
+
     let command_name = run_options.command.as_str();
     let args = &run_options.args;
     let current_dir = crate::config::Config::get_current_dir()?;
@@ -40,14 +146,9 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
 
-    let find_command_result::Command {
-        source: source_path_buf,
-        manifest_dir,
-        args: _,
-        module_name,
-        is_global,
-        prehashed_cache_key,
-    } = match get_command_from_anywhere(command_name) {
+    let found_command = get_command_from_anywhere(command_name);
+
+    let command = match found_command {
         Err(find_command_result::Error::CommandNotFound(command)) => {
             let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
             return Err(anyhow!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
@@ -57,28 +158,46 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
                   &package_info.namespaced_package_name,
                   &package_info.version,
             ));
+        },
+        Err(e) => { return Err(e.into()); },
+        Ok(o) => o,
+    };
+    
+    match command {
+        find_command_result::Command::TarGz(find_command_result::TarGzCommand {
+            source: source_path_buf,
+            manifest_dir,
+            args: _,
+            module_name,
+            is_global,
+            prehashed_cache_key,
+        }) => {
+            let run_dir = if is_global {
+                Config::get_globals_directory().unwrap()
+            } else {
+                current_dir.clone()
+            };
+        
+            let manifest_dir = run_dir.join(manifest_dir);
+        
+            do_run(
+                run_dir,
+                source_path_buf,
+                manifest_dir,
+                command_name,
+                &module_name,
+                &run_options.pre_opened_directories,
+                &args,
+                prehashed_cache_key,
+            )
+        },
+        find_command_result::Command::Pirita(find_command_result::PiritaCommand { 
+            cmd 
+        }) => {
+            crate::commands::run::try_run_pirita_cmd(&cmd, command_name, args)
+            .map_err(|e| anyhow::anyhow!("Error running PiritaFile command: {e}"))
         }
-        otherwise => otherwise?,
-    };
-
-    let run_dir = if is_global {
-        Config::get_globals_directory().unwrap()
-    } else {
-        current_dir.clone()
-    };
-
-    let manifest_dir = run_dir.join(manifest_dir);
-
-    do_run(
-        run_dir,
-        source_path_buf,
-        manifest_dir,
-        command_name,
-        &module_name,
-        &run_options.pre_opened_directories,
-        &args,
-        prehashed_cache_key,
-    )
+    }
 }
 
 pub(crate) fn do_run(

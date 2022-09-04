@@ -6,6 +6,8 @@ use std::collections::hash_map::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+use indexmap::IndexMap;
+use std::collections::BTreeMap;
 
 /// The ABI is a hint to WebAssembly runtimes about what additional imports to insert.
 /// It currently is only used for validation (in the validation subcommand).  The default value is `None`.
@@ -58,6 +60,57 @@ impl Default for Abi {
 pub static MANIFEST_FILE_NAME: &str = "wapm.toml";
 pub static PACKAGES_DIR_NAME: &str = "wapm_packages";
 
+pub fn get_dependencies(wapm: &str) -> Vec<(String, String)>{
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return Vec::new(); }, 
+    };
+    let mut dependencies = wapm.dependencies
+    .clone().unwrap_or_default()
+    .iter().map(|(k, v)| (k.clone(), v.clone()))
+    .collect::<Vec<_>>();
+
+    #[cfg(not(target_os = "wasi"))] {
+        let current_registry = wapm_resolve_url::get_current_wapm_registry();
+
+        for (k, _) in dependencies.iter_mut() {
+            if k.split("/").count() == 1 {
+                // Somebody only specified the package / command as the dependency instead
+                // of using the owner/package format
+                if let Some(r) = current_registry.as_ref() {
+                    let package_info = wapm_resolve_url::get_tar_gz_url_of_package(r, k, None);
+                    if let Some(pi) = package_info {
+                        *k = pi.resolved_name.clone();
+                    }
+                }
+            }
+        }    
+    }
+    
+    dependencies
+}
+
+pub fn get_wapm_atom_file_paths(
+    paths: &BTreeMap<&PathBuf, &Vec<u8>>
+) -> Result<Vec<(String, PathBuf)>, anyhow::Error> {
+    
+    println!("searching for {MANIFEST_FILE_NAME:?} in {:#?}", paths.keys().collect::<Vec<_>>());
+
+    let wapm_toml = paths.get(&Path::new(MANIFEST_FILE_NAME).to_path_buf())
+    .ok_or(anyhow::anyhow!("Could not find wapm.toml in FileMap"))?;
+
+    let wapm_toml: Manifest = toml::from_slice(&wapm_toml)
+    .map_err(|e| anyhow::anyhow!("Could not parse wapm.toml: {e}"))?;
+
+    Ok(wapm_toml.module.clone().unwrap_or_default().into_iter().map(|m| {
+        (m.name.clone(), Path::new(&m.source).to_path_buf())
+    }).collect())
+}
+
+pub fn get_wapm_manifest_file_name() -> PathBuf {
+    Path::new(MANIFEST_FILE_NAME).to_path_buf()
+}
+
 pub static README_PATHS: &[&str; 5] = &[
     "README",
     "README.md",
@@ -67,6 +120,79 @@ pub static README_PATHS: &[&str; 5] = &[
 ];
 
 pub static LICENSE_PATHS: &[&str; 3] = &["LICENSE", "LICENSE.md", "COPYING"];
+
+pub fn get_modules(wapm: &str) -> Vec<(String, String, String)> {
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return Vec::new(); }, 
+    };
+    wapm.module.clone().unwrap_or_default().iter()
+    .map(|m| (
+        m.name.to_string(), 
+        m.abi.to_string(),
+        m.kind.as_ref().map(|s| s.as_str()).unwrap_or("wasm").to_string(),
+    )).collect()
+}
+
+pub fn get_package_annotations(wapm: &str) -> serde_cbor::Value {
+    let wapm: Manifest = match toml::from_str(wapm) {
+        Ok(o) => o,
+        Err(_) => { return serde_cbor::Value::Null; }, 
+    };
+    transform_package_meta_to_annotations(&wapm.package)
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PathBufWithVolume {
+    pub volume: String,
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct InternalPackageMeta {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(
+        rename = "license-file",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub license_file: Option<PathBufWithVolume>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readme: Option<PathBufWithVolume>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
+}
+
+fn transform_package_meta_to_annotations(package: &Package) -> serde_cbor::Value {
+    let internal_package = InternalPackageMeta {
+        name: package.name.clone(),
+        version: format!("{}", package.version),
+        description: package.description.clone(),
+        license: package.license.clone(),
+        license_file: package.license_file.as_ref().map(|path| PathBufWithVolume {
+            volume: format!("metadata"),
+            path: path.clone(),
+        }),
+        readme: package.readme.as_ref().map(|path| PathBufWithVolume {
+            volume: format!("metadata"),
+            path: path.clone(),
+        }),
+        repository: package.repository.clone(),
+        homepage: package.homepage.clone(),
+    };
+
+    // convert InternalPackageMeta to a serde_cbor::Value
+    serde_cbor::to_vec(&internal_package)
+        .ok()
+        .and_then(|s| serde_cbor::from_slice(&s).ok())
+        .unwrap_or(serde_cbor::Value::Null)
+}
 
 /// Describes a command for a wapm module
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -155,7 +281,7 @@ pub struct CommandV1 {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CommandV2 {
     pub name: String,
-    pub module: String,
+    pub module: Option<String>,
     pub runner: String,
     pub annotations: Option<CommandAnnotations>,
 }
@@ -297,7 +423,7 @@ pub enum FileKind {
     Json,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Module {
     pub name: String,
     pub source: PathBuf,
@@ -364,6 +490,172 @@ pub struct Manifest {
     pub base_directory_path: PathBuf,
 }
 
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WitBindingsExtended {
+    pub wit: WitBindings,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WitBindings {
+    pub exports: String,
+    pub module: String,
+}
+
+pub type WebcBinding = (String, String, serde_cbor::Value);
+
+pub fn get_bindings(
+    wapm: &str, 
+    _base_path: &PathBuf, 
+    _atom_kinds: &BTreeMap<String, String>
+) -> Result<Vec<WebcBinding>, anyhow::Error> {
+
+    let wapm: Manifest = toml::from_str(wapm)?;
+    let default_modules = Vec::new();
+    let mut bindings = Vec::new();
+
+    for module in wapm.module.as_ref().unwrap_or(&default_modules).iter() {
+        if let Some(b) = module.bindings.as_ref() {
+            let value = serde_cbor::from_slice(&serde_cbor::to_vec(&WitBindingsExtended {
+                wit: WitBindings { 
+                    exports: format!("metadata://{}", b.wit_exports.display()), 
+                    module: format!("atoms://{}", module.name), 
+                }
+            })?)?;
+            bindings.push(("library-bindings".to_string(), format!("wit@{}", b.wit_bindgen), value));
+        }
+    }
+
+    Ok(bindings)
+}
+
+// command name => (runner, annotations)
+pub type WebcCommand = (String, Vec<(String, serde_cbor::Value)>);
+
+pub fn get_commands(
+    wapm: &str, 
+    base_path: &PathBuf, 
+    atom_kinds: &BTreeMap<String, String>
+) -> Result<Vec<(String, WebcCommand)>, anyhow::Error> {
+
+    let wapm: Manifest = toml::from_str(wapm)?;
+    let default_commands = Vec::new();
+    let mut commands = Vec::new();
+    
+    for command in wapm.command.as_ref().unwrap_or(&default_commands).iter() {
+        match command {
+            Command::V1(command) => {
+                let name = &command.name;
+                let module = &command.module;
+                let main_args = command.main_args.as_ref();
+                let package = command.package.as_ref();
+
+                if commands.iter().any(|(k, _)| k == name) {
+                    return Err(anyhow::anyhow!("Command {name} is defined more than once"));
+                }
+
+                let abi = atom_kinds.get(module).map(|s| s.as_str());
+                let runner = match abi {
+                    Some("emscripten") => "https://webc.org/runner/emscripten/command@unstable_",
+                    Some("wasm4") => "https://webc.org/runner/wasm4/command@unstable_",
+                    Some("wasi") | Some("generic") => "https://webc.org/runner/wasi/command@unstable_",
+                    _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
+                };
+
+                let annotations_str = match abi {
+                    Some("emscripten") => "emscripten",
+                    Some("wasm4") => "wasm4",
+                    Some("wasi") | Some("generic") => "wasi",
+                    _ => { return Err(anyhow::anyhow!("Unknown ABI in command {name:?}: {:?}", abi.unwrap_or(""))); },
+                };
+
+                let runner = runner.to_string();
+                let annotations = {
+                    let mut map = Vec::new();
+                    map.push((
+                        annotations_str.to_string(),
+                        transform_cmd_args(&TransformCmdArgs {
+                            atom: module.clone(),
+                            main_args: main_args.cloned(),
+                            package: package.cloned(),
+                        }),
+                    ));
+                    map
+                };
+
+                commands.push((
+                    name.clone(),
+                    (runner, annotations)
+                ));
+            },
+            Command::V2(command) => {
+
+                let runner = if validator::validate_url(&command.runner) {
+                    command.runner.to_string()
+                } else {
+                    format!("https://webc.org/runner/{}", command.runner.to_string())
+                };
+
+                let annotations = {
+                    let mut map = Vec::new();
+
+                    let annotations = command
+                        .get_annotations(base_path)
+                        .map_err(|e| anyhow::anyhow!("command {}: {e}", command.name))?;
+
+                    if let Some(s) = annotations {
+                        map.push((command.runner.clone(), s));
+                    }
+                    map
+                };
+
+                commands.push((
+                    command.name.clone(),
+                    (runner, annotations),
+                ));
+            }
+        }
+    }
+
+    Ok(commands)
+}
+
+pub fn get_manifest_file_names() -> Vec<PathBuf> {
+    vec![Path::new(MANIFEST_FILE_NAME).to_path_buf()]
+}
+
+pub fn get_metadata_paths(bindings: &[serde_cbor::Value]) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    
+    for b in bindings {
+        if let Ok(wit) = serde_cbor::from_slice::<WitBindingsExtended>(&serde_cbor::to_vec(b).unwrap()) {
+            paths.push(Path::new(&wit.wit.exports.replacen("metadata://", "", 1)).to_path_buf());
+        }
+    }
+
+    for p in README_PATHS.iter() {
+        paths.push(Path::new(p).to_path_buf());
+    }
+    for p in LICENSE_PATHS.iter() {
+        paths.push(Path::new(p).to_path_buf());
+    }
+    paths
+}
+
+#[derive(Serialize, Deserialize)]
+struct TransformCmdArgs {
+    atom: String,
+    main_args: Option<String>,
+    package: Option<String>,
+}
+
+fn transform_cmd_args(args: &TransformCmdArgs) -> serde_cbor::Value {
+    serde_cbor::to_vec(&args)
+        .ok()
+        .and_then(|s| serde_cbor::from_slice(&s).ok())
+        .unwrap_or(serde_cbor::Value::Null)
+}
+
 #[cfg(feature = "integration_tests")]
 pub mod integration_tests {
     pub mod data {
@@ -384,6 +676,7 @@ pub mod integration_tests {
         }
     }
 }
+
 impl Manifest {
     #[cfg(not(feature = "integration_tests"))]
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {

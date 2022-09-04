@@ -4,5 +4,6 @@
 package
 dist
 wax
+wapm.lock
 \.idea/
 \.vscode/

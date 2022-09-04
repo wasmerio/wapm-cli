@@ -3,6 +3,7 @@ query GetPackagesQuery ($names: [String!]!) {
         name
         versions {
             version
+            isLastVersion
             distribution {
                 downloadUrl
             }

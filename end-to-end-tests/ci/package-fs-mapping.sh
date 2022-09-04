@@ -7,10 +7,13 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/package-fs-mapping.sh
+wapm uninstall --global --all
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/package-fs-mapping.sh &> /tmp/package-fs-mapping-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/package-fs-mapping-out.txt
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/end-to-end-tests/package-fs-mapping.txt
 echo "COMPARING..."
 ## hack to get the current directory in the expected output
 #sed -i.bak "s/{{CURRENT_DIR}}/$(pwd | sed 's/\//\\\//g')/g" end-to-end-tests/package-fs-mapping.txt

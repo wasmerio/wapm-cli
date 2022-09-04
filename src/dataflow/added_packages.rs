@@ -3,6 +3,8 @@ use semver::Version;
 use std::collections::HashSet;
 use thiserror::Error;
 
+use super::WapmDistribution;
+
 #[derive(Clone, Debug, Error)]
 pub enum Error {
     #[error("Package must have version that follows semantic versioning. {0}")]
@@ -18,9 +20,10 @@ pub struct AddedPackages<'a> {
 impl<'a> AddedPackages<'a> {
     /// Extract name and version, parse version as semver, construct registry key, and finally
     /// normalize the global namespace if using the shorthand e.g. "_/pkg" == pkg
-    pub fn new_from_str_pairs(added_packages: Vec<(&'a str, &'a str)>) -> Result<Self, Error> {
+    pub fn new_from_str_pairs(added_packages: &'a Vec<WapmDistribution>) -> Result<Self, Error> {
         let added_packages = added_packages
-            .into_iter()
+            .iter()
+            .map(|w| (w.name.as_str(), w.version.as_str()))
             .map(Self::extract_name_and_version)
             .collect::<Result<Vec<(&'a str, Version)>, Error>>()?;
         let packages = added_packages

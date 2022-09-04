@@ -27,6 +27,7 @@ pub mod local_package;
 pub mod lockfile_packages;
 pub mod manifest_packages;
 pub mod merged_lockfile_packages;
+pub mod pirita_packages;
 pub mod removed_lockfile_packages;
 pub mod removed_packages;
 pub mod resolved_packages;
@@ -63,6 +64,15 @@ pub enum Error {
 pub struct WapmPackageKey<'a> {
     pub name: Cow<'a, str>,
     pub version: Version,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialOrd, PartialEq)]
+pub struct WapmDistribution {
+    pub name: String,
+    pub version: String,
+    pub download_url: String,
+    pub pirita_download_url: Option<String>,
+    pub is_last_version: bool,
 }
 
 /// A range of versions for a package in the wapm.io registry.
@@ -113,6 +123,14 @@ pub enum PackageKey<'a> {
 }
 
 impl<'a> PackageKey<'a> {
+    
+    pub fn get_name(&'a self) -> &'a str {
+        match self {
+            PackageKey::WapmPackage(a) => a.name.as_ref(),
+            PackageKey::WapmPackageRange(a) => a.name.as_ref(),
+        }
+    }
+
     /// Convenience constructor for wapm.io registry keys.
     pub fn new_registry_package<S>(name: S, version: Version) -> Self
     where
@@ -338,13 +356,13 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 /// The function that starts lockfile dataflow. This function finds a manifest and a lockfile,
 /// calculates differences, installs missing dependencies, and finally generates a new lockfile.
 pub fn update<P: AsRef<Path>>(
-    added_packages: Vec<(&str, &str)>,
+    added_packages: Vec<WapmDistribution>,
     removed_packages: Vec<&str>,
     directory: P,
 ) -> Result<bool, Error> {
     let directory = directory.as_ref();
     let added_packages =
-        AddedPackages::new_from_str_pairs(added_packages).map_err(Error::AddError)?;
+        AddedPackages::new_from_str_pairs(&added_packages).map_err(Error::AddError)?;
     let removed_packages = RemovedPackages::new_from_package_names(removed_packages);
     let manifest_result = ManifestResult::find_in_directory(&directory);
     match manifest_result {

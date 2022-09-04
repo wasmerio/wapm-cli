@@ -39,23 +39,34 @@ url = "2"
 wapm-toml = { version = "0.1.1", path = "./wapm-toml" }
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
-dialoguer = "0.4.0"
 hex = { version = "0.4", optional = true }
 blake3 = { version = "0.3.1", optional = true }
+indicatif = "0.16.2"
+dialoguer = "0.10.1"
+shellwords = "1.1.0"
+whoami = "1.2.1"
+wapm-resolve-url = { version = "0.1.0", path = "./wapm-resolve-url" }
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-whoami = "1.1.5"
 atty = "0.2"
-reqwest = { version = "0.11.0", features = ["native-tls-vendored", "blocking", "json", "gzip","socks","multipart"], optional = true }
+reqwest = { version = "0.11.0", default-features = false, features = ["rustls-tls", "blocking"], optional = true }
 tar = { version = "0.4" }
+tokio = { version = "1.19.2", features = ["full"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-whoami = "0.5"
 wasm-bus-reqwest = "1.0"
 wasm-bus-process = "1.0"
 getrandom = "0.2.3"
 tar = { package = "tar-wasi", version = "0.4" }
 serde_yaml = { version = "^0.8" }
+
+# Due to issues with SSH, the URL has to be in HTTPS format
+[dependencies.pirita]
+git = "https://github.com/wasmerio/pirita.git"
+rev = "048e21ea3649008c11eb66a1e6919534182ded2b"
+default-features = false
+features = ["autoconvert", "mmap"]
+optional = true
 
 [dev-dependencies]
 tempfile = "3"
@@ -70,6 +81,7 @@ members = [
 default = ["full","packagesigning", "sqlite-bundled"]
 sqlite-bundled = ["rusqlite/bundled"]
 telemetry = ["sentry"]
+pirita_file = ["pirita"]
 update-notifications= ["billboard", "colored"]
 prehash-module = ["hex", "blake3"]
 packagesigning = []#[cfg(feature = "full")]

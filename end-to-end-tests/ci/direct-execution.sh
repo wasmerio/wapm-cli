@@ -5,12 +5,15 @@ rm -f $WASMER_DIR/.wax_index.toml
 # TODO force clear cache
 rm -f wapm.toml
 rm -f wapm.lock
+wapm uninstall --global --all
 chmod +x end-to-end-tests/direct_execute.sh
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt
-echo "GENERATED OUTPUT:"
+echo "GENERATED OUTPUT: ----"
 cat /tmp/direct_execute.txt
-echo "COMPARING..."
+echo "EXPECTED OUTPUT: ----"
+cat end-to-end-tests/direct_execute.txt
+echo "COMPARING... ----"
 diff -Bba end-to-end-tests/direct_execute.txt /tmp/direct_execute.txt
 export OUT=$?
 if ( [ -d globals ] || [ -f wapm.log ] ) then

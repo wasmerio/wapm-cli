@@ -200,7 +200,7 @@ struct TestIfRegistryPresent;
 
 fn test_if_registry_present(registry: &str) -> Result<(), String> {
     let q = TestIfRegistryPresent::build_query(test_if_registry_present::Variables {});
-    let response: test_if_registry_present::ResponseData = 
+    let _response: test_if_registry_present::ResponseData = 
         crate::graphql::execute_query_custom_registry(registry, &q)
         .map_err(|e| format!("{e}"))?;
     Ok(())

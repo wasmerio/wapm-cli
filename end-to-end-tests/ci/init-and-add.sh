@@ -6,11 +6,14 @@ rm -f $WASMER_DIR/globals/wapm.lock
 rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
+wapm uninstall --global --all
 chmod +x end-to-end-tests/init-and-add.sh
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/init-and-add.sh &> /tmp/init-and-add-out.txt
 echo "GENERATED OUTPUT:"
 cat /tmp/init-and-add-out.txt
+echo "EXPECTED OUTPUT:"
+cat end-to-end-tests/init-and-add.txt
 echo "ADJUSTING OUTPUT"
 # removes the absolute path
 tail -n +3 /tmp/init-and-add-out.txt > /tmp/init-and-add-out2.txt

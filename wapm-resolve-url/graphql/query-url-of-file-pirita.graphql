@@ -1,0 +1,19 @@
+# Given a package id (namespace/package), returns all the .webc URLs
+# - may fail on older registries
+query GetPackageQueryPirita ($name: String!) {
+  package: getPackage(name:$name) {
+    name
+    versions {
+      version
+      distribution {
+        piritaDownloadUrl
+      }
+    }
+    lastVersion {
+      version
+      distribution {
+        piritaDownloadUrl
+      }
+    }
+  }
+}

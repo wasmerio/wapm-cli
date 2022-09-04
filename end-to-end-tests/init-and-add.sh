@@ -2,6 +2,7 @@
 
 mkdir test-package
 cd test-package
+WAX=$(echo wapm execute)
 wapm config set registry.url "https://registry.wapm.dev"
 wapm init -y
 wapm add this-package-does-not-exist
