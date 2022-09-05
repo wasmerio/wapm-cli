@@ -129,12 +129,11 @@ impl Registries {
         if let Err(e) = test_if_registry_present(&registry) {
             println!("Error when trying to ping registry {registry:?}: {e}");
             if registry.contains("wapm.dev") {
-                println!("NOTE: The correct URL for wapm.dev is https://registry.wapm.dev, not {registry}");
+                println!("Note: The correct URL for wapm.dev is https://registry.wapm.dev, not {registry}");
             } else if registry.contains("wapm.io") {
-                println!("NOTE: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
+                println!("Note: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
             }
-            println!("Falling back to using registry {}", self.get_current_registry());
-            return;
+            println!("WARNING: Registry {registry:?} will be used, but commands may not succeed.");
         }
         match self {
             Registries::Single(s) => s.url = registry,
