@@ -102,10 +102,10 @@ impl ExecuteOptInner {
 #[derive(Debug, Error)]
 enum ExecuteError {
     #[error(
-        "Command `{0}` not found in the registry or in the current directory",
+        "Command `{0}` not found in the registry {registry:?} or in the current directory",
         name
     )]
-    CommandNotFound { name: String },
+    CommandNotFound { name: String, registry: String },
     #[error(
         "The command `{0}` is using the Emscripten ABI which may be implmented in a way that is partially unsandbooxed. To opt-in to executing Emscripten Wasm modules run the command again with the `--emscripten` flag",
         name
@@ -228,6 +228,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     let opt = opt;
     trace!("Execute {:?}", &opt);
     let current_dir = crate::config::Config::get_current_dir()?;
+    let config = crate::config::Config::from_file()?;
     if let Some(which) = opt.which {
         let mut wax_index = wax_index::WaxIndex::open()?;
         let dir = if let Ok((package_name, version, _)) = wax_index.search_for_entry(which.clone())
@@ -243,6 +244,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             } else {
                 return Err(ExecuteError::CommandNotFound {
                     name: which.clone(),
+                    registry: config.registry.get_current_registry(),
                 }
                 .into());
             }
@@ -507,6 +509,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     } else {
         return Err(ExecuteError::CommandNotFound {
             name: command_name.to_string(),
+            registry: config.registry.get_current_registry(),
         }
         .into());
     }
