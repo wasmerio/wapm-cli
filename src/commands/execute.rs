@@ -145,6 +145,82 @@ enum ExecuteArgParsingError {
 )]
 struct WaxGetCommandQuery;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/wax_get_package_command.graphql",
+    response_derives = "Debug"
+)]
+struct WaxGetPackageCommandQuery;
+
+#[derive(Debug)]
+struct QueriedPackage {
+    package: String,
+    command_to_exec: String,
+    version: semver::Version,
+    download_url: String,
+}
+
+impl QueriedPackage {
+    pub fn query(opt: &ExecuteOptInner, package_name: &str) -> Option<Self> {
+
+        if opt.offline {
+            return None;
+        }
+
+        let split = package_name.split("@").collect::<Vec<_>>();
+        let (package_name, version) = match split.as_slice() {
+            [n, v] => { (n.to_string(), Some(v.to_string())) },
+            [n] => { (n.to_string(), None) },
+            _ => { return None; },
+        };
+
+        let split2 = package_name.split(":").collect::<Vec<_>>();
+        let (package_name, command_name) = match split2.as_slice() {
+            [n, v] => { (n.to_string(), Some(v.to_string())) },
+            [n] => { (n.to_string(), None) },
+            _ => { return None; },
+        };
+
+        let q2 = WaxGetPackageCommandQuery::build_query(wax_get_package_command_query::Variables {
+            name: package_name.to_string(),
+        });
+
+        let mut queried_package: Option<QueriedPackage> = None;
+
+        match version {
+            None => {
+                let response: wax_get_package_command_query::ResponseData = execute_query(&q2).ok()?;
+                let download_url = response.package.as_ref()?.last_version.as_ref()?.distribution.download_url.clone();
+                let version = semver::Version::from_str(&response.package.as_ref()?.last_version.as_ref()?.version)
+                .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string())).ok()?;
+                let manifest = wapm_toml::Manifest::from_str(&response.package.as_ref()?.last_version.as_ref()?.manifest).ok()?;
+                let command_to_exec = match command_name {
+                    Some(s) => s,
+                    None => {
+                        manifest.command
+                        .unwrap_or_default()
+                        .iter().map(|v| v.get_name())
+                        .next()?
+                    }
+                };
+                let name = response.package.as_ref()?.name.clone();
+                queried_package = Some(QueriedPackage {
+                    package: name,
+                    command_to_exec,
+                    version,
+                    download_url,
+                });
+            },
+            Some(v) => {
+
+            }
+        }
+
+        queried_package
+    }
+}
+
 /// Do the real argument parsing into [`ExecuteOptInner`].
 fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgParsingError> {
     let mut idx = 0;
@@ -506,6 +582,9 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             &opt.args,
         )?;
         return Ok(());
+    } else if let Some(package) = QueriedPackage::query(&opt, &command_name) .as_ref() {
+        println!("did not find command, but found package at url {:?}", package);
+        Ok(())
     } else {
         return Err(ExecuteError::CommandNotFound {
             name: command_name.to_string(),
