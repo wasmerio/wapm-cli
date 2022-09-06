@@ -455,7 +455,12 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     };
 
     trace!("Wax get command query: {:?}", response);
-    if let Some(command) = response.command {
+
+    let mut run_command_name = command_name.to_string();
+    let mut reg_ver = None;
+    let mut package_name = None;
+
+    let (install_loc, resolved_packages) = if let Some(command) = response.command {
         // command found, check if it's installed
         if let Some(abi) = command.module.abi.as_ref() {
             if abi == "emscripten" && !opt.enable_emscripten {
@@ -515,7 +520,11 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             "{}@{}",
             &command.package_version.package.name, &registry_version
         ));
-        let resolved_packages = ResolvedPackages {
+
+        reg_ver = Some(registry_version.clone());
+        package_name = Some(command.package_version.package.name.clone());
+
+        (install_loc, ResolvedPackages {
             packages: vec![(
                 WapmPackageKey {
                     name: command.package_version.package.name.clone().into(),
@@ -545,53 +554,76 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
                           })*/
                 ),
             )],
-        };
-
-        // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
-        let lockfile_result = LockfileResult::find_in_directory(&install_loc);
-        let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-        let installed_packages = InstalledPackages::install::<RegistryInstaller>(
-            &install_loc,
-            resolved_packages,
-            !opt.verify_signature,
-        )?;
-        let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-
-        let retained_lockfile_packages =
-            RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
-        let final_lockfile_data =
-            MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
-        final_lockfile_data
-            .generate_lockfile(&install_loc)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-
-        debug!("Wax package installed to {}", install_loc.to_string_lossy());
-
-        wax_index.insert_entry(
-            command_name.to_string(),
-            registry_version,
-            command.package_version.package.name.clone(),
-        );
-        wax_index.save()?;
-        run(
-            command_name,
-            install_loc,
-            &opt.pre_opened_directories,
-            &opt.args,
-        )?;
-        return Ok(());
+        })
     } else if let Some(package) = QueriedPackage::query(&opt, &command_name) .as_ref() {
-        println!("did not find command, but found package at url {:?}", package);
-        Ok(())
+        
+        run_command_name = package.command_to_exec.clone();
+        let install_loc = wax_index.base_path().join(format!(
+            "{}@{}",
+            &package.package, &package.version
+        ));
+
+        reg_ver = Some(package.version.clone());
+        package_name = Some(package.package.clone());
+
+        (install_loc, ResolvedPackages {
+            packages: vec![(
+                WapmPackageKey {
+                    name: package.package.clone().into(),
+                    version: package.version.clone(),
+                },
+                (
+                    package.download_url.clone(),
+                    None,
+                )
+            )]
+        })
     } else {
         return Err(ExecuteError::CommandNotFound {
             name: command_name.to_string(),
             registry: config.registry.get_current_registry(),
         }
         .into());
-    }
+    };
+
+    let registry_version = reg_ver.ok_or(anyhow!("no registry version"))?;
+    let package_name = package_name.ok_or(anyhow!("no package name"))?;
+
+    // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
+    let lockfile_result = LockfileResult::find_in_directory(&install_loc);
+    let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+    let installed_packages = InstalledPackages::install::<RegistryInstaller>(
+        &install_loc,
+        resolved_packages,
+        !opt.verify_signature,
+    )?;
+    let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
+    let retained_lockfile_packages =
+        RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
+    let final_lockfile_data =
+        MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
+    final_lockfile_data
+        .generate_lockfile(&install_loc)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
+    debug!("Wax package installed to {}", install_loc.to_string_lossy());
+
+    wax_index.insert_entry(
+        run_command_name.to_string(),
+        registry_version,
+        package_name,
+    );
+    wax_index.save()?;
+    run(
+        &run_command_name,
+        install_loc,
+        &opt.pre_opened_directories,
+        &opt.args,
+    )?;
+    return Ok(());
 }
 
 fn run(
