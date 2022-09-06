@@ -153,6 +153,10 @@ struct WaxGetCommandQuery;
 )]
 struct WaxGetPackageCommandQuery;
 
+use crate::commands::add::get_package_version_query;
+
+use super::add::GetPackageVersionQuery;
+
 #[derive(Debug)]
 struct QueriedPackage {
     package: String,
@@ -169,27 +173,42 @@ impl QueriedPackage {
         }
 
         let split = package_name.split("@").collect::<Vec<_>>();
-        let (package_name, version) = match split.as_slice() {
+        let (mut package_name, mut version) = match split.as_slice() {
             [n, v] => { (n.to_string(), Some(v.to_string())) },
             [n] => { (n.to_string(), None) },
             _ => { return None; },
         };
 
-        let split2 = package_name.split(":").collect::<Vec<_>>();
-        let (package_name, command_name) = match split2.as_slice() {
-            [n, v] => { (n.to_string(), Some(v.to_string())) },
-            [n] => { (n.to_string(), None) },
-            _ => { return None; },
-        };
+        let command_name ;
+        if let Some(v) = version.clone() {
+            let split2 = v.split(":").collect::<Vec<_>>();
+            let (v, c) = match split2.as_slice() {
+                [n, v] => { (n.to_string(), Some(v.to_string())) },
+                [n] => { (n.to_string(), None) },
+                _ => { return None; },
+            };
+            version = Some(v);
+            command_name = c;
+        } else {
+            let split2 = package_name.split(":").collect::<Vec<_>>();
+            let (v, c) = match split2.as_slice() {
+                [n, v] => { (n.to_string(), Some(v.to_string())) },
+                [n] => { (n.to_string(), None) },
+                _ => { return None; },
+            };
+            package_name = v;
+            command_name = c;
+        }
 
-        let q2 = WaxGetPackageCommandQuery::build_query(wax_get_package_command_query::Variables {
-            name: package_name.to_string(),
-        });
-
-        let mut queried_package: Option<QueriedPackage> = None;
+        let queried_package: Option<QueriedPackage>;
 
         match version {
             None => {
+
+                let q2 = WaxGetPackageCommandQuery::build_query(wax_get_package_command_query::Variables {
+                    name: package_name.to_string(),
+                });
+
                 let response: wax_get_package_command_query::ResponseData = execute_query(&q2).ok()?;
                 let download_url = response.package.as_ref()?.last_version.as_ref()?.distribution.download_url.clone();
                 let version = semver::Version::from_str(&response.package.as_ref()?.last_version.as_ref()?.version)
@@ -213,7 +232,31 @@ impl QueriedPackage {
                 });
             },
             Some(v) => {
-
+                let q3 = GetPackageVersionQuery::build_query(get_package_version_query::Variables {
+                    name: package_name.to_string(),
+                    version: Some(v.clone()),
+                });
+                let response: get_package_version_query::ResponseData = execute_query(&q3).ok()?;
+                let download_url = response.package_version.as_ref()?.distribution.download_url.clone();
+                let version = semver::Version::from_str(&response.package_version.as_ref()?.version)
+                .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string())).ok()?;
+                let manifest = wapm_toml::Manifest::from_str(&response.package_version.as_ref()?.manifest).ok()?;
+                let command_to_exec = match command_name {
+                    Some(s) => s,
+                    None => {
+                        manifest.command
+                        .unwrap_or_default()
+                        .iter().map(|v| v.get_name())
+                        .next()?
+                    }
+                };
+                let name = response.package_version.as_ref()?.package.name.clone();
+                queried_package = Some(QueriedPackage {
+                    package: name,
+                    command_to_exec,
+                    version,
+                    download_url,
+                });
             }
         }
 
@@ -457,10 +500,11 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     trace!("Wax get command query: {:?}", response);
 
     let mut run_command_name = command_name.to_string();
-    let mut reg_ver = None;
-    let mut package_name = None;
+    let reg_ver;
+    let package_name;
+    let mut command_is_package = false;
 
-    let (install_loc, resolved_packages) = if let Some(command) = response.command {
+    let (mut install_loc, resolved_packages) = if let Some(command) = response.command {
         // command found, check if it's installed
         if let Some(abi) = command.module.abi.as_ref() {
             if abi == "emscripten" && !opt.enable_emscripten {
@@ -557,6 +601,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
         })
     } else if let Some(package) = QueriedPackage::query(&opt, &command_name) .as_ref() {
         
+        command_is_package = true;
         run_command_name = package.command_to_exec.clone();
         let install_loc = wax_index.base_path().join(format!(
             "{}@{}",
@@ -613,10 +658,28 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
 
     wax_index.insert_entry(
         run_command_name.to_string(),
-        registry_version,
-        package_name,
+        registry_version.clone(),
+        package_name.clone(),
     );
     wax_index.save()?;
+
+    if command_is_package {
+        let install_loc_original = install_loc.clone();
+        let mut name = package_name.split("/");
+        install_loc = install_loc
+        .join("wapm_packages");
+        if let Some(s) = name.next() {
+            install_loc = install_loc
+            .join(s)
+        }
+        if let Some(s) = name.next() {
+            install_loc = install_loc
+            .join(&format!("{s}@{registry_version}"));
+        }
+
+        let _ = std::fs::copy(&install_loc_original.join("wapm.lock"), install_loc.clone().join("wapm.lock"));
+    }
+
     run(
         &run_command_name,
         install_loc,
