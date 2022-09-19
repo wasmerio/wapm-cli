@@ -166,39 +166,60 @@ impl FindCommandResult {
         lockfile: Lockfile,
         directory: &Path,
     ) -> Self {
-        match lockfile.get_command(command_name.as_ref()) {
-            Ok(lockfile_command) => {
-                match lockfile.get_module(
-                    &lockfile_command.package_name,
-                    &lockfile_command.package_version,
-                    &lockfile_command.module,
-                ) {
-                    Ok(lockfile_module) => {
-                        let path = lockfile_module
-                            .get_canonical_source_path_from_lockfile_dir(directory.into());
-                        let manifest_dir = lockfile_module
-                            .get_canonical_manifest_path_from_lockfile_dir(directory.into(), true);
-                        FindCommandResult::CommandFound {
-                            source: path,
-                            manifest_dir,
-                            args: lockfile_command.main_args.clone(),
-                            module_name: lockfile_module.name.clone(),
-                            prehashed_cache_key: lockfile
-                                .get_prehashed_cache_key_from_command(&lockfile_command),
-                        }
-                    }
-                    Err(_e) => {
-                        FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
-                    }
+
+        let command_name = command_name.as_ref();
+        
+        // Look into the lockfile.commands to find the command by name first
+        if let Ok(lockfile_command) = lockfile.get_command(command_name) {
+            // If this fails, the package is corrupt
+            match lockfile.get_module(
+                &lockfile_command.package_name,
+                &lockfile_command.package_version,
+                &lockfile_command.module,
+            ) {
+                Ok(lockfile_module) => {
+                    let path = lockfile_module
+                        .get_canonical_source_path_from_lockfile_dir(directory.into());
+                    let manifest_dir = lockfile_module
+                        .get_canonical_manifest_path_from_lockfile_dir(directory.into(), true);
+                    return FindCommandResult::CommandFound {
+                        source: path,
+                        manifest_dir,
+                        args: lockfile_command.main_args.clone(),
+                        module_name: lockfile_module.name.clone(),
+                        prehashed_cache_key: lockfile
+                            .get_prehashed_cache_key_from_command(&lockfile_command),
+                    };
+                }
+                Err(_e) => {
+                    return FindCommandResult::CommandNotFound(command_name.to_string());
                 }
             }
-            Err(_e) => {
-                if let Some(s) = lockfile.modules.keys().filter(|k| k.as_str().contains(command_name.as_ref())).next() {
-                    println!("WARNING: A package {s:?} seems to be installed locally, but the package has no commands to execute");
-                }
-                FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
-            },
         }
+
+        if let Some(s) = lockfile.modules.keys().filter(|k| k.as_str().contains(command_name)).next() {
+            
+            println!("WARNING");
+            println!("    A package {s:?} seems to be installed locally");
+            println!("    but the package {s:?} has no commands to execute");
+
+            let all_commands = lockfile.commands.keys().cloned().collect::<Vec<_>>();
+            let nearest = all_commands.iter().filter_map(|c| {
+                sublime_fuzzy::best_match(c, command_name)
+                .map(|_| c.clone())
+            }).take(3).collect::<Vec<_>>();
+
+            if !nearest.is_empty() {
+                println!();
+                println!("Did you mean:");
+                for n in nearest.iter() {
+                    println!("    {n}");
+                }
+                println!();
+            }
+        }
+
+        FindCommandResult::CommandNotFound(command_name.to_string())
     }
 
     pub fn find_command_in_directory<S: AsRef<str>>(directory: &Path, command_name: S) -> Self {
