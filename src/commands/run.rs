@@ -45,7 +45,12 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     if find_command_result.is_err() {
         let package_info = find_command_result::PackageInfoFromCommand::get(command_name.to_string());
         registry_error = match package_info {
-            Err(_) => Vec::new(),
+            Err(e) => {
+                vec![
+                    format!("Error: {e}"),
+                    format!(""),
+                ]
+            },
             Ok(o) => vec![
                 format!("Command {:?} was not found, but the package \"{}@{}\" has this command.", o.command, o.namespaced_package_name, o.version),
                 format!("You can install it with `wapm install {}@{}`.", o.namespaced_package_name, o.version),
