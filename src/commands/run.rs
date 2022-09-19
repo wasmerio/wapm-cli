@@ -40,6 +40,19 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             .map_err(|e| RunError::CannotRegenLockfile(command_name.to_string(), e))?,
     }
 
+    let mut registry_error = Vec::new();
+    let find_command_result = get_command_from_anywhere(command_name);
+    if find_command_result.is_err() {
+        let package_info = find_command_result::PackageInfoFromCommand::get(command_name.to_string());
+        registry_error = match package_info {
+            Err(_) => Vec::new(),
+            Ok(o) => vec![
+                format!("Command {:?} was not found, but the package \"{}@{}\" has this command.", o.command, o.namespaced_package_name, o.version),
+                format!("You can install it with `wapm install {}@{}`.", o.namespaced_package_name, o.version),
+            ],
+        };
+    }
+
     let find_command_result::Command {
         source: source_path_buf,
         manifest_dir,
@@ -47,17 +60,40 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
         module_name,
         is_global,
         prehashed_cache_key,
-    } = match get_command_from_anywhere(command_name) {
-        Err(find_command_result::Error::CommandNotFound(command)) => {
-            let package_info = find_command_result::PackageInfoFromCommand::get(command)?;
-            return Err(anyhow!("Command {} not found, but package {} version {} has this command. You can install it with `wapm install {}@{}`",
-                  &package_info.command,
-                  &package_info.namespaced_package_name,
-                  &package_info.version,
-                  &package_info.namespaced_package_name,
-                  &package_info.version,
-            ));
-        }
+    } = match find_command_result {
+        Err(find_command_result::Error::CommandNotFound {
+            command,
+            error,
+            mut local_log,
+            mut global_log,
+        }) => {
+            let mut log = vec![format!("Could not find command {:?}:", command)];
+            log.append(&mut local_log);
+            log.append(&mut global_log);
+            log.append(&mut registry_error);
+            return Err(anyhow!("{}", log.join("\r\n")));
+        },
+        Err(find_command_result::Error::ErrorReadingLocalDirectory {
+            command,
+            error,
+            mut local_log,
+            global_log,
+        }) => {
+            let mut log = local_log.clone();
+            log.append(&mut registry_error);
+            return Err(anyhow!("{}", log.join("\r\n")));
+        },
+        Err(find_command_result::Error::CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory {
+            command,
+            error,
+            mut local_log,
+            mut global_log,
+        }) => {
+            let mut log = local_log.clone();
+            log.append(&mut global_log);
+            log.append(&mut registry_error);
+            return Err(anyhow!("{}", log.join("\r\n")));
+        },
         otherwise => otherwise?,
     };
 
