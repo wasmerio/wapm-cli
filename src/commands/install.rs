@@ -51,8 +51,8 @@ pub struct InstallOpt {
 
 #[derive(Debug, Error)]
 enum InstallError {
-    #[error("Package not found in the registry: {name}")]
-    PackageNotFound { name: String },
+    #[error("Package not found in the registry {registry:?}: {name}")]
+    PackageNotFound { name: String, registry: String },
 
     #[error("No package versions available for package {name}")]
     NoVersionsAvailable { name: String },
@@ -242,7 +242,7 @@ impl<'a> TryFrom<&'a str> for VersionedPackage<'a> {
 
 fn parse_package_and_version(package_specifier: &str) -> Result<(String, String), anyhow::Error> {
     let name_and_version: Vec<_> = package_specifier.split('@').collect();
-
+    let config = Config::from_file()?;
     match name_and_version.as_slice() {
         [name, version] => Ok((name.to_string(), version.to_string())),
         [name] => {
@@ -252,6 +252,7 @@ fn parse_package_and_version(package_specifier: &str) -> Result<(String, String)
             let response: get_package_query::ResponseData = execute_query(&q)?;
             let package = response.package.ok_or(InstallError::PackageNotFound {
                 name: name.to_string(),
+                registry: config.registry.get_current_registry(),
             })?;
             let GetPackageQueryPackageLastVersion { version, .. } =
                 package
