@@ -192,7 +192,12 @@ impl FindCommandResult {
                     }
                 }
             }
-            Err(_e) => FindCommandResult::CommandNotFound(command_name.as_ref().to_string()),
+            Err(_e) => {
+                if let Some(s) = lockfile.modules.keys().filter(|k| k.as_str().contains(command_name.as_ref())).next() {
+                    println!("WARNING: A package {s:?} seems to be installed locally, but the package has no commands to execute");
+                }
+                FindCommandResult::CommandNotFound(command_name.as_ref().to_string())
+            },
         }
     }
 
