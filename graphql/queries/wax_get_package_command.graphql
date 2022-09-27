@@ -1,0 +1,13 @@
+query WaxGetPackageCommandQuery($name: String!) {
+  package: getPackage(name:$name) {
+    name
+    private
+    lastVersion {
+      version
+      distribution {
+        downloadUrl
+      }
+      manifest
+    }
+  }
+}

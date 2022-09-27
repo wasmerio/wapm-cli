@@ -102,10 +102,10 @@ impl ExecuteOptInner {
 #[derive(Debug, Error)]
 enum ExecuteError {
     #[error(
-        "Command `{0}` not found in the registry or in the current directory",
+        "Command `{0}` not found in the registry {registry:?} or in the current directory",
         name
     )]
-    CommandNotFound { name: String },
+    CommandNotFound { name: String, registry: String },
     #[error(
         "The command `{0}` is using the Emscripten ABI which may be implmented in a way that is partially unsandbooxed. To opt-in to executing Emscripten Wasm modules run the command again with the `--emscripten` flag",
         name
@@ -144,6 +144,125 @@ enum ExecuteArgParsingError {
     response_derives = "Debug"
 )]
 struct WaxGetCommandQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/wax_get_package_command.graphql",
+    response_derives = "Debug"
+)]
+struct WaxGetPackageCommandQuery;
+
+use crate::commands::add::get_package_version_query;
+
+use super::add::GetPackageVersionQuery;
+
+#[derive(Debug)]
+struct QueriedPackage {
+    package: String,
+    command_to_exec: String,
+    version: semver::Version,
+    download_url: String,
+}
+
+impl QueriedPackage {
+    pub fn query(opt: &ExecuteOptInner, package_name: &str) -> Option<Self> {
+
+        if opt.offline {
+            return None;
+        }
+
+        let split = package_name.split("@").collect::<Vec<_>>();
+        let (mut package_name, mut version) = match split.as_slice() {
+            [n, v] => { (n.to_string(), Some(v.to_string())) },
+            [n] => { (n.to_string(), None) },
+            _ => { return None; },
+        };
+
+        let command_name ;
+        if let Some(v) = version.clone() {
+            let split2 = v.split(":").collect::<Vec<_>>();
+            let (v, c) = match split2.as_slice() {
+                [n, v] => { (n.to_string(), Some(v.to_string())) },
+                [n] => { (n.to_string(), None) },
+                _ => { return None; },
+            };
+            version = Some(v);
+            command_name = c;
+        } else {
+            let split2 = package_name.split(":").collect::<Vec<_>>();
+            let (v, c) = match split2.as_slice() {
+                [n, v] => { (n.to_string(), Some(v.to_string())) },
+                [n] => { (n.to_string(), None) },
+                _ => { return None; },
+            };
+            package_name = v;
+            command_name = c;
+        }
+
+        let queried_package: Option<QueriedPackage>;
+
+        match version {
+            None => {
+
+                let q2 = WaxGetPackageCommandQuery::build_query(wax_get_package_command_query::Variables {
+                    name: package_name.to_string(),
+                });
+
+                let response: wax_get_package_command_query::ResponseData = execute_query(&q2).ok()?;
+                let download_url = response.package.as_ref()?.last_version.as_ref()?.distribution.download_url.clone();
+                let version = semver::Version::from_str(&response.package.as_ref()?.last_version.as_ref()?.version)
+                .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string())).ok()?;
+                let manifest = wapm_toml::Manifest::from_str(&response.package.as_ref()?.last_version.as_ref()?.manifest).ok()?;
+                let command_to_exec = match command_name {
+                    Some(s) => s,
+                    None => {
+                        manifest.command
+                        .unwrap_or_default()
+                        .iter().map(|v| v.get_name())
+                        .next()?
+                    }
+                };
+                let name = response.package.as_ref()?.name.clone();
+                queried_package = Some(QueriedPackage {
+                    package: name,
+                    command_to_exec,
+                    version,
+                    download_url,
+                });
+            },
+            Some(v) => {
+                let q3 = GetPackageVersionQuery::build_query(get_package_version_query::Variables {
+                    name: package_name.to_string(),
+                    version: Some(v.clone()),
+                });
+                let response: get_package_version_query::ResponseData = execute_query(&q3).ok()?;
+                let download_url = response.package_version.as_ref()?.distribution.download_url.clone();
+                let version = semver::Version::from_str(&response.package_version.as_ref()?.version)
+                .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string())).ok()?;
+                let manifest = wapm_toml::Manifest::from_str(&response.package_version.as_ref()?.manifest).ok()?;
+                let command_to_exec = match command_name {
+                    Some(s) => s,
+                    None => {
+                        manifest.command
+                        .unwrap_or_default()
+                        .iter().map(|v| v.get_name())
+                        .next()?
+                    }
+                };
+                let name = response.package_version.as_ref()?.package.name.clone();
+                queried_package = Some(QueriedPackage {
+                    package: name,
+                    command_to_exec,
+                    version,
+                    download_url,
+                });
+            }
+        }
+
+        queried_package
+    }
+}
 
 /// Do the real argument parsing into [`ExecuteOptInner`].
 fn transform_args(arg_stream: &[String]) -> Result<ExecuteOptInner, ExecuteArgParsingError> {
@@ -228,6 +347,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     let opt = opt;
     trace!("Execute {:?}", &opt);
     let current_dir = crate::config::Config::get_current_dir()?;
+    let config = crate::config::Config::from_file()?;
     if let Some(which) = opt.which {
         let mut wax_index = wax_index::WaxIndex::open()?;
         let dir = if let Ok((package_name, version, _)) = wax_index.search_for_entry(which.clone())
@@ -243,6 +363,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             } else {
                 return Err(ExecuteError::CommandNotFound {
                     name: which.clone(),
+                    registry: config.registry.get_current_registry(),
                 }
                 .into());
             }
@@ -377,7 +498,13 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     };
 
     trace!("Wax get command query: {:?}", response);
-    if let Some(command) = response.command {
+
+    let mut run_command_name = command_name.to_string();
+    let reg_ver;
+    let package_name;
+    let mut command_is_package = false;
+
+    let (mut install_loc, resolved_packages) = if let Some(command) = response.command {
         // command found, check if it's installed
         if let Some(abi) = command.module.abi.as_ref() {
             if abi == "emscripten" && !opt.enable_emscripten {
@@ -437,7 +564,11 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             "{}@{}",
             &command.package_version.package.name, &registry_version
         ));
-        let resolved_packages = ResolvedPackages {
+
+        reg_ver = Some(registry_version.clone());
+        package_name = Some(command.package_version.package.name.clone());
+
+        (install_loc, ResolvedPackages {
             packages: vec![(
                 WapmPackageKey {
                     name: command.package_version.package.name.clone().into(),
@@ -467,49 +598,95 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
                           })*/
                 ),
             )],
-        };
+        })
+    } else if let Some(package) = QueriedPackage::query(&opt, &command_name) .as_ref() {
+        
+        command_is_package = true;
+        run_command_name = package.command_to_exec.clone();
+        let install_loc = wax_index.base_path().join(format!(
+            "{}@{}",
+            &package.package, &package.version
+        ));
 
-        // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
-        let lockfile_result = LockfileResult::find_in_directory(&install_loc);
-        let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-        let installed_packages = InstalledPackages::install::<RegistryInstaller>(
-            &install_loc,
-            resolved_packages,
-            !opt.verify_signature,
-        )?;
-        let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+        reg_ver = Some(package.version.clone());
+        package_name = Some(package.package.clone());
 
-        let retained_lockfile_packages =
-            RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
-        let final_lockfile_data =
-            MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
-        final_lockfile_data
-            .generate_lockfile(&install_loc)
-            .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
-
-        debug!("Wax package installed to {}", install_loc.to_string_lossy());
-
-        wax_index.insert_entry(
-            command_name.to_string(),
-            registry_version,
-            command.package_version.package.name.clone(),
-        );
-        wax_index.save()?;
-        run(
-            command_name,
-            install_loc,
-            &opt.pre_opened_directories,
-            &opt.args,
-        )?;
-        return Ok(());
+        (install_loc, ResolvedPackages {
+            packages: vec![(
+                WapmPackageKey {
+                    name: package.package.clone().into(),
+                    version: package.version.clone(),
+                },
+                (
+                    package.download_url.clone(),
+                    None,
+                )
+            )]
+        })
     } else {
         return Err(ExecuteError::CommandNotFound {
             name: command_name.to_string(),
+            registry: config.registry.get_current_registry(),
         }
         .into());
+    };
+
+    let registry_version = reg_ver.ok_or(anyhow!("no registry version"))?;
+    let package_name = package_name.ok_or(anyhow!("no package name"))?;
+
+    // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
+    let lockfile_result = LockfileResult::find_in_directory(&install_loc);
+    let lockfile_packages = LockfilePackages::new_from_result(lockfile_result)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+    let installed_packages = InstalledPackages::install::<RegistryInstaller>(
+        &install_loc,
+        resolved_packages,
+        !opt.verify_signature,
+    )?;
+    let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
+    let retained_lockfile_packages =
+        RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
+    let final_lockfile_data =
+        MergedLockfilePackages::merge(added_lockfile_data, retained_lockfile_packages);
+    final_lockfile_data
+        .generate_lockfile(&install_loc)
+        .map_err(|e| ExecuteError::InstallationError(e.to_string()))?;
+
+    debug!("Wax package installed to {}", install_loc.to_string_lossy());
+
+    wax_index.insert_entry(
+        run_command_name.to_string(),
+        registry_version.clone(),
+        package_name.clone(),
+    );
+    wax_index.save()?;
+
+    if command_is_package {
+        let install_loc_original = install_loc.clone();
+        let mut name = package_name.split("/");
+        install_loc = install_loc
+        .join("wapm_packages");
+        if let Some(s) = name.next() {
+            install_loc = install_loc
+            .join(s)
+        }
+        if let Some(s) = name.next() {
+            install_loc = install_loc
+            .join(&format!("{s}@{registry_version}"));
+        }
+
+        let _ = std::fs::copy(&install_loc_original.join("wapm.lock"), install_loc.clone().join("wapm.lock"));
     }
+
+    run(
+        &run_command_name,
+        install_loc,
+        &opt.pre_opened_directories,
+        &opt.args,
+    )?;
+    return Ok(());
 }
 
 fn run(
