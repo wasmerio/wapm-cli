@@ -20,7 +20,7 @@ pub struct AddOpt {
     query_path = "graphql/queries/get_package_version.graphql",
     response_derives = "Debug"
 )]
-struct GetPackageVersionQuery;
+pub(crate) struct GetPackageVersionQuery;
 
 #[derive(Debug, Error)]
 enum AddError {

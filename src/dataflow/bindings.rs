@@ -9,8 +9,8 @@ use graphql_client::GraphQLQuery;
 pub enum Error {
     #[error(transparent)]
     Query(anyhow::Error),
-    #[error("Package not found in the registry: {name}")]
-    UnknownPackage { name: String },
+    #[error("Package not found in the registry {registry:?}: {name}")]
+    UnknownPackage { name: String, registry: String },
     #[error("{package_name} v{version} doesn't have any {language} bindings for {module}")]
     MissingBindings {
         package_name: String,
@@ -50,11 +50,15 @@ pub fn link_to_package_bindings(
         version: version.map(|s| s.to_string()),
     });
 
+    let config = crate::config::Config::from_file()
+        .map_err(|e| Error::Query(anyhow::anyhow!("{e}")))?;
+    
     let get_bindings_query::ResponseData { package_version } =
         crate::graphql::execute_query(&q).map_err(Error::Query)?;
     let get_bindings_query::GetBindingsQueryPackageVersion { bindings, version } = package_version
         .ok_or_else(|| Error::UnknownPackage {
             name: package_name.to_string(),
+            registry: config.registry.get_current_registry(),
         })?;
 
     let mut candidates: BTreeMap<_, _> = bindings.into_iter()

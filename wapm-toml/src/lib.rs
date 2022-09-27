@@ -385,6 +385,10 @@ pub mod integration_tests {
     }
 }
 impl Manifest {
+    pub fn from_str(s: &str) -> Result<Self, toml::de::Error> {
+        toml::from_str(s)
+    }
+
     #[cfg(not(feature = "integration_tests"))]
     fn locate_file(path: &Path, candidates: &[&str]) -> Option<PathBuf> {
         for filename in candidates {
@@ -671,7 +675,7 @@ bindings = { wit-exports = "exports.wit", wit-bindgen = "0.0.0" }
 name = "command"
 module = "mod"
 "#;
-        let manifest: Manifest = toml::from_str(manifest_str).unwrap();
+        let manifest: Manifest = Manifest::from_str(manifest_str).unwrap();
         let modules = manifest.module.as_deref().unwrap();
         assert_eq!(
             modules[0].interfaces.as_ref().unwrap().get("wasi"),
