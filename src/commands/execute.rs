@@ -387,7 +387,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
 
     // first search for locally installed command
     match FindCommandResult::find_command_in_directory(&current_dir, &command_name) {
-        FindCommandResult::CommandNotFound(_) => {
+        FindCommandResult::CommandNotFound { .. } => {
             // go to normal wax flow
             debug!(
                 "Wax: Command \"{}\" not found locally in directory {}",
@@ -696,7 +696,10 @@ fn run(
     args: &[OsString],
 ) -> anyhow::Result<()> {
     match FindCommandResult::find_command_in_directory(&location, command_name) {
-        FindCommandResult::CommandNotFound(s) => {
+        FindCommandResult::CommandNotFound { 
+            error,
+            extended: _,
+         } => {
             // this should only happen if the package is deleted immediately
             // after being installed to the temp directory or the package is
             // corrupt
@@ -704,7 +707,7 @@ fn run(
                 "Implement command not found logic!: {}, {}: {}",
                 location.to_string_lossy(),
                 &command_name,
-                s
+                error,
             );
         }
         FindCommandResult::CommandFound {
