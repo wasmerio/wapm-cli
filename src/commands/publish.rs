@@ -14,6 +14,7 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -220,39 +221,78 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             e
         })?;
 
-        let url = url::Url::parse(&url.url).unwrap();
+        let mut url = url::Url::parse(&format!("{}", url.url)).unwrap();
 
-        println!("got signed url: {}", url);
+        let headers = url.query_pairs()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect::<Vec<_>>();
+        
+        url.set_query(None);
 
+        let client = reqwest::blocking::Client::new();
+        let mut res = client.post(format!("{url}?uploads"));
+        for (k, v) in headers {
+            res = res.header(k.to_string(), v.to_string());
+        }
+        
+        let res = res
+            .header(reqwest::header::CONTENT_LENGTH, "0");
+
+        println!("{:#?}", res);
+
+        let result = res
+            .send()
+            .unwrap();
+
+        println!("{result:#?}");
+
+        let upload_id = result.headers()
+            .get("x-guploader-uploadid").unwrap()
+            .to_str().unwrap().to_string();
+        
+        println!("{}", result.text().unwrap());
+
+        println!("upload id: {:#?}", upload_id);
+
+        let fake_data = vec![0;archived_data_size as usize];
+        for (i, chunk) in fake_data.chunks(256 * 1024).enumerate() {
+            let md5_str = format!("{:x}", md5::compute(chunk));
+            let res = client.put(&format!("{url}?partNumber={}&uploadId={upload_id}", i + 1))
+                .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
+                .header("Content-MD5", md5_str.clone())
+                .header("x-goog-hash", md5_str.clone());
+            
+            println!("res: {:#?}", res);
+
+            let response = res
+            .send()
+            .unwrap();
+
+            println!("response: {response:#?}");
+        }
         /*
-
-        https://storage.googleapis.com/wapm-io-backend-test-bucket/felix-test_wamp-0.1.0-16648c49-b2c3-4390-b6d8-84ba546b488d.tar.gz?
-        X-Goog-Algorithm=GOOG4-RSA-SHA256
-        X-Goog-Credential=storage-object-service%40wasmer.iam.gserviceaccount.com%2F20220929%2Fauto%2Fstorage%2Fgoog4_request
-        X-Goog-Date=20220929T114028Z
-        X-Goog-Expires=60
-        X-Goog-SignedHeaders=content-type%3Bhost
-        X-Goog-Signature=5282fcccf4e2af7356ff83a4c3e96bb8d91cf7be525fc0e03c77fd8d6c751630dd64cbb436f7122b75e1669751afb75ca2d0d5845fbe22a9bcbe31ab35aa2feec265010e44e90c45f4eaf0318a54b815e2ba523b1458e211ee45858ae39a4e2b9f248f24351c76fcf9f57ca2fb704e8f1e1467b0f6ef389d1de53d7b273113cbc8c674153e9a9a5d6927475cfb098e947bba318c1665f950f614c403e53740a0d571f322d01ee15a8b8a30a342e49e36ef45b9a036cc87aab9e555c746aa668f502377b90560275297869a7fe6b06e6ca772453d6dfab934ea633ce432113bce60f768280fcf7829e443a7db24c600ea83a45d1e15b10b0507a068e4f0235d13
-
-        POST /paris.jpg?uploads HTTP/2
-        Host: travel-maps.storage.googleapis.com
-        Date: Wed, 24 Mar 2021 18:11:50 GMT
-        Content-Type: image/jpg
-        Content-Length: 0
-        Authorization: Bearer ya29.AHES6ZRVmB7fkLtd1XTmq6mo0S1wqZZi3-Lh_s-6Uw7p8vtgSwg
+            PUT /OBJECT_NAME?partNumber=PART_NUMBER&uploadId=UPLOAD_ID HTTP/1.1
+            Host: BUCKET_NAME.storage.googleapis.com
+            Date: DATE
+            Content-Length: REQUEST_BODY_LENGTH
+            Content-MD5: MD5_DIGEST
+            Authorization: AUTHENTICATION_STRING
+            x-goog-hash: MD5_DIGEST
         */
-
+/* 
         let client = reqwest::blocking::Client::new();
         let res = client.post(url)
             .header(reqwest::header::CONTENT_TYPE, "host")
-            .header(reqwest::header::CONTENT_LENGTH, archived_data_size.to_string())
+            .header(reqwest::header::CONTENT_LENGTH, 0)
             .send()
             .unwrap();
 
         let posted = res.text().unwrap();
 
         println!("auth API: {}", posted);
-        
+        */
+        return Ok(());
+
         let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
             name: package.name.to_string(),
             version: package.version.to_string(),
