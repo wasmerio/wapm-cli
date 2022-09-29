@@ -33,6 +33,14 @@ pub struct PublishOpt {
 )]
 struct PublishPackageMutation;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/get_signed_url.graphql",
+    response_derives = "Debug"
+)]
+struct GetSignedUrl;
+
 fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
     let mut out = PathBuf::from(cwd);
     let mut components = path.components();
@@ -162,6 +170,79 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         }
     };
 
+    let archived_data_size = archive_path.metadata()?.len();
+    let use_chunked_uploads = archived_data_size > 1242880;
+
+    assert!(archive_path.exists());
+    assert!(archive_path.is_file());
+
+    if publish_opts.dry_run {
+
+        // dry run: publish is done here
+
+        println!(
+            "Successfully published package `{}@{}`",
+            package.name, package.version
+        );
+    
+        info!(
+            "Publish succeeded, but package was not published because it was run in dry-run mode"
+        );
+        
+        return Ok(());
+    }
+
+    // file is larger than 1MB, use chunked uploads
+    if true {
+
+        let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
+            name: package.name.to_string(),
+            version: package.version.to_string(),
+        });
+        
+        let _response: get_signed_url::ResponseData =
+        execute_query_modifier(
+            &get_google_signed_url, 
+            |f| f.file(archive_name.clone(), archive_path.clone()).unwrap()
+        ).map_err(
+            |e| {
+                #[cfg(feature = "telemetry")]
+                sentry::integrations::anyhow::capture_anyhow(&e);
+                e
+            },
+        )?;
+
+        let url = _response.url
+        .ok_or({
+            let e = anyhow!("could not get signed url for package {}@{}", package.name, package.version);
+            #[cfg(feature = "telemetry")]
+            sentry::integrations::anyhow::capture_anyhow(&e);
+            e
+        })?;
+
+        let url = url::Url::parse(&url.url).unwrap();
+
+        println!("got signed url: {}", url);
+        
+        let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
+            name: package.name.to_string(),
+            version: package.version.to_string(),
+            description: package.description.clone(),
+            manifest: manifest_string,
+            license: package.license.clone(),
+            license_file,
+            readme,
+            repository: package.repository.clone(),
+            homepage: package.homepage.clone(),
+            file_name: Some(archive_name.clone()),
+            signature: maybe_signature_data,
+            uploaded_filename: None,
+        });
+
+        return Ok(());
+    }
+
+    // regular upload
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
         name: package.name.to_string(),
         version: package.version.to_string(),
@@ -174,6 +255,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
         signature: maybe_signature_data,
+        uploaded_filename: None,
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
@@ -189,11 +271,6 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         package.name, package.version
     );
 
-    if publish_opts.dry_run {
-        info!(
-            "Publish succeeded, but package was not published because it was run in dry-run mode"
-        );
-    }
     Ok(())
 }
 
