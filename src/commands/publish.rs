@@ -223,6 +223,35 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         let url = url::Url::parse(&url.url).unwrap();
 
         println!("got signed url: {}", url);
+
+        /*
+
+        https://storage.googleapis.com/wapm-io-backend-test-bucket/felix-test_wamp-0.1.0-16648c49-b2c3-4390-b6d8-84ba546b488d.tar.gz?
+        X-Goog-Algorithm=GOOG4-RSA-SHA256
+        X-Goog-Credential=storage-object-service%40wasmer.iam.gserviceaccount.com%2F20220929%2Fauto%2Fstorage%2Fgoog4_request
+        X-Goog-Date=20220929T114028Z
+        X-Goog-Expires=60
+        X-Goog-SignedHeaders=content-type%3Bhost
+        X-Goog-Signature=5282fcccf4e2af7356ff83a4c3e96bb8d91cf7be525fc0e03c77fd8d6c751630dd64cbb436f7122b75e1669751afb75ca2d0d5845fbe22a9bcbe31ab35aa2feec265010e44e90c45f4eaf0318a54b815e2ba523b1458e211ee45858ae39a4e2b9f248f24351c76fcf9f57ca2fb704e8f1e1467b0f6ef389d1de53d7b273113cbc8c674153e9a9a5d6927475cfb098e947bba318c1665f950f614c403e53740a0d571f322d01ee15a8b8a30a342e49e36ef45b9a036cc87aab9e555c746aa668f502377b90560275297869a7fe6b06e6ca772453d6dfab934ea633ce432113bce60f768280fcf7829e443a7db24c600ea83a45d1e15b10b0507a068e4f0235d13
+
+        POST /paris.jpg?uploads HTTP/2
+        Host: travel-maps.storage.googleapis.com
+        Date: Wed, 24 Mar 2021 18:11:50 GMT
+        Content-Type: image/jpg
+        Content-Length: 0
+        Authorization: Bearer ya29.AHES6ZRVmB7fkLtd1XTmq6mo0S1wqZZi3-Lh_s-6Uw7p8vtgSwg
+        */
+
+        let client = reqwest::blocking::Client::new();
+        let res = client.post(url)
+            .header(reqwest::header::CONTENT_TYPE, "host")
+            .header(reqwest::header::CONTENT_LENGTH, archived_data_size.to_string())
+            .send()
+            .unwrap();
+
+        let posted = res.text().unwrap();
+
+        println!("auth API: {}", posted);
         
         let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
             name: package.name.to_string(),
