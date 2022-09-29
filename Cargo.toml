@@ -40,10 +40,12 @@ wapm-toml = { version = "0.2.0", path = "./wapm-toml" }
 wasmer-wasm-interface = { version = "0.1.0", path = "lib/wasm-interface" }
 wasmparser = "0.51.4"
 dialoguer = "0.4.0"
-hex = { version = "0.4", optional = true }
+hex = { version = "0.4" }
 blake3 = { version = "0.3.1", optional = true }
 sublime_fuzzy = "0.7.0"
 md5 = "0.7.0"
+sha2 = "*"
+base64 = "*"
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 whoami = "1.1.5"
@@ -73,7 +75,7 @@ default = ["full","packagesigning", "sqlite-bundled"]
 sqlite-bundled = ["rusqlite/bundled"]
 telemetry = ["sentry"]
 update-notifications= ["billboard", "colored"]
-prehash-module = ["hex", "blake3"]
+prehash-module = ["blake3"]
 packagesigning = []#[cfg(feature = "full")]
 integration_tests = ["maplit", "wapm-toml/integration_tests"]
 full = [ "dirs", "rusqlite", "prettytable-rs", "reqwest" ]

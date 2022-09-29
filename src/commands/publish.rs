@@ -14,7 +14,7 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -225,9 +225,12 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
         let headers = url.query_pairs()
         .map(|(k, v)| (k.to_string(), v.to_string()))
-        .collect::<Vec<_>>();
+        .collect::<BTreeMap<_, _>>();
         
         url.set_query(None);
+
+        println!("headers: {:#?}", headers);
+        let authentication_signature = headers.get("X-Goog-Signature").unwrap().clone();
 
         let client = reqwest::blocking::Client::new();
         let mut res = client.post(format!("{url}?uploads"));
@@ -236,7 +239,24 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         }
         
         let res = res
-            .header(reqwest::header::CONTENT_LENGTH, "0");
+            .header(reqwest::header::CONTENT_LENGTH, "0")
+            .header("x-goog-content-sha256".to_string(), sha256(&[]))
+            .header("Authorization", format!("{authentication_signature}"));
+
+        fn sha256(bytes: &[u8]) -> String {
+            use sha2::Digest;
+
+            // create a Sha256 object
+            let mut hasher = sha2::Sha256::new();
+
+            // write input message
+            hasher.update(bytes);
+
+            // read hash digest and consume hasher
+            let result = hasher.finalize().to_vec();
+
+            hex::encode(&result)
+        }
 
         println!("{:#?}", res);
 
