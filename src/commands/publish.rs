@@ -13,11 +13,16 @@ use rpassword_wasi as rpassword;
 use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
+use console::{style, Emoji};
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::Write;
+use std::io::{Write as IoWrite, Read};
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
+
+static UPLOAD: Emoji<'_, '_>  = Emoji("⬆️  ", "");
+static PACKAGE: Emoji<'_, '_> = Emoji("📦  ", "");
 
 #[derive(StructOpt, Debug)]
 pub struct PublishOpt {
@@ -192,10 +197,16 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         
         return Ok(());
     }
-
+    
     // file is larger than 1MB, use chunked uploads
-    if true {
+    if use_chunked_uploads {
 
+        println!(
+            "{} {} Uploading...",
+            style("[1/2]").bold().dim(),
+            UPLOAD
+        );
+        
         let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
             name: package.name.to_string(),
             version: package.version.to_string(),
@@ -221,97 +232,89 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             e
         })?;
 
-        let mut url = url::Url::parse(&format!("{}", url.url)).unwrap();
+        let url = url::Url::parse(&format!("{}", url.url)).unwrap();
 
-        let headers = url.query_pairs()
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .collect::<BTreeMap<_, _>>();
-        
-        url.set_query(None);
+        let mut client = reqwest::blocking::Client::builder()
+            .default_headers(reqwest::header::HeaderMap::default())
+            .build().unwrap();
 
-        println!("headers: {:#?}", headers);
-        let authentication_signature = headers.get("X-Goog-Signature").unwrap().clone();
-
-        let client = reqwest::blocking::Client::new();
-        let mut res = client.post(format!("{url}?uploads"));
-        for (k, v) in headers {
-            res = res.header(k.to_string(), v.to_string());
-        }
-        
-        let res = res
+        let res =  client.post(url)
             .header(reqwest::header::CONTENT_LENGTH, "0")
-            .header("x-goog-content-sha256".to_string(), sha256(&[]))
-            .header("Authorization", format!("{authentication_signature}"));
-
-        fn sha256(bytes: &[u8]) -> String {
-            use sha2::Digest;
-
-            // create a Sha256 object
-            let mut hasher = sha2::Sha256::new();
-
-            // write input message
-            hasher.update(bytes);
-
-            // read hash digest and consume hasher
-            let result = hasher.finalize().to_vec();
-
-            hex::encode(&result)
-        }
-
-        println!("{:#?}", res);
+            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+            .header("x-goog-resumable", "start");
 
         let result = res
             .send()
             .unwrap();
 
-        println!("{result:#?}");
+        if result.status() != reqwest::StatusCode::from_u16(201).unwrap() {
+            return Err(anyhow!("Uploading package failed: got HTTP {:?} when uploading", result.status()));
+        }
 
-        let upload_id = result.headers()
-            .get("x-guploader-uploadid").unwrap()
-            .to_str().unwrap().to_string();
-        
-        println!("{}", result.text().unwrap());
+        let headers = result.headers()
+            .into_iter()
+            .filter_map(|(k, v)| {
+                let k = k.to_string();
+                let v = v.to_str().ok()?.to_string();
+                Some((k.to_lowercase(), v))
+            })
+            .collect::<BTreeMap<_, _>>();
 
-        println!("upload id: {:#?}", upload_id);
+        let session_uri = headers.get("location").unwrap().clone();
 
-        let fake_data = vec![0;archived_data_size as usize];
-        for (i, chunk) in fake_data.chunks(256 * 1024).enumerate() {
-            let md5_str = format!("{:x}", md5::compute(chunk));
-            let res = client.put(&format!("{url}?partNumber={}&uploadId={upload_id}", i + 1))
-                .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
-                .header("Content-MD5", md5_str.clone())
-                .header("x-goog-hash", md5_str.clone());
+        let total= archived_data_size;
+
+        use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+
+        // archive_path
+        let mut file = std::fs::OpenOptions::new().read(true).open(&archive_path).unwrap();
+
+        let pb = ProgressBar::new(archived_data_size);
+        pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+        .unwrap()
+        .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
+            write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+        })
+        .progress_chars("#>-"));
+
+        let chunk_size = 256 * 1024;
+        let mut file_pointer = 0;
+
+        loop {
+            let mut chunk = Vec::with_capacity(chunk_size);
+            let n = std::io::Read::by_ref(&mut file).take(chunk_size as u64).read_to_end(&mut chunk)?;
+            if n == 0 { break; }
+
+            let start = file_pointer;
+            let end = file_pointer + chunk.len().saturating_sub(1);
+            let content_range = format!("bytes {start}-{end}/{total}");
+
+            let mut client = reqwest::blocking::Client::builder()
+            .default_headers(reqwest::header::HeaderMap::default())
+            .build().unwrap();
             
-            println!("res: {:#?}", res);
+            let res = client.put(&session_uri)
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
+                .header("Content-Range".to_string(), content_range)
+                .body(chunk.to_vec());
+            
+            pb.set_position(file_pointer as u64);
 
             let response = res
             .send()
             .unwrap();
 
-            println!("response: {response:#?}");
+            if n < chunk_size { break; }
         }
-        /*
-            PUT /OBJECT_NAME?partNumber=PART_NUMBER&uploadId=UPLOAD_ID HTTP/1.1
-            Host: BUCKET_NAME.storage.googleapis.com
-            Date: DATE
-            Content-Length: REQUEST_BODY_LENGTH
-            Content-MD5: MD5_DIGEST
-            Authorization: AUTHENTICATION_STRING
-            x-goog-hash: MD5_DIGEST
-        */
-/* 
-        let client = reqwest::blocking::Client::new();
-        let res = client.post(url)
-            .header(reqwest::header::CONTENT_TYPE, "host")
-            .header(reqwest::header::CONTENT_LENGTH, 0)
-            .send()
-            .unwrap();
 
-        let posted = res.text().unwrap();
+        pb.finish_and_clear();
 
-        println!("auth API: {}", posted);
-        */
-        return Ok(());
+        println!(
+            "{} {}Publishing...",
+            style("[2/2]").bold().dim(),
+            PACKAGE,
+        );
 
         let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
             name: package.name.to_string(),
@@ -328,8 +331,18 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             uploaded_filename: None,
         });
 
+        println!(
+            "Successfully published package `{}@{}`",
+            package.name, package.version
+        );
         return Ok(());
     }
+
+    println!(
+        "{} {}Publishing...",
+        style("[1/1]").bold().dim(),
+        PACKAGE,
+    );
 
     // regular upload
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {

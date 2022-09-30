@@ -361,13 +361,13 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.15.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89eab4d20ce20cea182308bca13088fecea9c05f6776cf287205d41a0ed3c847"
+checksum = "c050367d967ced717c04b65d8c619d863ef9292ce0c5760028655a2fb298718c"
 dependencies = [
  "encode_unicode",
+ "lazy_static",
  "libc",
- "once_cell",
  "terminal_size",
  "unicode-width",
  "winapi",
@@ -504,7 +504,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "116f66c4e7b19af0d52857aa4ff710cc3b4781d9c16616e31540bc55ec57ba8c"
 dependencies = [
- "console 0.15.1",
+ "console 0.15.2",
  "lazy_static",
  "tempfile",
 ]
@@ -1168,6 +1168,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfddc9561e8baf264e0e45e197fd7696320026eb10a8180340debc27b18f535b"
+dependencies = [
+ "console 0.15.2",
+ "number_prefix",
+ "unicode-segmentation",
+ "unicode-width",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1298,12 +1310,6 @@ name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
-
-[[package]]
-name = "md5"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
 name = "memchr"
@@ -1441,6 +1447,12 @@ dependencies = [
  "hermit-abi",
  "libc",
 ]
+
+[[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "object"
@@ -2764,11 +2776,11 @@ version = "0.5.6"
 dependencies = [
  "anyhow",
  "atty",
- "base64 0.9.3",
  "billboard",
  "blake3",
  "chrono",
  "colored",
+ "console 0.15.2",
  "dialoguer",
  "dirs 4.0.0",
  "fern",
@@ -2776,11 +2788,11 @@ dependencies = [
  "getrandom 0.2.7",
  "graphql_client",
  "hex",
+ "indicatif",
  "lazy_static",
  "license-exprs",
  "log 0.4.17",
  "maplit",
- "md5",
  "minisign",
  "prettytable-rs",
  "regex",
@@ -2793,7 +2805,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
- "sha2",
  "structopt",
  "sublime_fuzzy",
  "tar",
