@@ -199,7 +199,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     }
     
     // file is larger than 1MB, use chunked uploads
-    if use_chunked_uploads {
+    if true {
 
         println!(
             "{} {} Uploading...",
@@ -232,8 +232,8 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             e
         })?;
 
-        let url = url::Url::parse(&format!("{}", url.url)).unwrap();
-
+        let signed_url = format!("{}", url.url);
+        let url = url::Url::parse(&signed_url).unwrap();
         let mut client = reqwest::blocking::Client::builder()
             .default_headers(reqwest::header::HeaderMap::default())
             .build().unwrap();
@@ -328,13 +328,23 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             homepage: package.homepage.clone(),
             file_name: Some(archive_name.clone()),
             signature: maybe_signature_data,
-            uploaded_filename: None,
+            signed_url: Some(signed_url),
         });
+
+        let _response: publish_package_mutation::ResponseData = crate::graphql::execute_query(&q)
+        .map_err(
+            |e| {
+                #[cfg(feature = "telemetry")]
+                sentry::integrations::anyhow::capture_anyhow(&e);
+                e
+            },
+        )?;
 
         println!(
             "Successfully published package `{}@{}`",
             package.name, package.version
         );
+
         return Ok(());
     }
 
@@ -357,7 +367,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
         signature: maybe_signature_data,
-        uploaded_filename: None,
+        signed_url: None,
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
