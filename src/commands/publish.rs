@@ -199,7 +199,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     }
     
     // file is larger than 1MB, use chunked uploads
-    if true {
+    if use_chunked_uploads {
 
         println!(
             "{} {} Uploading...",
