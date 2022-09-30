@@ -7,21 +7,21 @@ use crate::keys;
 use crate::util::create_temp_dir;
 use crate::validate;
 
+use console::{style, Emoji};
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use rpassword_wasi as rpassword;
 use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
-use console::{style, Emoji};
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::io::{Write as IoWrite, Read};
 use std::fmt::Write;
+use std::fs;
+use std::io::{Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
-static UPLOAD: Emoji<'_, '_>  = Emoji("⬆️  ", "");
+static UPLOAD: Emoji<'_, '_> = Emoji("⬆️  ", "");
 static PACKAGE: Emoji<'_, '_> = Emoji("📦  ", "");
 
 #[derive(StructOpt, Debug)]
@@ -183,50 +183,45 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     assert!(archive_path.is_file());
 
     if publish_opts.dry_run {
-
         // dry run: publish is done here
 
         println!(
             "Successfully published package `{}@{}`",
             package.name, package.version
         );
-    
+
         info!(
             "Publish succeeded, but package was not published because it was run in dry-run mode"
         );
-        
+
         return Ok(());
     }
-    
+
     // file is larger than 1MB, use chunked uploads
     if use_chunked_uploads {
+        println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
 
-        println!(
-            "{} {} Uploading...",
-            style("[1/2]").bold().dim(),
-            UPLOAD
-        );
-        
         let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
             name: package.name.to_string(),
             version: package.version.to_string(),
         });
-        
+
         let _response: get_signed_url::ResponseData =
-        execute_query_modifier(
-            &get_google_signed_url, 
-            |f| f.file(archive_name.clone(), archive_path.clone()).unwrap()
-        ).map_err(
-            |e| {
+            execute_query_modifier(&get_google_signed_url, |f| {
+                f.file(archive_name.clone(), archive_path.clone()).unwrap()
+            })
+            .map_err(|e| {
                 #[cfg(feature = "telemetry")]
                 sentry::integrations::anyhow::capture_anyhow(&e);
                 e
-            },
-        )?;
+            })?;
 
-        let url = _response.url
-        .ok_or({
-            let e = anyhow!("could not get signed url for package {}@{}", package.name, package.version);
+        let url = _response.url.ok_or({
+            let e = anyhow!(
+                "could not get signed url for package {}@{}",
+                package.name,
+                package.version
+            );
             #[cfg(feature = "telemetry")]
             sentry::integrations::anyhow::capture_anyhow(&e);
             e
@@ -236,22 +231,26 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         let url = url::Url::parse(&signed_url).unwrap();
         let mut client = reqwest::blocking::Client::builder()
             .default_headers(reqwest::header::HeaderMap::default())
-            .build().unwrap();
+            .build()
+            .unwrap();
 
-        let res =  client.post(url)
+        let res = client
+            .post(url)
             .header(reqwest::header::CONTENT_LENGTH, "0")
             .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
             .header("x-goog-resumable", "start");
 
-        let result = res
-            .send()
-            .unwrap();
+        let result = res.send().unwrap();
 
         if result.status() != reqwest::StatusCode::from_u16(201).unwrap() {
-            return Err(anyhow!("Uploading package failed: got HTTP {:?} when uploading", result.status()));
+            return Err(anyhow!(
+                "Uploading package failed: got HTTP {:?} when uploading",
+                result.status()
+            ));
         }
 
-        let headers = result.headers()
+        let headers = result
+            .headers()
             .into_iter()
             .filter_map(|(k, v)| {
                 let k = k.to_string();
@@ -262,12 +261,15 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
         let session_uri = headers.get("location").unwrap().clone();
 
-        let total= archived_data_size;
+        let total = archived_data_size;
 
         use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 
         // archive_path
-        let mut file = std::fs::OpenOptions::new().read(true).open(&archive_path).unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(&archive_path)
+            .unwrap();
 
         let pb = ProgressBar::new(archived_data_size);
         pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
@@ -282,39 +284,41 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
         loop {
             let mut chunk = Vec::with_capacity(chunk_size);
-            let n = std::io::Read::by_ref(&mut file).take(chunk_size as u64).read_to_end(&mut chunk)?;
-            if n == 0 { break; }
+            let n = std::io::Read::by_ref(&mut file)
+                .take(chunk_size as u64)
+                .read_to_end(&mut chunk)?;
+            if n == 0 {
+                break;
+            }
 
             let start = file_pointer;
             let end = file_pointer + chunk.len().saturating_sub(1);
             let content_range = format!("bytes {start}-{end}/{total}");
 
             let mut client = reqwest::blocking::Client::builder()
-            .default_headers(reqwest::header::HeaderMap::default())
-            .build().unwrap();
-            
-            let res = client.put(&session_uri)
+                .default_headers(reqwest::header::HeaderMap::default())
+                .build()
+                .unwrap();
+
+            let res = client
+                .put(&session_uri)
                 .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
                 .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
                 .header("Content-Range".to_string(), content_range)
                 .body(chunk.to_vec());
-            
+
             pb.set_position(file_pointer as u64);
 
-            let response = res
-            .send()
-            .unwrap();
+            let response = res.send().unwrap();
 
-            if n < chunk_size { break; }
+            if n < chunk_size {
+                break;
+            }
         }
 
         pb.finish_and_clear();
 
-        println!(
-            "{} {}Publishing...",
-            style("[2/2]").bold().dim(),
-            PACKAGE,
-        );
+        println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
 
         let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
             name: package.name.to_string(),
@@ -332,13 +336,11 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         });
 
         let _response: publish_package_mutation::ResponseData = crate::graphql::execute_query(&q)
-        .map_err(
-            |e| {
-                #[cfg(feature = "telemetry")]
-                sentry::integrations::anyhow::capture_anyhow(&e);
-                e
-            },
-        )?;
+            .map_err(|e| {
+            #[cfg(feature = "telemetry")]
+            sentry::integrations::anyhow::capture_anyhow(&e);
+            e
+        })?;
 
         println!(
             "Successfully published package `{}@{}`",
@@ -348,11 +350,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    println!(
-        "{} {}Publishing...",
-        style("[1/1]").bold().dim(),
-        PACKAGE,
-    );
+    println!("{} {}Publishing...", style("[1/1]").bold().dim(), PACKAGE,);
 
     // regular upload
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
