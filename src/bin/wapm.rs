@@ -133,7 +133,7 @@ fn main() {
             .next()
             .expect("Fatal error could not find any arguments!"),
     );
-    let maybe_subcommand_name = env::args().skip(1).next();
+    let maybe_subcommand_name = env::args().nth(1);
     let prog_name = prog_name
         .file_name()
         .expect("Could not parse argv[0] as a path")

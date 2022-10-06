@@ -82,7 +82,10 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         let normalized_path = normalize_path(&manifest.base_directory_path, &module.source);
         normalized_path
             .metadata()
-            .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
+            .map_err(|_| PublishError::SourceMustBeFile {
+                module: module.name.clone(),
+                path: normalized_path.clone(),
+            })?;
         builder
             .append_path(normalized_path)
             .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
@@ -92,7 +95,10 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
                 let normalized_path = normalize_path(&manifest.base_directory_path, &path);
                 normalized_path
                     .metadata()
-                    .map_err(|_| PublishError::SourceMustBeFile(module.name.clone()))?;
+                    .map_err(|_| PublishError::MissingBindings {
+                        module: module.name.clone(),
+                        path: normalized_path.clone(),
+                    })?;
                 builder
                     .append_path(normalized_path)
                     .map_err(|_| PublishError::ErrorBuildingPackage(module.name.clone()))?;
@@ -199,8 +205,10 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 enum PublishError {
     #[error("Cannot publish without a module.")]
     NoModule,
-    #[error("Module \"{0}\" must have a source that is a file.")]
-    SourceMustBeFile(String),
+    #[error("Unable to publish the \"{module}\" module because \"{}\" is not a file", path.display())]
+    SourceMustBeFile { module: String, path: PathBuf },
+    #[error("Unable to load the bindings for \"{module}\" because \"{}\" doesn't exist", path.display())]
+    MissingBindings { module: String, path: PathBuf },
     #[error("Error building package when parsing module \"{0}\".")]
     ErrorBuildingPackage(String),
     #[error(
