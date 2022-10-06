@@ -43,17 +43,21 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     let mut registry_error = Vec::new();
     let find_command_result = get_command_from_anywhere(command_name);
     if find_command_result.is_err() {
-        let package_info = find_command_result::PackageInfoFromCommand::get(command_name.to_string());
+        let package_info =
+            find_command_result::PackageInfoFromCommand::get(command_name.to_string());
         registry_error = match package_info {
             Err(e) => {
-                vec![
-                    format!("Error: {e}"),
-                    format!(""),
-                ]
-            },
+                vec![format!("Error: {e}"), format!("")]
+            }
             Ok(o) => vec![
-                format!("Command {:?} was not found, but the package \"{}@{}\" has this command.", o.command, o.namespaced_package_name, o.version),
-                format!("You can install it with `wapm install {}@{}`.", o.namespaced_package_name, o.version),
+                format!(
+                    "Command {:?} was not found, but the package \"{}@{}\" has this command.",
+                    o.command, o.namespaced_package_name, o.version
+                ),
+                format!(
+                    "You can install it with `wapm install {}@{}`.",
+                    o.namespaced_package_name, o.version
+                ),
             ],
         };
     }
@@ -68,9 +72,9 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     } = match find_command_result {
         Err(find_command_result::Error::CommandNotFound {
             command,
-            error,
             mut local_log,
             mut global_log,
+            ..
         }) => {
             let mut log = vec![format!("Could not find command {:?}:", command)];
             log.append(&mut local_log);
@@ -79,20 +83,17 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             return Err(anyhow!("{}", log.join("\r\n")));
         },
         Err(find_command_result::Error::ErrorReadingLocalDirectory {
-            command,
-            error,
-            mut local_log,
-            global_log,
+            local_log,
+            ..
         }) => {
             let mut log = local_log.clone();
             log.append(&mut registry_error);
             return Err(anyhow!("{}", log.join("\r\n")));
         },
         Err(find_command_result::Error::CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory {
-            command,
-            error,
-            mut local_log,
+            local_log,
             mut global_log,
+            ..
         }) => {
             let mut log = local_log.clone();
             log.append(&mut global_log);
