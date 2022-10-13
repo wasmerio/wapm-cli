@@ -334,54 +334,12 @@ impl<'a> Install<'a> for RegistryInstaller {
                 Error::Download(key.to_string(), error_message)
             })?;
 
-        // step to perform after package is decompressed: may be a no-op or may
-        // execute side effects such as logging to the user.
-        #[cfg(feature = "full")]
-        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
-            if !force_insecure_install {
-                let PackageSignatureVerificationData {
-                    insecure_install,
-                    key_to_verify_package_with,
-                    signature_to_use,
-                } = verify_integrity_of_package(
-                    namespace,
-                    fully_qualified_package_name.clone(),
-                    signature,
-                )?;
-
-                if insecure_install {
-                    Box::new(|_dest| Ok(()))
-                } else {
-                    Box::new(move |dest| {
-                        let (pk_id, pkv) = key_to_verify_package_with
-                            .clone()
-                            .expect("Critical internal logic error");
-                        let signature_to_use = signature_to_use
-                            .clone()
-                            .expect("Critical internal logic error");
-                        verify_signature_on_package(&pkv, &signature_to_use, dest).map_err(
-                            |e| {
-                                Error::FailedToValidateSignature(
-                                    fully_qualified_package_name.clone(),
-                                    pk_id,
-                                    e.to_string(),
-                                )
-                            },
-                        )?;
-                        info!(
-                            "Signature of package {} verified!",
-                            &fully_qualified_package_name
-                        );
-                        Ok(())
-                    })
-                }
-            } else {
-                Box::new(|_dest| Ok(()))
-            };
-
-        #[cfg(not(feature = "full"))]
-        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
-            Box::new(|_dest| Ok(()));
+        let key_sign_end_step = get_key_sign_end_step(
+            force_insecure_install,
+            namespace,
+            fully_qualified_package_name,
+            signature,
+        )?;
 
         let temp_dir =
             create_temp_dir().map_err(|e| Error::Download(key.to_string(), e.to_string()))?;
@@ -407,6 +365,55 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|e| Error::Decompression(key.to_string(), e.to_string()))?;
         Ok((key, package_dir, download_url.to_string()))
     }
+}
+
+type KeySignEndStep = Box<dyn FnOnce(&mut fs::File) -> Result<(), Error>>;
+
+/// Get the step to perform after package is decompressed: may be a no-op or may
+/// execute side effects such as logging to the user.
+fn get_key_sign_end_step(
+    force_insecure_install: bool,
+    namespace: &str,
+    fully_qualified_package_name: String,
+    signature: Option<keys::WapmPackageSignature>,
+) -> Result<KeySignEndStep, Error> {
+    #[cfg(feature = "full")]
+    if !force_insecure_install {
+        let PackageSignatureVerificationData {
+            insecure_install,
+            key_to_verify_package_with,
+            signature_to_use,
+        } = verify_integrity_of_package(
+            namespace,
+            fully_qualified_package_name.clone(),
+            signature,
+        )?;
+
+        if !insecure_install {
+            return Ok(Box::new(move |dest| {
+                let (pk_id, pkv) = key_to_verify_package_with
+                    .clone()
+                    .expect("Critical internal logic error");
+                let signature_to_use = signature_to_use
+                    .clone()
+                    .expect("Critical internal logic error");
+                verify_signature_on_package(&pkv, &signature_to_use, dest).map_err(|e| {
+                    Error::FailedToValidateSignature(
+                        fully_qualified_package_name.clone(),
+                        pk_id,
+                        e.to_string(),
+                    )
+                })?;
+                info!(
+                    "Signature of package {} verified!",
+                    &fully_qualified_package_name
+                );
+                Ok(())
+            }));
+        }
+    }
+
+    Ok(Box::new(|_| Ok(())))
 }
 
 /// Verifies the signature of a downloaded package archive
