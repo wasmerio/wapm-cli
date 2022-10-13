@@ -66,9 +66,7 @@ mod test {
             .prepare(PERSONAL_PUBLIC_KEY_VALUE_EXISTENCE_CHECK)
             .unwrap();
         let result = key_check
-            .query_map(params![public_key_id, public_key_value], |row| {
-                row.get(0)
-            })
+            .query_map(params![public_key_id, public_key_value], |row| row.get(0))
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
             .unwrap();
@@ -78,9 +76,7 @@ mod test {
             .unwrap();
 
         let result = key_check
-            .query_map(params![public_key_id, public_key_value], |row| {
-                row.get(0)
-            })
+            .query_map(params![public_key_id, public_key_value], |row| row.get(0))
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
             .unwrap();

@@ -222,9 +222,8 @@ pub fn add_personal_key_pair_to_database(
     // fail if we already have the key
     {
         let mut key_check = conn.prepare(sql::PERSONAL_PUBLIC_KEY_VALUE_EXISTENCE_CHECK)?;
-        let result = key_check.query_map(params![public_key_id, public_key_value], |row| {
-            row.get(0)
-        })?;
+        let result =
+            key_check.query_map(params![public_key_id, public_key_value], |row| row.get(0))?;
 
         if let [existing_key] = &result.collect::<Result<Vec<String>, _>>()?[..] {
             return Err(PersonalKeyError::PublicKeyAlreadyExists(existing_key.to_string()).into());

@@ -49,10 +49,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
 
             // hack, short circuit if no interface for now
             if module.interfaces.is_none() {
-                return validate_wasm_and_report_errors_old(
-                    &wasm_buffer[..],
-                    source_path_string,
-                );
+                return validate_wasm_and_report_errors_old(&wasm_buffer[..], source_path_string);
             }
 
             let mut conn = database::open_db()?;
