@@ -122,6 +122,7 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn do_run(
     run_dir: PathBuf,
     source_path_buf: PathBuf,
