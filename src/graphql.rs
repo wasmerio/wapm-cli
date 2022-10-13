@@ -1,5 +1,4 @@
 use graphql_client::{QueryBody, Response};
-use serde;
 use std::env;
 use std::string::ToString;
 use thiserror::Error;

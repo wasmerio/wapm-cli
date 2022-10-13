@@ -13,6 +13,7 @@ use crate::dataflow::WapmPackageKey;
 use crate::graphql::{execute_query, DateTime};
 //use crate::keys;
 use crate::util;
+use anyhow::Context;
 use thiserror::Error;
 
 use graphql_client::*;
@@ -95,7 +96,7 @@ impl ExecuteOptInner {
             .print_help()
             .expect("could not print help text");
         // pad with extra new line
-        println!("");
+        println!();
     }
 }
 
@@ -171,7 +172,7 @@ impl QueriedPackage {
             return None;
         }
 
-        let split = package_name.split("@").collect::<Vec<_>>();
+        let split = package_name.split('@').collect::<Vec<_>>();
         let (mut package_name, mut version) = match split.as_slice() {
             [n, v] => (n.to_string(), Some(v.to_string())),
             [n] => (n.to_string(), None),
@@ -182,7 +183,7 @@ impl QueriedPackage {
 
         let command_name;
         if let Some(v) = version.clone() {
-            let split2 = v.split(":").collect::<Vec<_>>();
+            let split2 = v.split(':').collect::<Vec<_>>();
             let (v, c) = match split2.as_slice() {
                 [n, v] => (n.to_string(), Some(v.to_string())),
                 [n] => (n.to_string(), None),
@@ -193,7 +194,7 @@ impl QueriedPackage {
             version = Some(v);
             command_name = c;
         } else {
-            let split2 = package_name.split(":").collect::<Vec<_>>();
+            let split2 = package_name.split(':').collect::<Vec<_>>();
             let (v, c) = match split2.as_slice() {
                 [n, v] => (n.to_string(), Some(v.to_string())),
                 [n] => (n.to_string(), None),
@@ -205,14 +206,10 @@ impl QueriedPackage {
             command_name = c;
         }
 
-        let queried_package: Option<QueriedPackage>;
-
-        match version {
+        let queried_package = match version {
             None => {
                 let q2 = WaxGetPackageCommandQuery::build_query(
-                    wax_get_package_command_query::Variables {
-                        name: package_name.to_string(),
-                    },
+                    wax_get_package_command_query::Variables { name: package_name },
                 );
 
                 let response: wax_get_package_command_query::ResponseData =
@@ -230,7 +227,7 @@ impl QueriedPackage {
                 )
                 .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string()))
                 .ok()?;
-                let manifest = wapm_toml::Manifest::from_str(
+                let manifest = wapm_toml::Manifest::parse(
                     &response.package.as_ref()?.last_version.as_ref()?.manifest,
                 )
                 .ok()?;
@@ -244,18 +241,18 @@ impl QueriedPackage {
                         .next()?,
                 };
                 let name = response.package.as_ref()?.name.clone();
-                queried_package = Some(QueriedPackage {
+                Some(QueriedPackage {
                     package: name,
                     command_to_exec,
                     version,
                     download_url,
-                });
+                })
             }
             Some(v) => {
                 let q3 =
                     GetPackageVersionQuery::build_query(get_package_version_query::Variables {
-                        name: package_name.to_string(),
-                        version: Some(v.clone()),
+                        name: package_name,
+                        version: Some(v),
                     });
                 let response: get_package_version_query::ResponseData = execute_query(&q3).ok()?;
                 let download_url = response
@@ -269,7 +266,7 @@ impl QueriedPackage {
                         .map_err(|e| ExecuteError::ErrorInDataFromRegistry(e.to_string()))
                         .ok()?;
                 let manifest =
-                    wapm_toml::Manifest::from_str(&response.package_version.as_ref()?.manifest)
+                    wapm_toml::Manifest::parse(&response.package_version.as_ref()?.manifest)
                         .ok()?;
                 let command_to_exec = match command_name {
                     Some(s) => s,
@@ -281,14 +278,14 @@ impl QueriedPackage {
                         .next()?,
                 };
                 let name = response.package_version.as_ref()?.package.name.clone();
-                queried_package = Some(QueriedPackage {
+                Some(QueriedPackage {
                     package: name,
                     command_to_exec,
                     version,
                     download_url,
-                });
+                })
             }
-        }
+        };
 
         queried_package
     }
@@ -385,18 +382,16 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             wax_index
                 .base_path()
                 .join(format!("{}@{}", package_name, version))
+        } else if let FindCommandResult::CommandFound { manifest_dir, .. } =
+            FindCommandResult::find_command_in_directory(&current_dir, &which)
+        {
+            manifest_dir
         } else {
-            if let FindCommandResult::CommandFound { manifest_dir, .. } =
-                FindCommandResult::find_command_in_directory(&current_dir, &which)
-            {
-                manifest_dir
-            } else {
-                return Err(ExecuteError::CommandNotFound {
-                    name: which.clone(),
-                    registry: config.registry.get_current_registry(),
-                }
-                .into());
+            return Err(ExecuteError::CommandNotFound {
+                name: which,
+                registry: config.registry.get_current_registry(),
             }
+            .into());
         };
 
         println!("{}", dir.to_string_lossy());
@@ -416,7 +411,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
     );
 
     // first search for locally installed command
-    match FindCommandResult::find_command_in_directory(&current_dir, &command_name) {
+    match FindCommandResult::find_command_in_directory(&current_dir, command_name) {
         FindCommandResult::CommandNotFound { .. } => {
             // go to normal wax flow
             debug!(
@@ -568,8 +563,8 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
                 );
                 wax_index.insert_entry(
                     command_name.to_string(),
-                    registry_version.clone(),
-                    command.package_version.package.name.clone(),
+                    registry_version,
+                    command.package_version.package.name,
                 );
                 wax_index.save()?;
 
@@ -603,11 +598,11 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
             ResolvedPackages {
                 packages: vec![(
                     WapmPackageKey {
-                        name: command.package_version.package.name.clone().into(),
-                        version: registry_version.clone(),
+                        name: command.package_version.package.name.into(),
+                        version: registry_version,
                     },
                     (
-                        command.package_version.distribution.download_url.clone(),
+                        command.package_version.distribution.download_url,
                         None, /*
                                   // package signing disabled for `wapm execute` for now
                                   command
@@ -632,7 +627,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
                 )],
             },
         )
-    } else if let Some(package) = QueriedPackage::query(&opt, &command_name).as_ref() {
+    } else if let Some(package) = QueriedPackage::query(&opt, command_name).as_ref() {
         command_is_package = true;
         run_command_name = package.command_to_exec.clone();
         let install_loc = wax_index
@@ -662,8 +657,8 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
         .into());
     };
 
-    let registry_version = reg_ver.ok_or(anyhow!("no registry version"))?;
-    let package_name = package_name.ok_or(anyhow!("no package name"))?;
+    let registry_version = reg_ver.context("no registry version")?;
+    let package_name = package_name.context("no package name")?;
 
     // perform the install and generate the lockfile (like a simpler version of dataflow::update updating without a manifest)
     let lockfile_result = LockfileResult::find_in_directory(&install_loc);
@@ -696,13 +691,13 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
 
     if command_is_package {
         let install_loc_original = install_loc.clone();
-        let mut name = package_name.split("/");
+        let mut name = package_name.split('/');
         install_loc = install_loc.join("wapm_packages");
         if let Some(s) = name.next() {
             install_loc = install_loc.join(s)
         }
         if let Some(s) = name.next() {
-            install_loc = install_loc.join(&format!("{s}@{registry_version}"));
+            install_loc = install_loc.join(format!("{s}@{registry_version}"));
         }
 
         let _ = std::fs::copy(
@@ -717,7 +712,8 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
         &opt.pre_opened_directories,
         &opt.args,
     )?;
-    return Ok(());
+
+    Ok(())
 }
 
 fn run(
@@ -746,7 +742,7 @@ fn run(
             prehashed_cache_key,
         } => {
             crate::logging::clear_stdout()?;
-            return crate::commands::run::do_run(
+            crate::commands::run::do_run(
                 location,
                 source,
                 manifest_dir,
@@ -755,10 +751,10 @@ fn run(
                 pre_opened_directories,
                 args,
                 prehashed_cache_key,
-            );
+            )
         }
-        FindCommandResult::Error(e) => return Err(e),
-    };
+        FindCommandResult::Error(e) => Err(e),
+    }
 }
 
 fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> anyhow::Result<()> {
@@ -776,15 +772,12 @@ fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> anyhow::Result<(
             &opt.pre_opened_directories,
             &opt.args,
         )
+    } else if opt.offline {
+        return Err(
+            ExecuteError::CommandNotFoundOfflineModeOfflineFlag(command_name.to_string()).into(),
+        );
     } else {
-        if opt.offline {
-            return Err(ExecuteError::CommandNotFoundOfflineModeOfflineFlag(
-                command_name.to_string(),
-            )
-            .into());
-        } else {
-            return Err(ExecuteError::CommandNotFoundOfflineMode(command_name.to_string()).into());
-        }
+        return Err(ExecuteError::CommandNotFoundOfflineMode(command_name.to_string()).into());
     }
 }
 

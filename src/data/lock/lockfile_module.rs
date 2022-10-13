@@ -83,13 +83,13 @@ impl LockfileModule {
         };
 
         let lockfile_module = LockfileModule {
-            name: module.name.to_string(),
+            name: module.name.clone(),
             package_version: version.to_string(),
             package_name: name.to_string(),
-            package_path: format!("{}@{}", name.to_string(), version.to_string()),
+            package_path: format!("{}@{}", name, version),
             resolved: download_url.to_string(),
             resolved_source: format!("registry+{}", module.name),
-            abi: module.abi.clone(),
+            abi: module.abi,
             prehashed_module_key: util::get_hashed_module_key(&path.join(&source)),
             source,
         };
@@ -109,10 +109,10 @@ impl LockfileModule {
             name: module.name.clone(),
             package_version: version.to_string(),
             package_name: name.to_string(),
-            package_path: format!("{}@{}", name.to_string(), version.to_string()),
+            package_path: format!("{}@{}", name, version),
             resolved: "local".to_string(),
             resolved_source: "local".to_string(),
-            abi: module.abi.clone(),
+            abi: module.abi,
             source: module.source.to_string_lossy().to_string(),
             prehashed_module_key: util::get_hashed_module_key(&wasm_module_full_path),
         }

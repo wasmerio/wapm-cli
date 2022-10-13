@@ -2,11 +2,10 @@
     not(feature = "full"),
     allow(dead_code, unused_imports, unused_variables)
 )]
+use anyhow::Context;
 use graphql_client::GraphQLQuery;
 use std::collections::BTreeMap;
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -104,7 +103,7 @@ fn test_registries_switch_token() {
 fn format_graphql(registry: &str) -> String {
     if registry.ends_with("/graphql") {
         registry.to_string()
-    } else if registry.ends_with("/") {
+    } else if registry.ends_with('/') {
         format!("{}graphql", registry)
     } else {
         format!("{}/graphql", registry)
@@ -302,7 +301,7 @@ impl Config {
         if let Some(pwd) = std::env::var("PWD").ok() {
             return Ok(PathBuf::from(pwd));
         }
-        Ok(std::env::current_dir()?)
+        std::env::current_dir()
     }
 
     pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
@@ -313,7 +312,7 @@ impl Config {
             {
                 let folder = PathBuf::from(folder_str);
                 std::fs::create_dir_all(folder.clone())
-                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                    .map_err(GlobalConfigError::CannotCreateConfigDirectory)?;
                 folder
             } else {
                 #[allow(unused_variables)]
@@ -327,10 +326,10 @@ impl Config {
                 let home_dir = std::env::var("HOME")
                     .ok()
                     .unwrap_or_else(|| default_dir.to_string_lossy().to_string());
-                let mut folder = PathBuf::from(home_dir);
+                let mut folder = home_dir;
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
                 std::fs::create_dir_all(folder.clone())
-                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                    .map_err(GlobalConfigError::CannotCreateConfigDirectory)?;
                 folder
             },
         )
@@ -352,13 +351,14 @@ impl Config {
     /// Load the config from a file
     #[cfg(not(feature = "integration_tests"))]
     pub fn from_file() -> Result<Self, GlobalConfigError> {
+        use std::{fs::File, io::Read};
         let path = Self::get_file_location()?;
         match File::open(&path) {
             Ok(mut file) => {
                 let mut config_toml = String::new();
                 file.read_to_string(&mut config_toml)
-                    .map_err(|e| GlobalConfigError::Io(e))?;
-                toml::from_str(&config_toml).map_err(|e| GlobalConfigError::Toml(e))
+                    .map_err(GlobalConfigError::Io)?;
+                toml::from_str(&config_toml).map_err(GlobalConfigError::Toml)
             }
             Err(_e) => Ok(Self::default()),
         }
@@ -382,7 +382,8 @@ impl Config {
 
     /// Save the config to a file
     #[cfg(not(feature = "integration_tests"))]
-    pub fn save(self: &Self) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
+        use std::{fs::File, io::Write};
         let path = Self::get_file_location()?;
         let config_serialized = toml::to_string(&self)?;
         let mut file = File::create(path)?;
@@ -392,7 +393,7 @@ impl Config {
 
     /// A mocked version of the standard function for integration tests
     #[cfg(feature = "integration_tests")]
-    pub fn save(self: &Self) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let config_serialized = toml::to_string(&self)?;
         crate::integration_tests::data::RAW_CONFIG_DATA.with(|rcd| {
             *rcd.borrow_mut() = Some(config_serialized);
@@ -491,10 +492,12 @@ pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
         "registry.token" => config
             .registry
             .get_login_token_for_registry(&config.registry.get_current_registry())
-            .ok_or(anyhow::anyhow!(
-                "Not logged into {:?}",
-                config.registry.get_current_registry()
-            ))?,
+            .with_context(|| {
+                format!(
+                    "Not logged into {:?}",
+                    config.registry.get_current_registry()
+                )
+            })?,
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => config.telemetry.enabled.clone(),
         #[cfg(feature = "update-notifications")]

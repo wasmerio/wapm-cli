@@ -2,7 +2,7 @@
 
 use crate::interface_matcher::InterfaceMatcher;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Interface {
@@ -18,27 +18,38 @@ impl Interface {
     pub fn merge(&self, other: Interface) -> Result<Interface, String> {
         let mut base = self.clone();
 
-        for (key, val) in other.imports.into_iter() {
-            if base.imports.contains_key(&key) {
-                if val != base.imports[&key] {
-                    return Err(format!("Conflict detected: the import \"{}\" \"{}\" was found but the definitions were different: {:?} {:?}", &key.0, &key.1, base.imports[&key], val));
+        for (key, val) in other.imports {
+            match base.imports.entry(key) {
+                Entry::Occupied(e) if *e.get() != val => {
+                    let (namespace, name) = e.key();
+                    let original_value = e.get();
+                    return Err(format!("Conflict detected: the import \"{namespace}\" \"{name}\" was found but the definitions were different: {original_value:?} {val:?}"));
                 }
-            } else {
-                let res = base.imports.insert(key, val);
-                debug_assert!(res.is_none());
-            }
+                Entry::Occupied(_) => {
+                    // it's okay for the imported items to be the same.
+                }
+                Entry::Vacant(e) => {
+                    e.insert(val);
+                }
+            };
         }
 
-        for (key, val) in other.exports.into_iter() {
-            if base.exports.contains_key(&key) {
-                if val != base.exports[&key] {
-                    return Err(format!("Conflict detected: the key {} was found in exports but the definitions were different: {:?} {:?}", key, base.exports[&key], val));
+        for (key, val) in other.exports {
+            match base.exports.entry(key) {
+                Entry::Occupied(e) if *e.get() != val => {
+                    let name = e.key();
+                    let original_value = e.get();
+                    return Err(format!("Conflict detected: the key \"{name}\" was found in exports but the definitions were different: {original_value:?} {val:?}"));
                 }
-            } else {
-                let res = base.exports.insert(key, val);
-                debug_assert!(res.is_none());
-            }
+                Entry::Occupied(_) => {
+                    // it's okay for the exported items to be the same.
+                }
+                Entry::Vacant(e) => {
+                    e.insert(val);
+                }
+            };
         }
+
         Ok(base)
     }
 
@@ -95,10 +106,10 @@ impl Import {
         match self {
             Import::Func {
                 namespace, name, ..
-            } => Self::format_key(&namespace, &name),
-            Import::Global {
+            }
+            | Import::Global {
                 namespace, name, ..
-            } => Self::format_key(&namespace, &name),
+            } => Self::format_key(namespace, name),
         }
     }
 }
@@ -124,8 +135,7 @@ impl Export {
     /// Get the key used to look this export up in the Interface's export hashmap
     pub fn get_key(&self) -> String {
         match self {
-            Export::Func { name, .. } => Self::format_key(&name),
-            Export::Global { name, .. } => Self::format_key(&name),
+            Export::Func { name, .. } | Export::Global { name, .. } => Self::format_key(name),
         }
     }
 }
@@ -183,13 +193,13 @@ mod test {
         assert!(interface2.merge(interface1.clone()).is_err());
         assert!(interface1.merge(interface3.clone()).is_ok());
         assert!(interface2.merge(interface3.clone()).is_ok());
-        assert!(interface3.merge(interface2.clone()).is_ok());
+        assert!(interface3.merge(interface2).is_ok());
         assert!(
             interface1.merge(interface1.clone()).is_ok(),
             "exact matches are accepted"
         );
-        assert!(interface3.merge(interface4.clone()).is_err());
+        assert!(interface3.merge(interface4).is_err());
         assert!(interface5.merge(interface5.clone()).is_ok());
-        assert!(interface5.merge(interface6.clone()).is_err());
+        assert!(interface5.merge(interface6).is_err());
     }
 }

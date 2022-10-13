@@ -62,7 +62,7 @@ pub fn link_to_package_bindings(
         })?;
 
     let mut candidates: BTreeMap<_, _> = bindings.into_iter()
-        .filter_map(|b| b)
+        .flatten()
         .filter_map(|bindings| match (language, bindings.on) {
             (Language::JavaScript, get_bindings_query::GetBindingsQueryPackageVersionBindingsOn::PackageVersionNPMBinding(b)) => Some((
                 bindings.module,
@@ -94,7 +94,7 @@ pub fn link_to_package_bindings(
             Ok(url)
         }
         None => {
-            let available_modules = candidates.into_iter().map(|(module, _)| module).collect();
+            let available_modules = candidates.into_keys().collect();
             Err(Error::MultipleBindings {
                 package_name: package_name.to_string(),
                 available_modules,

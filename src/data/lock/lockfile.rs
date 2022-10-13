@@ -46,7 +46,7 @@ pub type LockfileV4 = Lockfile;
 pub type ModuleMapV4 = ModuleMap;
 pub type CommandMapV4 = CommandMap;
 
-impl<'a> Lockfile {
+impl Lockfile {
     /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> anyhow::Result<()> {
         let lockfile_string = toml::to_string(self)?;
@@ -72,7 +72,7 @@ impl<'a> Lockfile {
     pub fn get_command(&self, command_name: &str) -> Result<&LockfileCommand, LockfileError> {
         self.commands
             .get(command_name)
-            .ok_or(LockfileError::CommandNotFound(command_name.to_string()).into())
+            .ok_or_else(|| LockfileError::CommandNotFound(command_name.to_string()))
     }
 
     pub fn get_module(
@@ -81,30 +81,27 @@ impl<'a> Lockfile {
         package_version: &Version,
         module_name: &str,
     ) -> anyhow::Result<&LockfileModule> {
-        let version_map = self.modules.get(package_name).ok_or::<anyhow::Error>(
+        let version_map = self.modules.get(package_name).ok_or_else(|| {
             LockfileError::PackageWithVersionNotFoundWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
-        let module_map = version_map.get(package_version).ok_or::<anyhow::Error>(
+        })?;
+        let module_map = version_map.get(package_version).ok_or_else(|| {
             LockfileError::VersionNotFoundForPackageWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
-        let module = module_map.get(module_name).ok_or::<anyhow::Error>(
+        })?;
+        let module = module_map.get(module_name).ok_or_else(|| {
             LockfileError::ModuleForPackageVersionNotFound(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
+        })?;
         Ok(module)
     }
 }

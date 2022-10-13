@@ -126,6 +126,8 @@ pub fn init(
                 interfaces: None,
                 kind: None,
                 bindings: None,
+                #[cfg(feature = "package")]
+                fs: None,
             }]),
             command: None,
         }
@@ -182,6 +184,8 @@ Press ^C at any time to quit."
                         interfaces: None,
                         kind: None,
                         bindings: None,
+                        #[cfg(feature = "package")]
+                        fs: None,
                     }
                 }
             };

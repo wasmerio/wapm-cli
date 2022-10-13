@@ -30,8 +30,7 @@ pub fn validate_wasm_and_report_errors(
             wasmparser::ParserState::Error(e) => {
                 return Err(WasmValidationError::InvalidWasm {
                     error: format!("{}", e),
-                }
-                .into());
+                });
             }
             wasmparser::ParserState::ImportSectionEntry {
                 module,
@@ -89,7 +88,7 @@ pub fn validate_wasm_and_report_errors(
                 _ => (),
             },
             wasmparser::ParserState::BeginGlobalSectionEntry(gt) => {
-                global_types.push(gt.clone());
+                global_types.push(*gt);
             }
             wasmparser::ParserState::TypeSectionEntry(ft) => {
                 type_defs.push(ft.clone());
@@ -108,7 +107,7 @@ pub fn validate_wasm_and_report_errors(
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(WasmValidationError::InterfaceViolated { errors: errors })
+        Err(WasmValidationError::InterfaceViolated { errors })
     }
 }
 
@@ -116,7 +115,7 @@ pub fn validate_wasm_and_report_errors(
 /// `Interface`
 fn validate_imports(
     import_fns: &HashMap<(String, String), u32>,
-    type_defs: &Vec<FuncType>,
+    type_defs: &[FuncType],
     interface: &Interface,
     errors: &mut Vec<String>,
 ) {
@@ -199,7 +198,7 @@ fn validate_imports(
 /// `Interface`
 fn validate_export_fns(
     export_fns: &HashMap<String, u32>,
-    type_defs: &Vec<FuncType>,
+    type_defs: &[FuncType],
     fn_sigs: &Vec<u32>,
     interface: &Interface,
     errors: &mut Vec<String>,
@@ -290,26 +289,24 @@ fn validate_export_globals(
     errors: &mut Vec<String>,
 ) {
     for (key, val) in export_globals.iter() {
-        if let Some(interface_def) = interface.exports.get(key) {
-            if let Export::Global { var_type, .. } = interface_def {
-                if global_types.get(*val as usize).is_none() {
-                    errors.push(format!(
-                        "Invalid wasm, expected {} global types, found {}",
-                        val,
-                        global_types.len()
-                    ));
-                }
-                match wasmparser_type_into_wasm_type(global_types[*val as usize].content_type) {
-                    Ok(t) => {
-                        if *var_type != t {
-                            errors.push(format!(
-                                "Type mismatch in global export {}: expected {} found {}",
-                                &key, var_type, t
-                            ));
-                        }
+        if let Some(Export::Global { var_type, .. }) = interface.exports.get(key) {
+            if global_types.get(*val as usize).is_none() {
+                errors.push(format!(
+                    "Invalid wasm, expected {} global types, found {}",
+                    val,
+                    global_types.len()
+                ));
+            }
+            match wasmparser_type_into_wasm_type(global_types[*val as usize].content_type) {
+                Ok(t) => {
+                    if *var_type != t {
+                        errors.push(format!(
+                            "Type mismatch in global export {}: expected {} found {}",
+                            &key, var_type, t
+                        ));
                     }
-                    Err(e) => errors.push(format!("In global export {}: {}", &key, e)),
                 }
+                Err(e) => errors.push(format!("In global export {}: {}", &key, e)),
             }
         }
     }
@@ -348,7 +345,7 @@ mod validation_tests {
         let wasm = wat::parse_str(WAT).unwrap();
 
         let interface_src = r#"
-(interface 
+(interface
 (func (import "env" "do_panic") (param i32 i64))
 (global (import "env" "length") (type i32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
@@ -359,7 +356,7 @@ mod validation_tests {
 
         // Now set the global import type to mismatch the wasm
         let interface_src = r#"
-(interface 
+(interface
 (func (import "env" "do_panic") (param i32 i64))
 (global (import "env" "length") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
@@ -373,7 +370,7 @@ mod validation_tests {
 
         // Now set the function import type to mismatch the wasm
         let interface_src = r#"
-(interface 
+(interface
 (func (import "env" "do_panic") (param i64))
 (global (import "env" "length") (type i32)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();
@@ -410,7 +407,7 @@ mod validation_tests {
         let wasm = wat::parse_str(WAT).unwrap();
 
         let interface_src = r#"
-(interface 
+(interface
 (func (export "as-set_local-first") (param i32) (result i32))
 (global (export "num_tries") (type i64)))"#;
         let interface = parser::parse_interface(interface_src).unwrap();

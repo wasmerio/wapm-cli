@@ -33,7 +33,7 @@ impl Abi {
     pub fn is_none(&self) -> bool {
         self == &Abi::None
     }
-    pub fn from_str(name: &str) -> Self {
+    pub fn from_name(name: &str) -> Self {
         match name.to_lowercase().as_ref() {
             "emscripten" => Abi::Emscripten,
             "wasi" => Abi::Wasi,
@@ -161,7 +161,7 @@ pub struct CommandV2 {
 }
 
 impl CommandV2 {
-    pub fn get_annotations(&self, basepath: &PathBuf) -> Result<Option<serde_cbor::Value>, String> {
+    pub fn get_annotations(&self, basepath: &Path) -> Result<Option<serde_cbor::Value>, String> {
         match self.annotations.as_ref() {
             Some(CommandAnnotations::Raw(v)) => Ok(Some(toml_to_cbor_value(v))),
             Some(CommandAnnotations::File(FileCommandAnnotations { file, kind })) => {
@@ -231,7 +231,7 @@ pub fn json_to_cbor_value(val: &serde_json::Value) -> serde_cbor::Value {
             } else if let Some(u) = n.as_u64() {
                 serde_cbor::Value::Integer(u as i128)
             } else if let Some(f) = n.as_f64() {
-                serde_cbor::Value::Float(f as f64)
+                serde_cbor::Value::Float(f)
             } else {
                 serde_cbor::Value::Null
             }
@@ -258,7 +258,7 @@ pub fn yaml_to_cbor_value(val: &serde_yaml::Value) -> serde_cbor::Value {
             } else if let Some(u) = n.as_u64() {
                 serde_cbor::Value::Integer(u as i128)
             } else if let Some(f) = n.as_f64() {
-                serde_cbor::Value::Float(f as f64)
+                serde_cbor::Value::Float(f)
             } else {
                 serde_cbor::Value::Null
             }
@@ -385,7 +385,7 @@ pub mod integration_tests {
     }
 }
 impl Manifest {
-    pub fn from_str(s: &str) -> Result<Self, toml::de::Error> {
+    pub fn parse(s: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(s)
     }
 
@@ -504,7 +504,7 @@ impl Manifest {
         // ignore path for now
         crate::integration_tests::data::RAW_MANIFEST_DATA.with(|rmd| {
             if let Some(ref manifest_toml) = *rmd.borrow() {
-                let manifest: Self = toml::from_str(&manifest_toml)
+                let manifest: Self = toml::from_str(manifest_toml)
                     .map_err(|e| ManifestError::TomlParseError(e.to_string()))?;
                 manifest.validate()?;
                 Ok(manifest)
@@ -559,7 +559,7 @@ mod serialization_tests {
             description = "The best package."
         };
         let manifest: Manifest = wapm_toml.try_into().unwrap();
-        assert_eq!(false, manifest.package.disable_command_rename);
+        assert!(!manifest.package.disable_command_rename);
     }
 }
 
@@ -675,7 +675,7 @@ bindings = { wit-exports = "exports.wit", wit-bindgen = "0.0.0" }
 name = "command"
 module = "mod"
 "#;
-        let manifest: Manifest = Manifest::from_str(manifest_str).unwrap();
+        let manifest: Manifest = Manifest::parse(manifest_str).unwrap();
         let modules = manifest.module.as_deref().unwrap();
         assert_eq!(
             modules[0].interfaces.as_ref().unwrap().get("wasi"),

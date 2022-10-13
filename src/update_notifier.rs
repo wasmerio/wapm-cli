@@ -58,7 +58,7 @@ impl WapmUpdate {
         let now = Utc::now();
         self.last_check = Some(WapmLastCheck {
             timestamp: now,
-            version: version,
+            version,
         });
     }
     fn should_trigger_check(&self) -> bool {

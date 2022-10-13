@@ -88,7 +88,7 @@ pub fn fix_up_v1_package_names(lockfile: &mut LockfileV2) {
                     module.package_name = correct_name.clone();
                 }
             }
-            (correct_name.clone(), versions)
+            (correct_name, versions)
         })
         .collect();
 }

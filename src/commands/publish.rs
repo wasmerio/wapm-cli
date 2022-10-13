@@ -64,16 +64,16 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let manifest_string = toml::to_string(&manifest)?;
 
     let readme = package.readme.as_ref().and_then(|readme_path| {
-        let normalized_path = normalize_path(&manifest.base_directory_path, &readme_path);
-        if let Err(_) = builder.append_path(&normalized_path) {
-            // Maybe do something here
+        let normalized_path = normalize_path(&manifest.base_directory_path, readme_path);
+        if builder.append_path(&normalized_path).is_err() {
+            // TODO: Maybe do something here
         }
         fs::read_to_string(normalized_path).ok()
     });
     let license_file = package.license_file.as_ref().and_then(|license_file_path| {
-        let normalized_path = normalize_path(&manifest.base_directory_path, &license_file_path);
-        if let Err(_) = builder.append_path(&normalized_path) {
-            // Maybe do something here
+        let normalized_path = normalize_path(&manifest.base_directory_path, license_file_path);
+        if builder.append_path(&normalized_path).is_err() {
+            // TODO: Maybe do something here
         }
         fs::read_to_string(normalized_path).ok()
     });
@@ -108,7 +108,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
     // bundle the package filesystem
     for (_alias, path) in manifest.fs.unwrap_or_default().iter() {
-        let normalized_path = normalize_path(&cwd, &path);
+        let normalized_path = normalize_path(&cwd, path);
         let path_metadata = normalized_path.metadata().map_err(|_| {
             PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
         })?;

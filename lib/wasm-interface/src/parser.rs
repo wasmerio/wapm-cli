@@ -188,8 +188,8 @@ fn func(input: &str) -> IResult<&str, Either<Import, Export>> {
                 )),
                 |(func_id, pl, rl)| match func_id {
                     Either::Left((ns, name)) => Either::Left(Import::Func {
-                        namespace: ns.to_string(),
-                        name: name.to_string(),
+                        namespace: ns,
+                        name,
                         params: pl.unwrap_or_default(),
                         result: rl.unwrap_or_default(),
                     }),

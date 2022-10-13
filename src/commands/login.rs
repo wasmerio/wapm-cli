@@ -48,7 +48,7 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
         u.to_string()
     } else {
         print!("Username: ");
-        stdout().flush().ok().expect("Could not flush stdout");
+        stdout().flush().expect("Could not flush stdout");
 
         let buffer = &mut String::new();
         stdin().read_line(buffer)?;
@@ -61,10 +61,7 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
         rpassword::prompt_password("Password: ").expect("Can't get password")
     };
 
-    let q = LoginMutation::build_query(login_mutation::Variables {
-        username: username.to_string(),
-        password: password.to_string(),
-    });
+    let q = LoginMutation::build_query(login_mutation::Variables { username, password });
     let response: login_mutation::ResponseData = execute_query(&q)?;
     let token = match response.token_auth {
         Some(token_auth) => Some(token_auth.refresh_token),
