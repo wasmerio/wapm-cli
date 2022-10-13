@@ -18,6 +18,9 @@ pub fn init(opt: InitOpt) -> anyhow::Result<()> {
 #[cfg(feature = "integration_tests")]
 impl InitOpt {
     pub fn new(force_yes: bool) -> Self {
-        InitOpt { force_yes, project_name: None }
+        InitOpt {
+            force_yes,
+            project_name: None,
+        }
     }
 }

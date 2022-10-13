@@ -38,7 +38,11 @@ where
     execute_query_modifier_inner(registry_url, query, form_modifier)
 }
 
-pub fn execute_query_modifier_inner<R, V, F>(registry_url: &str, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
+pub fn execute_query_modifier_inner<R, V, F>(
+    registry_url: &str,
+    query: &QueryBody<V>,
+    form_modifier: F,
+) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
@@ -106,7 +110,10 @@ where
     execute_query_modifier(query, |f| f)
 }
 
-pub fn execute_query_custom_registry<R, V>(registry_url: &str, query: &QueryBody<V>) -> anyhow::Result<R>
+pub fn execute_query_custom_registry<R, V>(
+    registry_url: &str,
+    query: &QueryBody<V>,
+) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,

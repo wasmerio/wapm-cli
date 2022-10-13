@@ -59,10 +59,10 @@ pub enum Error {
         global_log: Vec<String>,
     },
     #[error(
-        "Command \"{command}\" was neither found in the local nor in the global directory. {error}",
+        "Command \"{command}\" was neither found in the local nor in the global directory. {error}"
     )]
     CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory {
-        command: String, 
+        command: String,
         error: String,
         local_log: Vec<String>,
         global_log: Vec<String>,
@@ -71,7 +71,7 @@ pub enum Error {
         "Could not get command \"{command}\" because there was a problem with the local package. {error}"
     )]
     ErrorReadingLocalDirectory {
-        command: String, 
+        command: String,
         error: String,
         local_log: Vec<String>,
         global_log: Vec<String>,
@@ -188,7 +188,6 @@ impl FindCommandResult {
         lockfile: Lockfile,
         directory: &Path,
     ) -> Self {
-
         let command_name = command_name.as_ref();
         let mut error_lines = Vec::new();
 
@@ -223,18 +222,25 @@ impl FindCommandResult {
             }
         }
 
-        if let Some(s) = lockfile.modules.keys().filter(|k| k.as_str().contains(command_name)).next() {
-            
+        if let Some(s) = lockfile
+            .modules
+            .keys()
+            .filter(|k| k.as_str().contains(command_name))
+            .next()
+        {
             error_lines.push(format!(""));
             error_lines.push(format!("Note:"));
             error_lines.push(format!("    A package {s:?} seems to be installed locally"));
-            error_lines.push(format!("    but the package {s:?} has no commands to execute"));
+            error_lines.push(format!(
+                "    but the package {s:?} has no commands to execute"
+            ));
 
             let all_commands = lockfile.commands.keys().cloned().collect::<Vec<_>>();
-            let nearest = all_commands.iter().filter_map(|c| {
-                sublime_fuzzy::best_match(c, command_name)
-                .map(|_| c.clone())
-            }).take(3).collect::<Vec<_>>();
+            let nearest = all_commands
+                .iter()
+                .filter_map(|c| sublime_fuzzy::best_match(c, command_name).map(|_| c.clone()))
+                .take(3)
+                .collect::<Vec<_>>();
 
             if !nearest.is_empty() {
                 error_lines.push(format!(""));
@@ -306,13 +312,10 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
     let mut log = Vec::new();
 
     match local_command_result {
-        FindCommandResult::CommandNotFound {
-            error: _,
-            extended,
-        } => {
+        FindCommandResult::CommandNotFound { error: _, extended } => {
             log = extended;
             // not found, continue searching...
-        },
+        }
         FindCommandResult::CommandFound {
             source,
             manifest_dir,
@@ -349,10 +352,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     let mut global_log = Vec::new();
     match global_command_result {
-        FindCommandResult::CommandNotFound {
-            error: _,
-            extended,
-        } => {
+        FindCommandResult::CommandNotFound { error: _, extended } => {
             global_log = extended;
             // continue searching...
         }
@@ -379,7 +379,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
                     error: e.to_string(),
                     local_log: log,
                     global_log: global_log,
-                }
+                },
             );
         }
     };

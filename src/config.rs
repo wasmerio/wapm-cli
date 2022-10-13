@@ -2,12 +2,12 @@
     not(feature = "full"),
     allow(dead_code, unused_imports, unused_variables)
 )]
+use graphql_client::GraphQLQuery;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use graphql_client::GraphQLQuery;
 use thiserror::Error;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os = "wasi") {
@@ -72,18 +72,33 @@ fn test_registries_switch_token() {
     let mut registries = Registries::default();
 
     registries.set_current_registry("https://registry.wapm.dev");
-    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
+    assert_eq!(
+        registries.get_current_registry(),
+        "https://registry.wapm.dev/graphql".to_string()
+    );
     registries.set_login_token_for_registry(
         "https://registry.wapm.io",
         "token1",
         UpdateRegistry::LeaveAsIs,
     );
-    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
+    assert_eq!(
+        registries.get_current_registry(),
+        "https://registry.wapm.dev/graphql".to_string()
+    );
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        None
+    );
     registries.set_current_registry("https://registry.wapm.io");
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), Some("token1".to_string()));
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        Some("token1".to_string())
+    );
     registries.clear_current_registry_token();
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        None
+    );
 }
 
 fn format_graphql(registry: &str) -> String {
@@ -131,7 +146,9 @@ impl Registries {
             if registry.contains("wapm.dev") {
                 println!("Note: The correct URL for wapm.dev is https://registry.wapm.dev, not {registry}");
             } else if registry.contains("wapm.io") {
-                println!("Note: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
+                println!(
+                    "Note: The correct URL for wapm.io is https://registry.wapm.io, not {registry}"
+                );
             }
             println!("WARNING: Registry {registry:?} will be used, but commands may not succeed.");
         }
@@ -144,8 +161,14 @@ impl Registries {
     /// Returns the login token for the registry
     pub fn get_login_token_for_registry(&self, registry: &str) -> Option<String> {
         match self {
-            Registries::Single(s) if s.url == registry || format_graphql(registry) == s.url => s.token.clone(),
-            Registries::Multi(m) => m.tokens.get(registry).or_else(|| m.tokens.get(&format_graphql(registry))).cloned(),
+            Registries::Single(s) if s.url == registry || format_graphql(registry) == s.url => {
+                s.token.clone()
+            }
+            Registries::Multi(m) => m
+                .tokens
+                .get(registry)
+                .or_else(|| m.tokens.get(&format_graphql(registry)))
+                .cloned(),
             _ => None,
         }
     }
@@ -188,7 +211,6 @@ impl Registries {
     }
 }
 
-
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -199,9 +221,8 @@ struct TestIfRegistryPresent;
 
 fn test_if_registry_present(registry: &str) -> Result<(), String> {
     let q = TestIfRegistryPresent::build_query(test_if_registry_present::Variables {});
-    let _: test_if_registry_present::ResponseData = 
-        crate::graphql::execute_query_custom_registry(registry, &q)
-        .map_err(|e| format!("{e}"))?;
+    let _: test_if_registry_present::ResponseData =
+        crate::graphql::execute_query_custom_registry(registry, &q).map_err(|e| format!("{e}"))?;
     Ok(())
 }
 
@@ -417,7 +438,11 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 config.registry.set_current_registry(&value);
             }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+                println!(
+                    "Successfully logged into registry {:?} as user {:?}",
+                    config.registry.get_current_registry(),
+                    u
+                );
             }
         }
         "registry.token" => {
@@ -427,7 +452,11 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 UpdateRegistry::LeaveAsIs,
             );
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+                println!(
+                    "Successfully logged into registry {:?} as user {:?}",
+                    config.registry.get_current_registry(),
+                    u
+                );
             }
         }
         #[cfg(feature = "telemetry")]

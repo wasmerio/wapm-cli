@@ -69,7 +69,11 @@ pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameE
         .collect())
 }
 
-pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>) -> anyhow::Result<()> {
+pub fn init(
+    dir: PathBuf,
+    force_yes: bool,
+    initial_project_name: Option<String>,
+) -> anyhow::Result<()> {
     let manifest_location = {
         let mut dir = match initial_project_name.as_ref() {
             Some(s) => dir.join(s),
@@ -82,13 +86,12 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
         Manifest::find_in_directory(dir)?
     } else {
         let package_name = initial_project_name.clone().unwrap_or_else(|| {
-            dir
-            .clone()
-            .as_path()
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string() 
+            dir.clone()
+                .as_path()
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
         });
         let username = crate::util::get_username().ok().and_then(|s| s.clone());
         let name = match username {
@@ -325,7 +328,10 @@ Press ^C at any time to quit."
         {
             init_gitignore(manifest.base_directory_path);
         }
-        println!("Successfully initialized project {:?}", manifest.package.name);
+        println!(
+            "Successfully initialized project {:?}",
+            manifest.package.name
+        );
     } else {
         println!("Aborted.")
     }

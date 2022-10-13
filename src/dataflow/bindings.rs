@@ -50,9 +50,9 @@ pub fn link_to_package_bindings(
         version: version.map(|s| s.to_string()),
     });
 
-    let config = crate::config::Config::from_file()
-        .map_err(|e| Error::Query(anyhow::anyhow!("{e}")))?;
-    
+    let config =
+        crate::config::Config::from_file().map_err(|e| Error::Query(anyhow::anyhow!("{e}")))?;
+
     let get_bindings_query::ResponseData { package_version } =
         crate::graphql::execute_query(&q).map_err(Error::Query)?;
     let get_bindings_query::GetBindingsQueryPackageVersion { bindings, version } = package_version

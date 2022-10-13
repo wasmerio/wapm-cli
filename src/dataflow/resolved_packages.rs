@@ -187,10 +187,10 @@ impl<'a> Resolve<'a> for RegistryResolver {
                     // for example "syrusakbary/lolcat" can also match "_/lolcat". Since we trust
                     // the registry not to select wrong packages, we only need to select for the version to match.
                     exact_package_lookup
-                    .iter()
-                    .find(|(k, _)| k.version == wapm_package_key.version)
-                    .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
-                },
+                        .iter()
+                        .find(|(k, _)| k.version == wapm_package_key.version)
+                        .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
+                }
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
                     let matching_version: Option<Version> = package_versions_lookup
