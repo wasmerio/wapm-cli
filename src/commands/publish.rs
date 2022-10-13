@@ -177,15 +177,11 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
+
     if !publish_opts.dry_run {
         let _response: publish_package_mutation::ResponseData =
-            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
-                |e| {
-                    #[cfg(feature = "telemetry")]
-                    sentry::integrations::anyhow::capture_anyhow(&e);
-                    e
-                },
-            )?;
+            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())
+                .map_err(on_error)?;
     }
 
     println!(
@@ -199,6 +195,13 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+fn on_error(e: anyhow::Error) -> anyhow::Error {
+    #[cfg(feature = "telemetry")]
+    sentry::integrations::anyhow::capture_anyhow(&e);
+
+    e
 }
 
 #[derive(Debug, Error)]
