@@ -283,8 +283,7 @@ mod test {
                 .collect::<PathBuf>(),
         );
         fs::create_dir_all(&wapm_module_dir).unwrap();
-        let expected_dir: PathBuf = wapm_module_dir.clone();
-        let expected_dir = expected_dir.join("foo_entry.wasm");
+        let expected_dir = wapm_module_dir.join("foo_entry.wasm");
         let expected_command = vec![
             expected_dir.into_os_string(),
             OsString::from("--"),
@@ -295,7 +294,7 @@ mod test {
             .iter()
             .collect();
         let actual_command =
-            create_run_command(&args, None, vec![], &dir, wasm_relative_path, None, None).unwrap();
+            create_run_command(&args, None, vec![], dir, wasm_relative_path, None, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }

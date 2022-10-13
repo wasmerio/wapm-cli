@@ -116,7 +116,7 @@ pub fn get_full_personal_public_key_by_id(
             "SELECT public_key_value FROM personal_keys WHERE public_key_id = (?1) ORDER BY date_added LIMIT 1",
         )?;
     let result = stmt
-        .query_row(params![public_key_id], |row| Ok(row.get(0)?))
+        .query_row(params![public_key_id], |row| row.get(0))
         .map_err(|_| anyhow!("No public key matching pattern {} found", &public_key_id))?;
 
     Ok(result)
@@ -223,7 +223,7 @@ pub fn add_personal_key_pair_to_database(
     {
         let mut key_check = conn.prepare(sql::PERSONAL_PUBLIC_KEY_VALUE_EXISTENCE_CHECK)?;
         let result = key_check.query_map(params![public_key_id, public_key_value], |row| {
-            Ok(row.get(0)?)
+            row.get(0)
         })?;
 
         if let [existing_key] = &result.collect::<Result<Vec<String>, _>>()?[..] {

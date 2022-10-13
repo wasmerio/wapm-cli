@@ -83,8 +83,7 @@ where
             env::var("WAPM_REGISTRY_TOKEN").unwrap_or(
                 config
                     .registry
-                    .get_login_token_for_registry(&config.registry.get_current_registry())
-                    .unwrap_or_else(|| "".to_string()),
+                    .get_login_token_for_registry(&config.registry.get_current_registry()).unwrap_or_default(),
             ),
         )
         .header(USER_AGENT, user_agent)

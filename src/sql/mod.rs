@@ -56,7 +56,7 @@ mod test {
 
         let mut get_pk = conn.prepare(GET_PERSONAL_KEYS).unwrap();
         let pks = get_pk
-            .query_map(params![], |row| Ok(row.get(5)?))
+            .query_map(params![], |row| row.get(5))
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
             .unwrap();
@@ -67,7 +67,7 @@ mod test {
             .unwrap();
         let result = key_check
             .query_map(params![public_key_id, public_key_value], |row| {
-                Ok(row.get(0)?)
+                row.get(0)
             })
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
@@ -79,7 +79,7 @@ mod test {
 
         let result = key_check
             .query_map(params![public_key_id, public_key_value], |row| {
-                Ok(row.get(0)?)
+                row.get(0)
             })
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
@@ -102,7 +102,7 @@ mod test {
 
         let mut key_check = conn.prepare(GET_LATEST_PUBLIC_KEY_FOR_USER).unwrap();
         let result = key_check
-            .query_map(params!["ZinedineZidane"], |row| Ok(row.get(0)?))
+            .query_map(params!["ZinedineZidane"], |row| row.get(0))
             .unwrap()
             .collect::<Result<Vec<String>, _>>()
             .unwrap();

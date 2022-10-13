@@ -32,13 +32,13 @@ impl ManifestResult {
     pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
         let directory = directory.as_ref();
         if !directory.is_dir() {
-            ManifestResult::ManifestError(Error::IoError(
+            return ManifestResult::ManifestError(Error::IoError(
                 "Manifest must be a file named `wapm.toml`.".to_string(),
             ));
         }
         let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
         if !manifest_path_buf.is_file() {
-            ManifestResult::ManifestError(Error::IoError(
+            return ManifestResult::ManifestError(Error::IoError(
                 "Manifest must be a file named `wapm.toml`.".to_string(),
             ));
         }
@@ -69,7 +69,7 @@ impl<'a> ManifestPackages<'a> {
         manifest: &'a Manifest,
         added_packages: &AddedPackages<'a>,
     ) -> Result<Self, Error> {
-        let packages = Self::extract_package_keys(&manifest)?;
+        let packages = ManifestPackages::extract_package_keys(manifest)?;
         let mut packages: HashSet<PackageKey> = packages
             .into_iter()
             .map(normalize_global_namespace)
@@ -88,7 +88,7 @@ impl<'a> ManifestPackages<'a> {
             .packages
             .iter()
             .cloned()
-            .map(|pkg_name| {
+            .flat_map(|pkg_name| {
                 self.packages
                     .iter()
                     .cloned()
@@ -98,7 +98,6 @@ impl<'a> ManifestPackages<'a> {
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         for removed_package_key in removed_package_keys {

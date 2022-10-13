@@ -45,7 +45,7 @@ impl<'a> LocalPackage<'a> {
             .into_iter()
             .map(|c| LockfileCommand::from_command(package_name, package_version.clone(), &c))
             .collect::<Result<Vec<LockfileCommand>, lockfile_command::Error>>()
-            .map_err(|e| Error::CouldNotExtractCommandsFromManifest(e))?;
+            .map_err(Error::CouldNotExtractCommandsFromManifest)?;
         let key = PackageKey::new_registry_package(package_name, package_version.clone());
         let data = LockfilePackage { modules, commands };
         Ok(LocalPackage { key, data })

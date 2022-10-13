@@ -112,7 +112,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
         )> = response
             .package
             .into_iter()
-            .filter_map(|p| p)
+            .flatten()
             .map(|p| {
                 let versions = p.versions.unwrap_or_default();
                 let name = p.name;
@@ -120,7 +120,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
             })
             .flat_map(|(n, vs)| {
                 vs.into_iter()
-                    .filter_map(|o| o)
+                    .flatten()
                     .map(|v| {
                         let version = v.version;
                         let download_url = v.distribution.download_url;

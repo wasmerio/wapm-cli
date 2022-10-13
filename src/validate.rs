@@ -51,7 +51,7 @@ pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
             if module.interfaces.is_none() {
                 return validate_wasm_and_report_errors_old(
                     &wasm_buffer[..],
-                    source_path_string.clone(),
+                    source_path_string,
                 );
             }
 

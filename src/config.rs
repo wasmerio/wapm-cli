@@ -527,10 +527,10 @@ mod test {
     #[test]
     fn get_config_and_wasmer_dir_does_not_exist() {
         // remove WASMER_DIR
-        let _ = std::env::remove_var(GLOBAL_CONFIG_FOLDER_ENV_VAR);
+        std::env::remove_var(GLOBAL_CONFIG_FOLDER_ENV_VAR);
         let config_result = Config::from_file();
         assert!(
-            !config_result.is_err(),
+            config_result.is_ok(),
             "Config file created by falling back to default"
         );
     }
