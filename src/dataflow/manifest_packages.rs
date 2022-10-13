@@ -11,13 +11,13 @@ use thiserror::Error;
 #[derive(Clone, Debug, Error)]
 pub enum Error {
     #[error("Could not parse manifest because {0}.")]
-    ManifestTomlParseError(String),
+    ManifestTomlParse(String),
     #[error("Could not parse manifest because {0}.")]
-    IoError(String),
+    Io(String),
     #[error(
         "Version {0} for package {1} must be a semantic version or a semantic version requirement."
     )]
-    SemVerError(String, String),
+    SemVer(String, String),
 }
 
 /// A ternary for a manifest: Some, None, Error.
@@ -32,13 +32,13 @@ impl ManifestResult {
     pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
         let directory = directory.as_ref();
         if !directory.is_dir() {
-            return ManifestResult::ManifestError(Error::IoError(
+            return ManifestResult::ManifestError(Error::Io(
                 "Manifest must be a file named `wapm.toml`.".to_string(),
             ));
         }
         let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
         if !manifest_path_buf.is_file() {
-            return ManifestResult::ManifestError(Error::IoError(
+            return ManifestResult::ManifestError(Error::Io(
                 "Manifest must be a file named `wapm.toml`.".to_string(),
             ));
         }
@@ -51,7 +51,7 @@ impl ManifestResult {
                 m.base_directory_path = directory.to_owned();
                 ManifestResult::Manifest(m)
             }
-            Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string())),
+            Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParse(e.to_string())),
         }
     }
 }
@@ -130,7 +130,7 @@ impl<'a> ManifestPackages<'a> {
         } else if let Ok(version_req) = VersionReq::parse(version) {
             Ok(PackageKey::new_registry_package_range(name, version_req))
         } else {
-            Err(Error::SemVerError(name.to_string(), version.to_string()))
+            Err(Error::SemVer(name.to_string(), version.to_string()))
         }
     }
 }

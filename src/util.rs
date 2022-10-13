@@ -282,7 +282,7 @@ pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
 /// Returns the value of the WAPM_RUNTIME env var if it exists.
 /// Otherwise returns wasmer
 fn get_runtime() -> String {
-    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
+    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or_else(|_| DEFAULT_RUNTIME.to_owned())
 }
 
 /// Splits the runtime from the rest of arguments

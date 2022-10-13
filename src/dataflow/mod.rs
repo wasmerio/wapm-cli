@@ -36,23 +36,23 @@ use thiserror::Error;
 #[derive(Clone, Debug, Error)]
 pub enum Error {
     #[error("Could not open manifest. {0}")]
-    ManifestError(manifest_packages::Error),
+    Manifest(manifest_packages::Error),
     #[error("Could not open lockfile. {0}")]
-    LockfileError(LockfileError),
+    Lockfile(LockfileError),
     #[error("Could generate lockfile. {0}")]
-    GenerateLockfileError(merged_lockfile_packages::Error),
+    GenerateLockfile(merged_lockfile_packages::Error),
     #[error("Could not install package(s). {0}")]
-    InstallError(installed_packages::Error),
+    Install(installed_packages::Error),
     #[error("Could not resolve package(s). {0}")]
-    ResolveError(resolved_packages::Error),
+    Resolve(resolved_packages::Error),
     #[error("Could not save manifest file because {0}.")]
-    SaveError(String),
+    Save(String),
     #[error("Could not install new packages. {0}")]
-    AddError(added_packages::Error),
+    Add(added_packages::Error),
     #[error("Could not operate on local package data. {0}")]
-    LocalPackageError(local_package::Error),
+    LocalPackage(local_package::Error),
     #[error("Could not cleanup old artifacts. {0}")]
-    CleanupError(removed_lockfile_packages::Error),
+    Cleanup(removed_lockfile_packages::Error),
     #[error("Attempting to install multiple versions of package {0} ({1} and {2})")]
     DuplicatePackage(String, String, String),
 }
@@ -82,21 +82,17 @@ pub fn detect_duplicate_packages(packages: &HashSet<PackageKey>) -> Result<(), E
     let mut seen_pkg_versions = HashMap::new();
 
     for pkg in packages.iter() {
-        match pkg {
-            PackageKey::WapmPackage(WapmPackageKey { name, version }) => {
-                if let Some(old_version) = seen_pkg_versions.insert(name, version) {
-                    // we sort the versions so that output is stable
-                    let mut versions = [old_version.to_string(), version.to_string()];
-                    versions.sort();
-                    return Err(Error::DuplicatePackage(
-                        name.to_string(),
-                        versions[0].clone(),
-                        versions[1].clone(),
-                    ));
-                }
+        if let PackageKey::WapmPackage(WapmPackageKey { name, version }) = pkg {
+            if let Some(old_version) = seen_pkg_versions.insert(name, version) {
+                // we sort the versions so that output is stable
+                let mut versions = [old_version.to_string(), version.to_string()];
+                versions.sort();
+                return Err(Error::DuplicatePackage(
+                    name.to_string(),
+                    versions[0].clone(),
+                    versions[1].clone(),
+                ));
             }
-            // ignore package ranges for now
-            _ => (),
         }
     }
 
@@ -194,7 +190,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(directory);
     let mut lockfile_packages =
-        LockfilePackages::new_from_result(lockfile_result).map_err(Error::LockfileError)?;
+        LockfilePackages::new_from_result(lockfile_result).map_err(Error::Lockfile)?;
     detect_duplicate_packages(&added_packages.packages)?;
 
     // capture the initial lockfile keys before any modifications
@@ -208,7 +204,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     // cleanup any old artifacts
     removed_lockfile_packages
         .cleanup_old_packages(directory)
-        .map_err(Error::CleanupError)?;
+        .map_err(Error::Cleanup)?;
 
     // remove/uninstall packages
     lockfile_packages.remove_packages(removed_packages);
@@ -223,12 +219,12 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
 
     let resolved_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(added_packages)
-            .map_err(Error::ResolveError)?;
+            .map_err(Error::Resolve)?;
     let installed_packages =
         InstalledPackages::install::<RegistryInstaller>(directory, resolved_packages, false)
-            .map_err(Error::InstallError)?;
-    let added_lockfile_data = LockfilePackages::from_installed_packages(&installed_packages)
-        .map_err(Error::LockfileError)?;
+            .map_err(Error::Install)?;
+    let added_lockfile_data =
+        LockfilePackages::from_installed_packages(&installed_packages).map_err(Error::Lockfile)?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_lockfile_packages(lockfile_packages);
@@ -240,7 +236,7 @@ pub fn update_with_no_manifest<P: AsRef<Path>>(
     if final_package_keys != initial_package_keys {
         final_lockfile_data
             .generate_lockfile(directory)
-            .map_err(Error::GenerateLockfileError)?;
+            .map_err(Error::GenerateLockfile)?;
         Ok(true)
     } else {
         Ok(false)
@@ -260,7 +256,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 
     let mut manifest_packages =
         ManifestPackages::new_from_manifest_and_added_packages(&manifest, &added_packages)
-            .map_err(Error::ManifestError)?;
+            .map_err(Error::Manifest)?;
 
     detect_duplicate_packages(&manifest_packages.packages)?;
 
@@ -270,13 +266,13 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // get lockfile data
     let lockfile_result = LockfileResult::find_in_directory(directory);
     let lockfile_packages =
-        LockfilePackages::new_from_result(lockfile_result).map_err(Error::LockfileError)?;
+        LockfilePackages::new_from_result(lockfile_result).map_err(Error::Lockfile)?;
     // store lockfile package keys before updating it
     let initial_package_keys = lockfile_packages.package_keys();
 
     // get the local package modules and commands from the manifest
-    let local_package = LocalPackage::new_from_local_package_in_manifest(&manifest)
-        .map_err(Error::LocalPackageError)?;
+    let local_package =
+        LocalPackage::new_from_local_package_in_manifest(&manifest).map_err(Error::LocalPackage)?;
 
     let changed_manifest_data =
         ChangedManifestPackages::get_changed_packages_from_manifest_and_lockfile(
@@ -297,23 +293,23 @@ pub fn update_with_manifest<P: AsRef<Path>>(
     // cleanup any old artifacts
     removed_lockfile_packages
         .cleanup_old_packages(directory)
-        .map_err(Error::CleanupError)?;
+        .map_err(Error::Cleanup)?;
 
     let retained_lockfile_packages =
         RetainedLockfilePackages::from_manifest_and_lockfile(&manifest_packages, lockfile_packages);
 
     let resolved_manifest_packages =
         ResolvedPackages::new_from_added_packages::<RegistryResolver>(new_added_packages)
-            .map_err(Error::ResolveError)?;
+            .map_err(Error::Resolve)?;
     let installed_manifest_packages = InstalledPackages::install::<RegistryInstaller>(
         directory,
         resolved_manifest_packages,
         false,
     )
-    .map_err(Error::InstallError)?;
+    .map_err(Error::Install)?;
     let mut manifest_lockfile_data =
         LockfilePackages::from_installed_packages(&installed_manifest_packages)
-            .map_err(Error::LockfileError)?;
+            .map_err(Error::Lockfile)?;
 
     manifest_lockfile_data.extend(local_package.into());
 
@@ -324,7 +320,7 @@ pub fn update_with_manifest<P: AsRef<Path>>(
 
     final_lockfile_data
         .generate_lockfile(directory)
-        .map_err(Error::GenerateLockfileError)?;
+        .map_err(Error::GenerateLockfile)?;
 
     // update the manifest, if applicable
     if final_package_keys != initial_package_keys {
@@ -343,8 +339,7 @@ pub fn update<P: AsRef<Path>>(
     directory: P,
 ) -> Result<bool, Error> {
     let directory = directory.as_ref();
-    let added_packages =
-        AddedPackages::new_from_str_pairs(added_packages).map_err(Error::AddError)?;
+    let added_packages = AddedPackages::new_from_str_pairs(added_packages).map_err(Error::Add)?;
     let removed_packages = RemovedPackages::new_from_package_names(removed_packages);
     let manifest_result = ManifestResult::find_in_directory(directory);
     match manifest_result {
@@ -354,7 +349,7 @@ pub fn update<P: AsRef<Path>>(
         ManifestResult::Manifest(manifest) => {
             update_with_manifest(directory, manifest, added_packages, removed_packages)
         }
-        ManifestResult::ManifestError(e) => Err(Error::ManifestError(e)),
+        ManifestResult::ManifestError(e) => Err(Error::Manifest(e)),
     }
 }
 
@@ -384,9 +379,7 @@ pub fn update_manifest(
         manifest.remove_dependency(package_name.borrow());
     }
 
-    manifest
-        .save()
-        .map_err(|e| Error::SaveError(e.to_string()))?;
+    manifest.save().map_err(|e| Error::Save(e.to_string()))?;
 
     Ok(())
 }

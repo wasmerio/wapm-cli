@@ -32,11 +32,12 @@ pub fn maybe_set_up_proxy() -> anyhow::Result<Option<reqwest::Proxy>> {
         .and_then(|config| config.proxy.url);
     let proxy = if let Some(proxy_url) = maybe_proxy_url {
         reqwest::Proxy::all(&proxy_url).map(|proxy| (proxy_url, proxy, "`proxy.url` config key"))
-    } else if let Ok(proxy_url) = env::var("ALL_PROXY").or(env::var("all_proxy")) {
+    } else if let Ok(proxy_url) = env::var("ALL_PROXY").or_else(|_| env::var("all_proxy")) {
         reqwest::Proxy::all(&proxy_url).map(|proxy| (proxy_url, proxy, "ALL_PROXY"))
-    } else if let Ok(https_proxy_url) = env::var("HTTPS_PROXY").or(env::var("https_proxy")) {
+    } else if let Ok(https_proxy_url) = env::var("HTTPS_PROXY").or_else(|_| env::var("https_proxy"))
+    {
         reqwest::Proxy::https(&https_proxy_url).map(|proxy| (https_proxy_url, proxy, "HTTPS_PROXY"))
-    } else if let Ok(http_proxy_url) = env::var("HTTP_PROXY").or(env::var("http_proxy")) {
+    } else if let Ok(http_proxy_url) = env::var("HTTP_PROXY").or_else(|_| env::var("http_proxy")) {
         reqwest::Proxy::http(&http_proxy_url).map(|proxy| (http_proxy_url, proxy, "http_proxy"))
     } else {
         return Ok(None);

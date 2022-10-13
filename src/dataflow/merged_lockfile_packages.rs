@@ -58,9 +58,7 @@ impl<'a> MergedLockfilePackages<'a> {
                     name: package_name,
                     version: package_version,
                 }) => {
-                    let versions = modules
-                        .entry(package_name.to_owned().to_string())
-                        .or_default();
+                    let versions = modules.entry(package_name.into_owned()).or_default();
                     let modules = versions.entry(package_version).or_default();
                     for module in package.modules {
                         let name = module.name.clone();

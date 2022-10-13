@@ -245,7 +245,7 @@ Press ^C at any time to quit."
                         ),
                         None,
                     ),
-                    0 | _ => (Abi::None, None, None),
+                    _ => (Abi::None, None, None),
                 };
             module.abi = abi;
             // module.kind = kind;

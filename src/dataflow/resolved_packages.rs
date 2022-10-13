@@ -61,17 +61,14 @@ impl<'a> ResolvedPackages<'a> {
     }
 }
 
+type DownloadUrls<'a> = Vec<(
+    WapmPackageKey<'a>,
+    (String, Option<keys::WapmPackageSignature>),
+)>;
+
 /// A Resolve trait to enable testing and dependency injection
 pub trait Resolve<'a> {
-    fn sync_packages(
-        added_packages: Vec<PackageKey<'a>>,
-    ) -> Result<
-        Vec<(
-            WapmPackageKey<'a>,
-            (String, Option<keys::WapmPackageSignature>),
-        )>,
-        Error,
-    >;
+    fn sync_packages(added_packages: Vec<PackageKey<'a>>) -> Result<DownloadUrls<'a>, Error>;
 }
 
 pub struct RegistryResolver;

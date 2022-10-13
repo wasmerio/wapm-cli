@@ -52,10 +52,10 @@ impl<'a> LocalPackage<'a> {
     }
 }
 
-impl<'a> Into<LockfilePackages<'a>> for LocalPackage<'a> {
-    fn into(self) -> LockfilePackages<'a> {
+impl<'a> From<LocalPackage<'a>> for LockfilePackages<'a> {
+    fn from(local: LocalPackage<'a>) -> LockfilePackages<'a> {
         let mut packages = HashMap::new();
-        packages.insert(self.key, self.data);
+        packages.insert(local.key, local.data);
         LockfilePackages { packages }
     }
 }
