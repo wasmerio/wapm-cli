@@ -20,7 +20,7 @@ pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.json";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct Config {
     /// The number of seconds to wait before checking the registry for a new
     /// version of the package.
@@ -50,7 +50,7 @@ pub const fn wax_default_cooldown() -> i32 {
     5 * 60
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum Registries {
     Single(Registry),

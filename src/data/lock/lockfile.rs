@@ -16,7 +16,7 @@ pub type CommandMapV2 = BTreeMap<String, LockfileCommand>;
 
 /// The lockfile for versions 2 and below (no changes to the fields happened until version 3,
 /// so these can be a singel struct)
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileV2 {
     pub modules: ModuleMapV2, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMapV2, // CommandName -> Command
@@ -26,7 +26,7 @@ pub type ModuleMapV3 = BTreeMap<String, BTreeMap<Version, BTreeMap<String, Lockf
 pub type CommandMapV3 = BTreeMap<String, LockfileCommand>;
 
 /// The latest Lockfile version
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileV3 {
     pub modules: ModuleMapV3, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMapV3, // CommandName -> Command
@@ -36,7 +36,7 @@ pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, Lockfil
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
 /// The latest Lockfile version
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Lockfile {
     pub modules: ModuleMap, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMap, // CommandName -> Command
