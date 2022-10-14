@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 /// legacy Lockfile module struct; which is only used to parse legacy lockfiles which get
 /// transformed into up to date ones (V1, V2)
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileModuleV2 {
     pub name: String,
     pub package_version: String,
@@ -19,7 +19,7 @@ pub struct LockfileModuleV2 {
 
 /// legacy Lockfile module struct; which is only used to parse legacy lockfiles which get
 /// transformed into up to date ones (V3)
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileModuleV3 {
     pub name: String,
     pub package_version: String,
@@ -37,7 +37,7 @@ pub struct LockfileModuleV3 {
 
 /// The latest Lockfile module struct (V4)
 /// It contains data relating to the Wasm module itself
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileModule {
     pub name: String,
     pub package_version: String,
@@ -82,7 +82,7 @@ impl LockfileModule {
             }
         };
 
-        let lockfile_module = LockfileModule {
+        LockfileModule {
             name: module.name.clone(),
             package_version: version.to_string(),
             package_name: name.to_string(),
@@ -92,8 +92,7 @@ impl LockfileModule {
             abi: module.abi,
             prehashed_module_key: util::get_hashed_module_key(&path.join(&source)),
             source,
-        };
-        lockfile_module
+        }
     }
 
     pub fn from_local_module(

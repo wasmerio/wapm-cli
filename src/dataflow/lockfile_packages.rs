@@ -117,14 +117,11 @@ impl<'a> LockfilePackages<'a> {
                 _ => vec![],
             };
             let commands: Vec<LockfileCommand> = match manifest.command {
-                Some(ref modules) => {
-                    let commands = modules
-                        .iter()
-                        .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
-                        .collect::<Result<Vec<LockfileCommand>, Error>>()
-                        .map_err(LockfileError::CommandPackageVersionParseError)?;
-                    commands
-                }
+                Some(ref modules) => modules
+                    .iter()
+                    .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
+                    .collect::<Result<Vec<LockfileCommand>, Error>>()
+                    .map_err(LockfileError::CommandPackageVersionParseError)?,
                 _ => vec![],
             };
             packages.insert(

@@ -206,7 +206,7 @@ impl QueriedPackage {
             command_name = c;
         }
 
-        let queried_package = match version {
+        match version {
             None => {
                 let q2 = WaxGetPackageCommandQuery::build_query(
                     wax_get_package_command_query::Variables { name: package_name },
@@ -285,9 +285,7 @@ impl QueriedPackage {
                     download_url,
                 })
             }
-        };
-
-        queried_package
+        }
     }
 }
 
@@ -773,11 +771,9 @@ fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> anyhow::Result<(
             &opt.args,
         )
     } else if opt.offline {
-        return Err(
-            ExecuteError::CommandNotFoundOfflineModeOfflineFlag(command_name.to_string()).into(),
-        );
+        Err(ExecuteError::CommandNotFoundOfflineModeOfflineFlag(command_name.to_string()).into())
     } else {
-        return Err(ExecuteError::CommandNotFoundOfflineMode(command_name.to_string()).into());
+        Err(ExecuteError::CommandNotFoundOfflineMode(command_name.to_string()).into())
     }
 }
 

@@ -3,7 +3,7 @@ use semver::Version;
 use thiserror::Error;
 
 /// Describes a command for a wapm module
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileCommand {
     pub name: String,
     pub package_name: String,

@@ -22,6 +22,7 @@ pub enum Error {
 
 /// A ternary for a manifest: Some, None, Error.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)] // The happy path returns the largest variant (Manifest)
 pub enum ManifestResult {
     Manifest(Manifest),
     NoManifest,

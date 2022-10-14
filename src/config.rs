@@ -225,13 +225,13 @@ fn test_if_registry_present(registry: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum UpdateRegistry {
     Update,
     LeaveAsIs,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct MultiRegistry {
     /// Currently active registry
     pub current: String,
@@ -240,14 +240,14 @@ pub struct MultiRegistry {
     pub tokens: BTreeMap<String, String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct Registry {
     pub url: String,
     pub token: Option<String>,
 }
 
 #[cfg(feature = "telemetry")]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct Telemetry {
     pub enabled: String,
 }
@@ -262,7 +262,7 @@ impl Default for Telemetry {
 }
 
 #[cfg(feature = "update-notifications")]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct UpdateNotifications {
     pub enabled: String,
 }
@@ -276,7 +276,7 @@ impl Default for UpdateNotifications {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Default)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default)]
 pub struct Proxy {
     pub url: Option<String>,
 }
