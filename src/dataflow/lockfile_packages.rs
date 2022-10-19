@@ -41,13 +41,13 @@ impl LockfileResult {
         let directory = directory.as_ref();
         if !directory.is_dir() {
             return LockfileResult::LockfileError(LockfileError::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+                format!("LockfileResult: Manifest must be a file named `wapm.toml` (directory.is_dir() failed on {})", directory.display()),
             ));
         }
         let lockfile_path_buf = directory.join(LOCKFILE_NAME);
         if !lockfile_path_buf.is_file() {
             return LockfileResult::LockfileError(LockfileError::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+                format!("LockfileResult: Manifest must be a file named `wapm.toml` (lockfile_path_buf.is_file() failed on {})", lockfile_path_buf.display()),
             ));
         }
         let source = match fs::read_to_string(&lockfile_path_buf) {
