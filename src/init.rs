@@ -116,7 +116,6 @@ pub fn init(
                 readme: None,
                 disable_command_rename: false,
                 rename_commands_to_raw_command_name: false,
-                pkg_fs_mount_point: None,
             },
             dependencies: None,
             module: Some(vec![Module {
