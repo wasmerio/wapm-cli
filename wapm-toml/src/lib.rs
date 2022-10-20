@@ -81,8 +81,6 @@ pub struct Package {
     pub readme: Option<PathBuf>,
     pub repository: Option<String>,
     pub homepage: Option<String>,
-    #[serde(rename = "pkg-fs-mount-point")]
-    pub pkg_fs_mount_point: Option<String>,
     #[serde(rename = "wasmer-extra-flags")]
     pub wasmer_extra_flags: Option<String>,
     #[serde(
