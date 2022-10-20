@@ -88,7 +88,7 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
             .file_name()
             .unwrap()
             .to_string_lossy()
-            .to_string() 
+            .to_string()
         });
         let username = crate::util::get_username().ok().and_then(|s| s.clone());
         let name = match username {
@@ -113,6 +113,7 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
                 readme: None,
                 disable_command_rename: false,
                 rename_commands_to_raw_command_name: false,
+                pkg_fs_mount_point: None,
             },
             dependencies: None,
             module: Some(vec![Module {
