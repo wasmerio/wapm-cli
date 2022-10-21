@@ -31,7 +31,7 @@ impl<'a> RemovedLockfilePackages<'a> {
             .map(|key| {
                 (
                     key.clone(),
-                    lockfile_packages.packages.get(&key).cloned().unwrap(),
+                    lockfile_packages.packages.get(key).cloned().unwrap(),
                 )
             })
             .collect();

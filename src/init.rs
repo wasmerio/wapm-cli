@@ -26,7 +26,7 @@ pub fn ask(prompt: &str, default: Option<String>) -> Result<Option<String>, std:
     if value.is_empty() {
         return Ok(None);
     }
-    return Ok(Some(value));
+    Ok(Some(value))
 }
 
 pub fn ask_until_valid<F, VR, Err>(
@@ -58,7 +58,7 @@ pub fn validate_wasm_source(source: &str) -> Result<PathBuf, String> {
     if source == "none" || source.ends_with(".wasm") {
         return Ok(PathBuf::from(source));
     }
-    return Err("The module source path must have a .wasm extension".to_owned());
+    Err("The module source path must have a .wasm extension".to_owned())
 }
 
 pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameError> {
@@ -69,7 +69,11 @@ pub fn validate_commands(command_names: &str) -> Result<Vec<String>, util::NameE
         .collect())
 }
 
-pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>) -> anyhow::Result<()> {
+pub fn init(
+    dir: PathBuf,
+    force_yes: bool,
+    initial_project_name: Option<String>,
+) -> anyhow::Result<()> {
     let manifest_location = {
         let mut dir = match initial_project_name.as_ref() {
             Some(s) => dir.join(s),
@@ -82,15 +86,14 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
         Manifest::find_in_directory(dir)?
     } else {
         let package_name = initial_project_name.clone().unwrap_or_else(|| {
-            dir
-            .clone()
-            .as_path()
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string() 
+            dir.clone()
+                .as_path()
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
         });
-        let username = crate::util::get_username().ok().and_then(|s| s.clone());
+        let username = crate::util::get_username().ok().flatten();
         let name = match username {
             Some(s) => format!("{s}/{package_name}"),
             None => package_name,
@@ -98,7 +101,7 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
         Manifest {
             base_directory_path: match initial_project_name.as_ref() {
                 Some(s) => dir.join(s),
-                None => dir.clone(),
+                None => dir,
             },
             fs: None,
             package: Package {
@@ -122,6 +125,8 @@ pub fn init(dir: PathBuf, force_yes: bool, initial_project_name: Option<String>)
                 interfaces: None,
                 kind: None,
                 bindings: None,
+                #[cfg(feature = "package")]
+                fs: None,
             }]),
             command: None,
         }
@@ -178,6 +183,8 @@ Press ^C at any time to quit."
                         interfaces: None,
                         kind: None,
                         bindings: None,
+                        #[cfg(feature = "package")]
+                        fs: None,
                     }
                 }
             };
@@ -237,13 +244,13 @@ Press ^C at any time to quit."
                         ),
                         None,
                     ),
-                    0 | _ => (Abi::None, None, None),
+                    _ => (Abi::None, None, None),
                 };
             module.abi = abi;
             // module.kind = kind;
             module.interfaces = interfaces;
             // We ask for commands if it has an Abi
-            if !module.abi.is_none() || !module.interfaces.is_none() {
+            if !module.abi.is_none() || module.interfaces.is_some() {
                 loop {
                     let module_command_strings = ask_until_valid(
                         " - Commmand(s), space separated",
@@ -252,8 +259,8 @@ Press ^C at any time to quit."
                     )?;
 
                     let default_runner = match module.abi {
-                        Abi::Wasi => Some(format!("wasi@unstable_")),
-                        Abi::WASM4 => Some(format!("wasm4@0.0.1")),
+                        Abi::Wasi => Some("wasi@unstable_".to_string()),
+                        Abi::WASM4 => Some("wasm4@0.0.1".to_string()),
                         _ => None,
                     };
                     let runner_for_modules = ask_until_valid(
@@ -325,7 +332,10 @@ Press ^C at any time to quit."
         {
             init_gitignore(manifest.base_directory_path);
         }
-        println!("Successfully initialized project {:?}", manifest.package.name);
+        println!(
+            "Successfully initialized project {:?}",
+            manifest.package.name
+        );
     } else {
         println!("Aborted.")
     }

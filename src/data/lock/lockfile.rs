@@ -16,7 +16,7 @@ pub type CommandMapV2 = BTreeMap<String, LockfileCommand>;
 
 /// The lockfile for versions 2 and below (no changes to the fields happened until version 3,
 /// so these can be a singel struct)
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileV2 {
     pub modules: ModuleMapV2, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMapV2, // CommandName -> Command
@@ -26,7 +26,7 @@ pub type ModuleMapV3 = BTreeMap<String, BTreeMap<Version, BTreeMap<String, Lockf
 pub type CommandMapV3 = BTreeMap<String, LockfileCommand>;
 
 /// The latest Lockfile version
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileV3 {
     pub modules: ModuleMapV3, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMapV3, // CommandName -> Command
@@ -36,7 +36,7 @@ pub type ModuleMap = BTreeMap<String, BTreeMap<Version, BTreeMap<String, Lockfil
 pub type CommandMap = BTreeMap<String, LockfileCommand>;
 
 /// The latest Lockfile version
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Lockfile {
     pub modules: ModuleMap, // PackageName -> VersionNumber -> ModuleName -> Module
     pub commands: CommandMap, // CommandName -> Command
@@ -46,7 +46,7 @@ pub type LockfileV4 = Lockfile;
 pub type ModuleMapV4 = ModuleMap;
 pub type CommandMapV4 = CommandMap;
 
-impl<'a> Lockfile {
+impl Lockfile {
     /// Save the lockfile to the directory.
     pub fn save<P: AsRef<Path>>(&self, directory: P) -> anyhow::Result<()> {
         let lockfile_string = toml::to_string(self)?;
@@ -72,7 +72,7 @@ impl<'a> Lockfile {
     pub fn get_command(&self, command_name: &str) -> Result<&LockfileCommand, LockfileError> {
         self.commands
             .get(command_name)
-            .ok_or(LockfileError::CommandNotFound(command_name.to_string()).into())
+            .ok_or_else(|| LockfileError::CommandNotFound(command_name.to_string()))
     }
 
     pub fn get_module(
@@ -81,30 +81,27 @@ impl<'a> Lockfile {
         package_version: &Version,
         module_name: &str,
     ) -> anyhow::Result<&LockfileModule> {
-        let version_map = self.modules.get(package_name).ok_or::<anyhow::Error>(
+        let version_map = self.modules.get(package_name).ok_or_else(|| {
             LockfileError::PackageWithVersionNotFoundWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
-        let module_map = version_map.get(package_version).ok_or::<anyhow::Error>(
+        })?;
+        let module_map = version_map.get(package_version).ok_or_else(|| {
             LockfileError::VersionNotFoundForPackageWhenFindingModule(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
-        let module = module_map.get(module_name).ok_or::<anyhow::Error>(
+        })?;
+        let module = module_map.get(module_name).ok_or_else(|| {
             LockfileError::ModuleForPackageVersionNotFound(
                 package_name.to_string(),
                 package_version.to_string(),
                 module_name.to_string(),
             )
-            .into(),
-        )?;
+        })?;
         Ok(module)
     }
 }

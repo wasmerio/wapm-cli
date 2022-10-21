@@ -1,5 +1,4 @@
 use graphql_client::{QueryBody, Response};
-use serde;
 use std::env;
 use std::string::ToString;
 use thiserror::Error;
@@ -38,7 +37,11 @@ where
     execute_query_modifier_inner(registry_url, query, form_modifier)
 }
 
-pub fn execute_query_modifier_inner<R, V, F>(registry_url: &str, query: &QueryBody<V>, form_modifier: F) -> anyhow::Result<R>
+pub fn execute_query_modifier_inner<R, V, F>(
+    registry_url: &str,
+    query: &QueryBody<V>,
+    form_modifier: F,
+) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,
@@ -76,14 +79,12 @@ where
     let res = client
         .post(registry_url)
         .multipart(form)
-        .bearer_auth(
-            env::var("WAPM_REGISTRY_TOKEN").unwrap_or(
-                config
-                    .registry
-                    .get_login_token_for_registry(&config.registry.get_current_registry())
-                    .unwrap_or_else(|| "".to_string()),
-            ),
-        )
+        .bearer_auth(env::var("WAPM_REGISTRY_TOKEN").unwrap_or_else(|_| {
+            config
+                .registry
+                .get_login_token_for_registry(&config.registry.get_current_registry())
+                .unwrap_or_default()
+        }))
         .header(USER_AGENT, user_agent)
         .send()?;
 
@@ -106,7 +107,10 @@ where
     execute_query_modifier(query, |f| f)
 }
 
-pub fn execute_query_custom_registry<R, V>(registry_url: &str, query: &QueryBody<V>) -> anyhow::Result<R>
+pub fn execute_query_custom_registry<R, V>(
+    registry_url: &str,
+    query: &QueryBody<V>,
+) -> anyhow::Result<R>
 where
     for<'de> R: serde::Deserialize<'de>,
     V: serde::Serialize,

@@ -34,7 +34,7 @@ pub fn search(options: SearchOpt) -> anyhow::Result<()> {
     });
     let response: search_query::ResponseData = execute_query(&q)?;
 
-    if response.search.edges.len() == 0 {
+    if response.search.edges.is_empty() {
         println!("No packages found for \"{}\"", query);
         return Ok(());
     }
@@ -45,16 +45,14 @@ pub fn search(options: SearchOpt) -> anyhow::Result<()> {
     table.add_row(row!["NAME", "DESCRIPTION", "DATE", "VERSION"]);
     for edge in response.search.edges.into_iter() {
         let node = edge.unwrap().node;
-        match node {
-            Some(search_query::SearchQuerySearchEdgesNode::PackageVersion(version)) => {
-                table.add_row(row![
-                    version.package.display_name,
-                    version.description,
-                    version.created_at[..10],
-                    version.version
-                ]);
-            }
-            _ => {}
+
+        if let Some(search_query::SearchQuerySearchEdgesNode::PackageVersion(version)) = node {
+            table.add_row(row![
+                version.package.display_name,
+                version.description,
+                version.created_at[..10],
+                version.version
+            ]);
         }
     }
     table.printstd();

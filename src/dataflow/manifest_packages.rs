@@ -11,17 +11,18 @@ use thiserror::Error;
 #[derive(Clone, Debug, Error)]
 pub enum Error {
     #[error("Could not parse manifest because {0}.")]
-    ManifestTomlParseError(String),
+    ManifestTomlParse(String),
     #[error("Could not parse manifest because {0}.")]
-    IoError(String),
+    Io(String),
     #[error(
         "Version {0} for package {1} must be a semantic version or a semantic version requirement."
     )]
-    SemVerError(String, String),
+    SemVer(String, String),
 }
 
 /// A ternary for a manifest: Some, None, Error.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)] // The happy path returns the largest variant (Manifest)
 pub enum ManifestResult {
     Manifest(Manifest),
     NoManifest,
@@ -32,14 +33,14 @@ impl ManifestResult {
     pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
         let directory = directory.as_ref();
         if !directory.is_dir() {
-            ManifestResult::ManifestError(Error::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+            return ManifestResult::ManifestError(Error::Io(
+                format!("ManifestResult: Manifest must be a file named `wapm.toml` (directory.is_dir() failed on {})", directory.display()),
             ));
         }
         let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
         if !manifest_path_buf.is_file() {
-            ManifestResult::ManifestError(Error::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+            return ManifestResult::ManifestError(Error::Io(
+                format!("ManifestResult: Manifest must be a file named `wapm.toml` (manifest_path_buf.is_file() failed on {})", manifest_path_buf.display()),
             ));
         }
         let source = match fs::read_to_string(&manifest_path_buf) {
@@ -51,7 +52,7 @@ impl ManifestResult {
                 m.base_directory_path = directory.to_owned();
                 ManifestResult::Manifest(m)
             }
-            Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParseError(e.to_string())),
+            Err(e) => ManifestResult::ManifestError(Error::ManifestTomlParse(e.to_string())),
         }
     }
 }
@@ -69,7 +70,7 @@ impl<'a> ManifestPackages<'a> {
         manifest: &'a Manifest,
         added_packages: &AddedPackages<'a>,
     ) -> Result<Self, Error> {
-        let packages = Self::extract_package_keys(&manifest)?;
+        let packages = ManifestPackages::extract_package_keys(manifest)?;
         let mut packages: HashSet<PackageKey> = packages
             .into_iter()
             .map(normalize_global_namespace)
@@ -88,7 +89,7 @@ impl<'a> ManifestPackages<'a> {
             .packages
             .iter()
             .cloned()
-            .map(|pkg_name| {
+            .flat_map(|pkg_name| {
                 self.packages
                     .iter()
                     .cloned()
@@ -98,7 +99,6 @@ impl<'a> ManifestPackages<'a> {
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         for removed_package_key in removed_package_keys {
@@ -131,7 +131,7 @@ impl<'a> ManifestPackages<'a> {
         } else if let Ok(version_req) = VersionReq::parse(version) {
             Ok(PackageKey::new_registry_package_range(name, version_req))
         } else {
-            Err(Error::SemVerError(name.to_string(), version.to_string()))
+            Err(Error::SemVer(name.to_string(), version.to_string()))
         }
     }
 }

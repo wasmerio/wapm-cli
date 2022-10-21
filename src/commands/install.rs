@@ -194,9 +194,9 @@ fn install_packages(
     };
 
     std::fs::create_dir_all(install_directory.clone())
-        .map_err(|err| InstallError::CannotCreateInstallDirectory(err))?;
+        .map_err(InstallError::CannotCreateInstallDirectory)?;
     let changes_applied = dataflow::update(installed_packages.clone(), vec![], install_directory)
-        .map_err(|err| InstallError::CannotRegenLockFile(err))?;
+        .map_err(InstallError::CannotRegenLockFile)?;
 
     if changes_applied {
         if global {
@@ -273,7 +273,7 @@ fn parse_package_and_version(package_specifier: &str) -> Result<(String, String)
 fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::Error> {
     let added_packages = vec![];
     dataflow::update(added_packages, vec![], current_directory)
-        .map_err(|err| InstallError::FailureInstallingPackages(err))?;
+        .map_err(InstallError::FailureInstallingPackages)?;
     println!("Packages installed to wapm_packages!");
     Ok(())
 }

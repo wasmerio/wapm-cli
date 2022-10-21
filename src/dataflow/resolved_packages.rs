@@ -61,17 +61,14 @@ impl<'a> ResolvedPackages<'a> {
     }
 }
 
+type DownloadUrls<'a> = Vec<(
+    WapmPackageKey<'a>,
+    (String, Option<keys::WapmPackageSignature>),
+)>;
+
 /// A Resolve trait to enable testing and dependency injection
 pub trait Resolve<'a> {
-    fn sync_packages(
-        added_packages: Vec<PackageKey<'a>>,
-    ) -> Result<
-        Vec<(
-            WapmPackageKey<'a>,
-            (String, Option<keys::WapmPackageSignature>),
-        )>,
-        Error,
-    >;
+    fn sync_packages(added_packages: Vec<PackageKey<'a>>) -> Result<DownloadUrls<'a>, Error>;
 }
 
 pub struct RegistryResolver;
@@ -112,7 +109,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
         )> = response
             .package
             .into_iter()
-            .filter_map(|p| p)
+            .flatten()
             .map(|p| {
                 let versions = p.versions.unwrap_or_default();
                 let name = p.name;
@@ -120,7 +117,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
             })
             .flat_map(|(n, vs)| {
                 vs.into_iter()
-                    .filter_map(|o| o)
+                    .flatten()
                     .map(|v| {
                         let version = v.version;
                         let download_url = v.distribution.download_url;
@@ -187,10 +184,10 @@ impl<'a> Resolve<'a> for RegistryResolver {
                     // for example "syrusakbary/lolcat" can also match "_/lolcat". Since we trust
                     // the registry not to select wrong packages, we only need to select for the version to match.
                     exact_package_lookup
-                    .iter()
-                    .find(|(k, _)| k.version == wapm_package_key.version)
-                    .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
-                },
+                        .iter()
+                        .find(|(k, _)| k.version == wapm_package_key.version)
+                        .map(|(k, (d, s))| (k.clone(), (d.clone(), s.clone())))
+                }
                 // if a range, then filter by the requirements, and find the max version
                 PackageKey::WapmPackageRange(range) => {
                     let matching_version: Option<Version> = package_versions_lookup

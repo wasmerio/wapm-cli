@@ -19,7 +19,7 @@ pub struct InterfaceMatcher {
 impl InterfaceMatcher {
     /// Store the matcher as bytes to avoid reparsing
     fn into_bytes(&self) -> Vec<u8> {
-        bincode::serialize(self).expect("Couldnot serialize InterfaceMatcher")
+        bincode::serialize(self).expect("Could not serialize InterfaceMatcher")
     }
 
     /// Load the matcher from bytes to avoid reparsing

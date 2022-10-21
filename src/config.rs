@@ -2,12 +2,11 @@
     not(feature = "full"),
     allow(dead_code, unused_imports, unused_variables)
 )]
+use anyhow::Context;
+use graphql_client::GraphQLQuery;
 use std::collections::BTreeMap;
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::PathBuf;
-use graphql_client::GraphQLQuery;
 use thiserror::Error;
 
 pub static GLOBAL_CONFIG_FILE_NAME: &str = if cfg!(target_os = "wasi") {
@@ -21,7 +20,7 @@ pub static GLOBAL_WAX_INDEX_FILE_NAME: &str = ".wax_index.json";
 pub static GLOBAL_CONFIG_DATABASE_FILE_NAME: &str = "wapm.sqlite";
 pub static GLOBAL_CONFIG_FOLDER_ENV_VAR: &str = "WASMER_DIR";
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct Config {
     /// The number of seconds to wait before checking the registry for a new
     /// version of the package.
@@ -51,7 +50,7 @@ pub const fn wax_default_cooldown() -> i32 {
     5 * 60
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum Registries {
     Single(Registry),
@@ -72,24 +71,39 @@ fn test_registries_switch_token() {
     let mut registries = Registries::default();
 
     registries.set_current_registry("https://registry.wapm.dev");
-    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
+    assert_eq!(
+        registries.get_current_registry(),
+        "https://registry.wapm.dev/graphql".to_string()
+    );
     registries.set_login_token_for_registry(
         "https://registry.wapm.io",
         "token1",
         UpdateRegistry::LeaveAsIs,
     );
-    assert_eq!(registries.get_current_registry(), "https://registry.wapm.dev/graphql".to_string());
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
+    assert_eq!(
+        registries.get_current_registry(),
+        "https://registry.wapm.dev/graphql".to_string()
+    );
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        None
+    );
     registries.set_current_registry("https://registry.wapm.io");
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), Some("token1".to_string()));
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        Some("token1".to_string())
+    );
     registries.clear_current_registry_token();
-    assert_eq!(registries.get_login_token_for_registry(&registries.get_current_registry()), None);
+    assert_eq!(
+        registries.get_login_token_for_registry(&registries.get_current_registry()),
+        None
+    );
 }
 
 fn format_graphql(registry: &str) -> String {
     if registry.ends_with("/graphql") {
         registry.to_string()
-    } else if registry.ends_with("/") {
+    } else if registry.ends_with('/') {
         format!("{}graphql", registry)
     } else {
         format!("{}/graphql", registry)
@@ -131,7 +145,9 @@ impl Registries {
             if registry.contains("wapm.dev") {
                 println!("Note: The correct URL for wapm.dev is https://registry.wapm.dev, not {registry}");
             } else if registry.contains("wapm.io") {
-                println!("Note: The correct URL for wapm.io is https://registry.wapm.io, not {registry}");
+                println!(
+                    "Note: The correct URL for wapm.io is https://registry.wapm.io, not {registry}"
+                );
             }
             println!("WARNING: Registry {registry:?} will be used, but commands may not succeed.");
         }
@@ -144,8 +160,14 @@ impl Registries {
     /// Returns the login token for the registry
     pub fn get_login_token_for_registry(&self, registry: &str) -> Option<String> {
         match self {
-            Registries::Single(s) if s.url == registry || format_graphql(registry) == s.url => s.token.clone(),
-            Registries::Multi(m) => m.tokens.get(registry).or_else(|| m.tokens.get(&format_graphql(registry))).cloned(),
+            Registries::Single(s) if s.url == registry || format_graphql(registry) == s.url => {
+                s.token.clone()
+            }
+            Registries::Multi(m) => m
+                .tokens
+                .get(registry)
+                .or_else(|| m.tokens.get(&format_graphql(registry)))
+                .cloned(),
             _ => None,
         }
     }
@@ -188,7 +210,6 @@ impl Registries {
     }
 }
 
-
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -199,19 +220,18 @@ struct TestIfRegistryPresent;
 
 fn test_if_registry_present(registry: &str) -> Result<(), String> {
     let q = TestIfRegistryPresent::build_query(test_if_registry_present::Variables {});
-    let _: test_if_registry_present::ResponseData = 
-        crate::graphql::execute_query_custom_registry(registry, &q)
-        .map_err(|e| format!("{e}"))?;
+    let _: test_if_registry_present::ResponseData =
+        crate::graphql::execute_query_custom_registry(registry, &q).map_err(|e| format!("{e}"))?;
     Ok(())
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum UpdateRegistry {
     Update,
     LeaveAsIs,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct MultiRegistry {
     /// Currently active registry
     pub current: String,
@@ -220,14 +240,14 @@ pub struct MultiRegistry {
     pub tokens: BTreeMap<String, String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct Registry {
     pub url: String,
     pub token: Option<String>,
 }
 
 #[cfg(feature = "telemetry")]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct Telemetry {
     pub enabled: String,
 }
@@ -242,7 +262,7 @@ impl Default for Telemetry {
 }
 
 #[cfg(feature = "update-notifications")]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct UpdateNotifications {
     pub enabled: String,
 }
@@ -256,7 +276,7 @@ impl Default for UpdateNotifications {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Default)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default)]
 pub struct Proxy {
     pub url: Option<String>,
 }
@@ -281,7 +301,7 @@ impl Config {
         if let Some(pwd) = std::env::var("PWD").ok() {
             return Ok(PathBuf::from(pwd));
         }
-        Ok(std::env::current_dir()?)
+        std::env::current_dir()
     }
 
     pub fn get_folder() -> Result<PathBuf, GlobalConfigError> {
@@ -292,7 +312,7 @@ impl Config {
             {
                 let folder = PathBuf::from(folder_str);
                 std::fs::create_dir_all(folder.clone())
-                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                    .map_err(GlobalConfigError::CannotCreateConfigDirectory)?;
                 folder
             } else {
                 #[allow(unused_variables)]
@@ -306,10 +326,10 @@ impl Config {
                 let home_dir = std::env::var("HOME")
                     .ok()
                     .unwrap_or_else(|| default_dir.to_string_lossy().to_string());
-                let mut folder = PathBuf::from(home_dir);
+                let mut folder = home_dir;
                 folder.push(GLOBAL_CONFIG_FOLDER_NAME);
                 std::fs::create_dir_all(folder.clone())
-                    .map_err(|e| GlobalConfigError::CannotCreateConfigDirectory(e))?;
+                    .map_err(GlobalConfigError::CannotCreateConfigDirectory)?;
                 folder
             },
         )
@@ -331,13 +351,14 @@ impl Config {
     /// Load the config from a file
     #[cfg(not(feature = "integration_tests"))]
     pub fn from_file() -> Result<Self, GlobalConfigError> {
+        use std::{fs::File, io::Read};
         let path = Self::get_file_location()?;
         match File::open(&path) {
             Ok(mut file) => {
                 let mut config_toml = String::new();
                 file.read_to_string(&mut config_toml)
-                    .map_err(|e| GlobalConfigError::Io(e))?;
-                toml::from_str(&config_toml).map_err(|e| GlobalConfigError::Toml(e))
+                    .map_err(GlobalConfigError::Io)?;
+                toml::from_str(&config_toml).map_err(GlobalConfigError::Toml)
             }
             Err(_e) => Ok(Self::default()),
         }
@@ -361,7 +382,8 @@ impl Config {
 
     /// Save the config to a file
     #[cfg(not(feature = "integration_tests"))]
-    pub fn save(self: &Self) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
+        use std::{fs::File, io::Write};
         let path = Self::get_file_location()?;
         let config_serialized = toml::to_string(&self)?;
         let mut file = File::create(path)?;
@@ -371,7 +393,7 @@ impl Config {
 
     /// A mocked version of the standard function for integration tests
     #[cfg(feature = "integration_tests")]
-    pub fn save(self: &Self) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let config_serialized = toml::to_string(&self)?;
         crate::integration_tests::data::RAW_CONFIG_DATA.with(|rcd| {
             *rcd.borrow_mut() = Some(config_serialized);
@@ -417,7 +439,11 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 config.registry.set_current_registry(&value);
             }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+                println!(
+                    "Successfully logged into registry {:?} as user {:?}",
+                    config.registry.get_current_registry(),
+                    u
+                );
             }
         }
         "registry.token" => {
@@ -427,7 +453,11 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 UpdateRegistry::LeaveAsIs,
             );
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-                println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+                println!(
+                    "Successfully logged into registry {:?} as user {:?}",
+                    config.registry.get_current_registry(),
+                    u
+                );
             }
         }
         #[cfg(feature = "telemetry")]
@@ -462,10 +492,12 @@ pub fn get(config: &mut Config, key: String) -> anyhow::Result<String> {
         "registry.token" => config
             .registry
             .get_login_token_for_registry(&config.registry.get_current_registry())
-            .ok_or(anyhow::anyhow!(
-                "Not logged into {:?}",
-                config.registry.get_current_registry()
-            ))?,
+            .with_context(|| {
+                format!(
+                    "Not logged into {:?}",
+                    config.registry.get_current_registry()
+                )
+            })?,
         #[cfg(feature = "telemetry")]
         "telemetry.enabled" => config.telemetry.enabled.clone(),
         #[cfg(feature = "update-notifications")]
@@ -495,10 +527,10 @@ mod test {
     #[test]
     fn get_config_and_wasmer_dir_does_not_exist() {
         // remove WASMER_DIR
-        let _ = std::env::remove_var(GLOBAL_CONFIG_FOLDER_ENV_VAR);
+        std::env::remove_var(GLOBAL_CONFIG_FOLDER_ENV_VAR);
         let config_result = Config::from_file();
         assert!(
-            !config_result.is_err(),
+            config_result.is_ok(),
             "Config file created by falling back to default"
         );
     }

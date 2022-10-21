@@ -40,14 +40,14 @@ impl LockfileResult {
     pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
         let directory = directory.as_ref();
         if !directory.is_dir() {
-            LockfileResult::LockfileError(LockfileError::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+            return LockfileResult::LockfileError(LockfileError::IoError(
+                format!("LockfileResult: Manifest must be a file named `wapm.toml` (directory.is_dir() failed on {})", directory.display()),
             ));
         }
         let lockfile_path_buf = directory.join(LOCKFILE_NAME);
         if !lockfile_path_buf.is_file() {
-            LockfileResult::LockfileError(LockfileError::IoError(
-                "Manifest must be a file named `wapm.toml`.".to_string(),
+            return LockfileResult::LockfileError(LockfileError::IoError(
+                format!("LockfileResult: Manifest must be a file named `wapm.toml` (lockfile_path_buf.is_file() failed on {})", lockfile_path_buf.display()),
             ));
         }
         let source = match fs::read_to_string(&lockfile_path_buf) {
@@ -117,14 +117,11 @@ impl<'a> LockfilePackages<'a> {
                 _ => vec![],
             };
             let commands: Vec<LockfileCommand> = match manifest.command {
-                Some(ref modules) => {
-                    let commands = modules
-                        .iter()
-                        .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
-                        .collect::<Result<Vec<LockfileCommand>, Error>>()
-                        .map_err(|e| LockfileError::CommandPackageVersionParseError(e))?;
-                    commands
-                }
+                Some(ref modules) => modules
+                    .iter()
+                    .map(|c| LockfileCommand::from_command(&k.name, k.version.clone(), c))
+                    .collect::<Result<Vec<LockfileCommand>, Error>>()
+                    .map_err(LockfileError::CommandPackageVersionParseError)?,
                 _ => vec![],
             };
             packages.insert(
@@ -141,7 +138,7 @@ impl<'a> LockfilePackages<'a> {
             LockfileResult::NoLockfile => Ok(Self {
                 packages: HashMap::new(),
             }),
-            LockfileResult::LockfileError(e) => return Err(e),
+            LockfileResult::LockfileError(e) => Err(e),
         }
     }
 
@@ -161,17 +158,14 @@ impl<'a> LockfilePackages<'a> {
 
         let packages: HashMap<PackageKey, LockfilePackage> = raw_lockfile_modules
             .into_iter()
-            .map(|(pkg_name, pkg_versions)| {
+            .flat_map(|(pkg_name, pkg_versions)| {
                 pkg_versions
                     .into_iter()
                     .map(|(pkg_version, modules)| {
-                        let id =
-                            PackageKey::new_registry_package(pkg_name.clone(), pkg_version.clone());
-                        let lockfile_modules = modules
-                            .into_iter()
-                            .map(|(_module_name, module)| module)
-                            .collect::<Vec<_>>();
-                        let lockfile_commands = lockfile_commands_map.remove(&id).unwrap_or(vec![]);
+                        let id = PackageKey::new_registry_package(pkg_name.clone(), pkg_version);
+                        let lockfile_modules = modules.into_values().collect::<Vec<_>>();
+                        let lockfile_commands =
+                            lockfile_commands_map.remove(&id).unwrap_or_default();
                         let package_data = LockfilePackage {
                             modules: lockfile_modules,
                             commands: lockfile_commands,
@@ -180,7 +174,6 @@ impl<'a> LockfilePackages<'a> {
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect::<HashMap<_, _>>();
 
         Self { packages }
@@ -214,8 +207,7 @@ impl<'a> LockfilePackages<'a> {
             .into_iter()
             .flat_map(|pkg_name| {
                 self.packages
-                    .iter()
-                    .map(|(package_key, _)| package_key)
+                    .keys()
                     .cloned()
                     .filter(|package_key| match package_key {
                         PackageKey::WapmPackage(WapmPackageKey { name, .. }) => name == &pkg_name,

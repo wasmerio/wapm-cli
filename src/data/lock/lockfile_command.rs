@@ -3,7 +3,7 @@ use semver::Version;
 use thiserror::Error;
 
 /// Describes a command for a wapm module
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LockfileCommand {
     pub name: String,
     pub package_name: String,
@@ -58,7 +58,7 @@ impl<'a> LockfileCommand {
                         let package_version = Version::parse(package_version).unwrap();
                         (package_name, package_version)
                     }
-                    [package_name] => (package_name, local_package_version.clone()),
+                    [package_name] => (package_name, local_package_version),
                     _ => {
                         return Err(Error::CouldNotParsePackageVersionForCommand(
                             package_string.clone(),

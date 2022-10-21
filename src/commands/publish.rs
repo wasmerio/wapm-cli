@@ -64,16 +64,16 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let manifest_string = toml::to_string(&manifest)?;
 
     let readme = package.readme.as_ref().and_then(|readme_path| {
-        let normalized_path = normalize_path(&manifest.base_directory_path, &readme_path);
-        if let Err(_) = builder.append_path(&normalized_path) {
-            // Maybe do something here
+        let normalized_path = normalize_path(&manifest.base_directory_path, readme_path);
+        if builder.append_path(&normalized_path).is_err() {
+            // TODO: Maybe do something here
         }
         fs::read_to_string(normalized_path).ok()
     });
     let license_file = package.license_file.as_ref().and_then(|license_file_path| {
-        let normalized_path = normalize_path(&manifest.base_directory_path, &license_file_path);
-        if let Err(_) = builder.append_path(&normalized_path) {
-            // Maybe do something here
+        let normalized_path = normalize_path(&manifest.base_directory_path, license_file_path);
+        if builder.append_path(&normalized_path).is_err() {
+            // TODO: Maybe do something here
         }
         fs::read_to_string(normalized_path).ok()
     });
@@ -108,7 +108,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
     // bundle the package filesystem
     for (_alias, path) in manifest.fs.unwrap_or_default().iter() {
-        let normalized_path = normalize_path(&cwd, &path);
+        let normalized_path = normalize_path(&cwd, path);
         let path_metadata = normalized_path.metadata().map_err(|_| {
             PublishError::MissingManifestFsPath(normalized_path.to_string_lossy().to_string())
         })?;
@@ -177,15 +177,11 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
+
     if !publish_opts.dry_run {
         let _response: publish_package_mutation::ResponseData =
-            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap()).map_err(
-                |e| {
-                    #[cfg(feature = "telemetry")]
-                    sentry::integrations::anyhow::capture_anyhow(&e);
-                    e
-                },
-            )?;
+            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())
+                .map_err(on_error)?;
     }
 
     println!(
@@ -199,6 +195,13 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+fn on_error(e: anyhow::Error) -> anyhow::Error {
+    #[cfg(feature = "telemetry")]
+    sentry::integrations::anyhow::capture_anyhow(&e);
+
+    e
 }
 
 #[derive(Debug, Error)]

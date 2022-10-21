@@ -118,9 +118,9 @@ impl WaxIndex {
                         entry: entry.clone(),
                     })?;
                 let last_seen =
-                    time::strptime(&last_updated, RFC3339_FORMAT_STRING).map_err(|e| {
+                    time::strptime(last_updated, RFC3339_FORMAT_STRING).map_err(|e| {
                         WaxIndexError::EntryCorrupt {
-                            entry: format!("{}", e),
+                            entry: e.to_string(),
                         }
                     })?;
                 return Ok((package_name, version, last_seen.to_timespec()));
@@ -128,10 +128,9 @@ impl WaxIndex {
             trace!("Wax entry found but it no longer exists, removing from registry!");
             self.index.remove(&entry);
         }
-        return Err(WaxIndexError::EntryNotFound {
+        Err(WaxIndexError::EntryNotFound {
             entry: entry.clone(),
-        }
-        .into());
+        })
     }
 
     /// Package installed, add it to the index.

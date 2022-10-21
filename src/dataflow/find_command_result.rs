@@ -59,10 +59,10 @@ pub enum Error {
         global_log: Vec<String>,
     },
     #[error(
-        "Command \"{command}\" was neither found in the local nor in the global directory. {error}",
+        "Command \"{command}\" was neither found in the local nor in the global directory. {error}"
     )]
     CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory {
-        command: String, 
+        command: String,
         error: String,
         local_log: Vec<String>,
         global_log: Vec<String>,
@@ -70,8 +70,8 @@ pub enum Error {
     #[error(
         "Could not get command \"{command}\" because there was a problem with the local package. {error}"
     )]
-    ErrorReadingLocalDirectory {
-        command: String, 
+    ReadingLocalDirectory {
+        command: String,
         error: String,
         local_log: Vec<String>,
         global_log: Vec<String>,
@@ -173,7 +173,7 @@ impl FindCommandResult {
                                 args: lockfile_command.main_args.clone(),
                                 module_name: lockfile_module.name.clone(),
                                 prehashed_cache_key: lockfile
-                                    .get_prehashed_cache_key_from_command(&lockfile_command),
+                                    .get_prehashed_cache_key_from_command(lockfile_command),
                             }
                         }
                         Err(e) => FindCommandResult::Error(e),
@@ -188,7 +188,6 @@ impl FindCommandResult {
         lockfile: Lockfile,
         directory: &Path,
     ) -> Self {
-
         let command_name = command_name.as_ref();
         let mut error_lines = Vec::new();
 
@@ -211,7 +210,7 @@ impl FindCommandResult {
                         args: lockfile_command.main_args.clone(),
                         module_name: lockfile_module.name.clone(),
                         prehashed_cache_key: lockfile
-                            .get_prehashed_cache_key_from_command(&lockfile_command),
+                            .get_prehashed_cache_key_from_command(lockfile_command),
                     };
                 }
                 Err(e) => {
@@ -223,26 +222,32 @@ impl FindCommandResult {
             }
         }
 
-        if let Some(s) = lockfile.modules.keys().filter(|k| k.as_str().contains(command_name)).next() {
-            
-            error_lines.push(format!(""));
-            error_lines.push(format!("Note:"));
+        if let Some(s) = lockfile
+            .modules
+            .keys()
+            .find(|k| k.as_str().contains(command_name))
+        {
+            error_lines.push(String::new());
+            error_lines.push("Note:".to_string());
             error_lines.push(format!("    A package {s:?} seems to be installed locally"));
-            error_lines.push(format!("    but the package {s:?} has no commands to execute"));
+            error_lines.push(format!(
+                "    but the package {s:?} has no commands to execute"
+            ));
 
             let all_commands = lockfile.commands.keys().cloned().collect::<Vec<_>>();
-            let nearest = all_commands.iter().filter_map(|c| {
-                sublime_fuzzy::best_match(c, command_name)
-                .map(|_| c.clone())
-            }).take(3).collect::<Vec<_>>();
+            let nearest = all_commands
+                .iter()
+                .filter_map(|c| sublime_fuzzy::best_match(c, command_name).map(|_| c.clone()))
+                .take(3)
+                .collect::<Vec<_>>();
 
             if !nearest.is_empty() {
-                error_lines.push(format!(""));
-                error_lines.push(format!("Did you mean:"));
-                for n in nearest.iter() {
+                error_lines.push(String::new());
+                error_lines.push("Did you mean:".to_string());
+                for n in &nearest {
                     error_lines.push(format!("    {n}"));
                 }
-                error_lines.push(format!(""));
+                error_lines.push(String::new());
             }
         }
 
@@ -253,8 +258,8 @@ impl FindCommandResult {
     }
 
     pub fn find_command_in_directory<S: AsRef<str>>(directory: &Path, command_name: S) -> Self {
-        let manifest_result = ManifestResult::find_in_directory(&directory);
-        let lockfile_result = LockfileResult::find_in_directory(&directory);
+        let manifest_result = ManifestResult::find_in_directory(directory);
+        let lockfile_result = LockfileResult::find_in_directory(directory);
         match (manifest_result, lockfile_result) {
             (ManifestResult::ManifestError(e), _) => return FindCommandResult::Error(e.into()),
             (_, LockfileResult::LockfileError(e)) => return FindCommandResult::Error(e.into()),
@@ -306,13 +311,10 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
     let mut log = Vec::new();
 
     match local_command_result {
-        FindCommandResult::CommandNotFound {
-            error: _,
-            extended,
-        } => {
+        FindCommandResult::CommandNotFound { error: _, extended } => {
             log = extended;
             // not found, continue searching...
-        },
+        }
         FindCommandResult::CommandFound {
             source,
             manifest_dir,
@@ -330,7 +332,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
             });
         }
         FindCommandResult::Error(e) => {
-            return Err(Error::ErrorReadingLocalDirectory {
+            return Err(Error::ReadingLocalDirectory {
                 command: command_name.as_ref().to_string(),
                 error: e.to_string(),
                 local_log: log,
@@ -349,10 +351,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     let mut global_log = Vec::new();
     match global_command_result {
-        FindCommandResult::CommandNotFound {
-            error: _,
-            extended,
-        } => {
+        FindCommandResult::CommandNotFound { error: _, extended } => {
             global_log = extended;
             // continue searching...
         }
@@ -378,8 +377,8 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
                     command: command_name.as_ref().to_string(),
                     error: e.to_string(),
                     local_log: log,
-                    global_log: global_log,
-                }
+                    global_log,
+                },
             );
         }
     };
@@ -387,7 +386,7 @@ pub fn get_command_from_anywhere<S: AsRef<str>>(command_name: S) -> Result<Comma
 
     return Err(Error::CommandNotFound {
         command: command_name.as_ref().to_string(),
-        error: format!("Command not found in global or local directory"),
+        error: "Command not found in global or local directory".to_string(),
         local_log: log,
         global_log,
     });

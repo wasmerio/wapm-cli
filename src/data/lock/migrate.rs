@@ -88,7 +88,7 @@ pub fn fix_up_v1_package_names(lockfile: &mut LockfileV2) {
                     module.package_name = correct_name.clone();
                 }
             }
-            (correct_name.clone(), versions)
+            (correct_name, versions)
         })
         .collect();
 }
@@ -317,7 +317,7 @@ mod test {
 
         let v4_lockfile: LockfileV4 = toml::from_str(&v4_lockfile_toml.to_string()).unwrap();
 
-        let v4_lockfile_converted = convert_lockfilev3_to_v4(v3_lockfile, &directory);
+        let v4_lockfile_converted = convert_lockfilev3_to_v4(v3_lockfile, directory);
 
         assert_eq!(v4_lockfile, v4_lockfile_converted);
     }

@@ -34,21 +34,21 @@ pub enum Error {
     #[error("There was a problem opening the manifest for installed package \"{0}\". {1}")]
     InstalledDependencyIsMissingManifest(String, String),
     #[error("There was a problem decompressing the package data for \"{0}\". {1}")]
-    DecompressionError(String, String),
+    Decompression(String, String),
     #[error("There was a problem parsing the package name for \"{0}\". {1}")]
     FailedToParsePackageName(String, String),
     #[error("There was an IO error creating the wapm_packages directory for package \"{0}\". {1}")]
     IoErrorCreatingDirectory(String, String),
     #[error("There was an IO error copying package data for package \"{0}\". {1}")]
-    IoCopyError(String, String),
+    IoCopy(String, String),
     #[error("Error downloading package data for package \"{0}\". {1}")]
-    DownloadError(String, String),
+    Download(String, String),
     #[error("Install aborted: {0}")]
     InstallAborted(String),
     #[error("There was an error storing keys for package \"{0}\" during installation: {1}")]
-    KeyManagementError(String, String),
+    KeyManagement(String, String),
     #[error("Failed during network connection: {0}")]
-    IoConnectionError(String),
+    IoConnection(String),
     #[error("Failed to validate package {0} with key {1}: {2}")]
     FailedToValidateSignature(String, String, String),
 }
@@ -74,7 +74,7 @@ impl<'a> InstalledPackages<'a> {
                 .map(|(key, (download_url, signature))| {
                     info!("Installing {}@{}", key.name, key.version);
                     Installer::install_package(
-                        &directory,
+                        directory,
                         key,
                         download_url.as_str(),
                         #[cfg(feature = "full")]
@@ -151,21 +151,18 @@ fn verify_integrity_of_package(
     fully_qualified_package_name: String,
     #[cfg(feature = "full")] signature: Option<keys::WapmPackageSignature>,
 ) -> Result<PackageSignatureVerificationData, Error> {
-    let mut keys_db = database::open_db().map_err(|e| {
-        Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
-    })?;
+    let mut keys_db = database::open_db()
+        .map_err(|e| Error::KeyManagement(fully_qualified_package_name.clone(), e.to_string()))?;
     // get the latest key for the given namespace first. If the server claims that the owner
     // is someone else, then we'll search the local database for a key from that user
     // this is required for how globally namespaced packages work and also allows transfer
     // of ownership
-    let mut latest_public_key = keys::get_latest_public_key_for_user(&keys_db, &namespace)
-        .map_err(|e| {
-            Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
-        })?;
+    let mut latest_public_key = keys::get_latest_public_key_for_user(&keys_db, namespace)
+        .map_err(|e| Error::KeyManagement(fully_qualified_package_name.clone(), e.to_string()))?;
 
     let import_public_key = |mut_db_handle, pk_id, pkv, associated_user| {
         keys::import_public_key(mut_db_handle, pk_id, pkv, associated_user).map_err(|e| {
-            Error::KeyManagementError(
+            Error::KeyManagement(
                 fully_qualified_package_name.clone(),
                 format!("could not add public key: {}", e),
             )
@@ -188,7 +185,7 @@ fn verify_integrity_of_package(
         // get key for owner as identified by the server
         latest_public_key = if owner != namespace {
             keys::get_latest_public_key_for_user(&keys_db, &owner).map_err(|e| {
-                Error::KeyManagementError(fully_qualified_package_name.clone(), e.to_string())
+                Error::KeyManagement(fully_qualified_package_name.clone(), e.to_string())
             })?
         } else {
             latest_public_key
@@ -301,13 +298,14 @@ impl<'a> Install<'a> for RegistryInstaller {
             .map_err(|e| Error::FailedToParsePackageName(key.to_string(), e.to_string()))?;
         let fully_qualified_package_name: String =
             fully_qualified_package_display_name(pkg_name, &key.version);
-        let package_dir = create_package_dir(&directory, namespace, &fully_qualified_package_name)
-            .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
+        let package_dir =
+            create_package_dir(directory, namespace, &fully_qualified_package_name)
+                .map_err(|err| Error::IoErrorCreatingDirectory(key.to_string(), err.to_string()))?;
         let client = {
             let builder = ClientBuilder::new().gzip(false);
             #[cfg(not(target_os = "wasi"))]
-            let builder = if let Some(proxy) = proxy::maybe_set_up_proxy()
-                .map_err(|e| Error::IoConnectionError(format!("{}", e)))?
+            let builder = if let Some(proxy) =
+                proxy::maybe_set_up_proxy().map_err(|e| Error::IoConnection(format!("{}", e)))?
             {
                 builder.proxy(proxy)
             } else {
@@ -333,60 +331,18 @@ impl<'a> Install<'a> for RegistryInstaller {
                     let e = e.into();
                     sentry::integrations::anyhow::capture_anyhow(&e);
                 }
-                Error::DownloadError(key.to_string(), error_message)
+                Error::Download(key.to_string(), error_message)
             })?;
 
-        // step to perform after package is decompressed: may be a no-op or may
-        // execute side effects such as logging to the user.
-        #[cfg(feature = "full")]
-        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
-            if !force_insecure_install {
-                let PackageSignatureVerificationData {
-                    insecure_install,
-                    key_to_verify_package_with,
-                    signature_to_use,
-                } = verify_integrity_of_package(
-                    namespace,
-                    fully_qualified_package_name.clone(),
-                    signature,
-                )?;
-
-                if insecure_install {
-                    Box::new(|_dest| Ok(()))
-                } else {
-                    Box::new(move |mut dest| {
-                        let (pk_id, pkv) = key_to_verify_package_with
-                            .clone()
-                            .expect("Critical internal logic error");
-                        let signature_to_use = signature_to_use
-                            .clone()
-                            .expect("Critical internal logic error");
-                        verify_signature_on_package(&pkv, &signature_to_use, &mut dest).map_err(
-                            |e| {
-                                Error::FailedToValidateSignature(
-                                    fully_qualified_package_name.clone(),
-                                    pk_id,
-                                    e.to_string(),
-                                )
-                            },
-                        )?;
-                        info!(
-                            "Signature of package {} verified!",
-                            &fully_qualified_package_name
-                        );
-                        Ok(())
-                    })
-                }
-            } else {
-                Box::new(|_dest| Ok(()))
-            };
-
-        #[cfg(not(feature = "full"))]
-        let mut key_sign_end_step: Box<dyn FnMut(&mut fs::File) -> Result<(), Error>> =
-            Box::new(|_dest| Ok(()));
+        let key_sign_end_step = get_key_sign_end_step(
+            force_insecure_install,
+            namespace,
+            fully_qualified_package_name,
+            signature,
+        )?;
 
         let temp_dir =
-            create_temp_dir().map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+            create_temp_dir().map_err(|e| Error::Download(key.to_string(), e.to_string()))?;
         let tmp_dir_path: &std::path::Path = temp_dir.as_ref();
         fs::create_dir(tmp_dir_path.join("wapm_package_install"))
             .map_err(|e| Error::IoErrorCreatingDirectory(key.to_string(), e.to_string()))?;
@@ -398,17 +354,66 @@ impl<'a> Install<'a> for RegistryInstaller {
             .write(true)
             .create(true)
             .open(&temp_tar_gz_path)
-            .map_err(|e| Error::IoCopyError(key.to_string(), e.to_string()))?;
+            .map_err(|e| Error::IoCopy(key.to_string(), e.to_string()))?;
 
         io::copy(&mut response, &mut dest)
-            .map_err(|e| Error::DownloadError(key.to_string(), e.to_string()))?;
+            .map_err(|e| Error::Download(key.to_string(), e.to_string()))?;
 
         key_sign_end_step(&mut dest)?;
 
         Self::decompress_and_extract_archive(dest, &package_dir, &key)
-            .map_err(|e| Error::DecompressionError(key.to_string(), e.to_string()))?;
+            .map_err(|e| Error::Decompression(key.to_string(), e.to_string()))?;
         Ok((key, package_dir, download_url.to_string()))
     }
+}
+
+type KeySignEndStep = Box<dyn FnOnce(&mut fs::File) -> Result<(), Error>>;
+
+/// Get the step to perform after package is decompressed: may be a no-op or may
+/// execute side effects such as logging to the user.
+fn get_key_sign_end_step(
+    force_insecure_install: bool,
+    namespace: &str,
+    fully_qualified_package_name: String,
+    signature: Option<keys::WapmPackageSignature>,
+) -> Result<KeySignEndStep, Error> {
+    #[cfg(feature = "full")]
+    if !force_insecure_install {
+        let PackageSignatureVerificationData {
+            insecure_install,
+            key_to_verify_package_with,
+            signature_to_use,
+        } = verify_integrity_of_package(
+            namespace,
+            fully_qualified_package_name.clone(),
+            signature,
+        )?;
+
+        if !insecure_install {
+            return Ok(Box::new(move |dest| {
+                let (pk_id, pkv) = key_to_verify_package_with
+                    .clone()
+                    .expect("Critical internal logic error");
+                let signature_to_use = signature_to_use
+                    .clone()
+                    .expect("Critical internal logic error");
+                verify_signature_on_package(&pkv, &signature_to_use, dest).map_err(|e| {
+                    Error::FailedToValidateSignature(
+                        fully_qualified_package_name.clone(),
+                        pk_id,
+                        e.to_string(),
+                    )
+                })?;
+                info!(
+                    "Signature of package {} verified!",
+                    &fully_qualified_package_name
+                );
+                Ok(())
+            }));
+        }
+    }
+
+    Ok(Box::new(|_| Ok(())))
 }
 
 /// Verifies the signature of a downloaded package archive
@@ -419,9 +424,9 @@ fn verify_signature_on_package(
 ) -> anyhow::Result<()> {
     dest.seek(SeekFrom::Start(0))?;
     // TODO: refactor to remove extra bit of info here
-    let public_key = minisign::PublicKey::from_base64(&pkv)
+    let public_key = minisign::PublicKey::from_base64(pkv)
         .map_err(|e| anyhow!("Invalid key: {}", e.to_string()))?;
-    let sig_box = minisign::SignatureBox::from_string(&signature_to_use)
+    let sig_box = minisign::SignatureBox::from_string(signature_to_use)
         .map_err(|e| anyhow!("Error with downloaded signature: {}", e.to_string()))?;
 
     minisign::verify(&public_key, &sig_box, dest, true, false)

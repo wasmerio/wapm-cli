@@ -129,7 +129,7 @@ pub fn create_package_dir(
 ) -> Result<PathBuf, io::Error> {
     let mut package_dir = project_dir.join(PACKAGES_DIR_NAME);
     package_dir.push(namespace_dir);
-    package_dir.push(&fully_qualified_package_name);
+    package_dir.push(fully_qualified_package_name);
     fs::create_dir_all(&package_dir)?;
     Ok(package_dir)
 }
@@ -282,7 +282,7 @@ pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
 /// Returns the value of the WAPM_RUNTIME env var if it exists.
 /// Otherwise returns wasmer
 fn get_runtime() -> String {
-    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or(DEFAULT_RUNTIME.to_owned())
+    env::var(WAPM_RUNTIME_ENV_KEY).unwrap_or_else(|_| DEFAULT_RUNTIME.to_owned())
 }
 
 /// Splits the runtime from the rest of arguments
@@ -307,7 +307,7 @@ pub fn get_runtime_with_args() -> (String, Vec<String>) {
 
 #[cfg(not(target_os = "wasi"))]
 pub fn create_temp_dir() -> Result<tempfile::TempDir, std::io::Error> {
-    Ok(tempfile::TempDir::new()?)
+    tempfile::TempDir::new()
 }
 
 #[cfg(target_os = "wasi")]

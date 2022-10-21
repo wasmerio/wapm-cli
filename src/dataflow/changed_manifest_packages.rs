@@ -28,7 +28,7 @@ impl<'a> ChangedManifestPackages<'a> {
                     // and do a semver match
                     PackageKey::WapmPackageRange(range) => {
                         // if the range does not match any of the lockfile keys, then we have a changed package
-                        lockfile_keys.iter().find(|k| k.matches(range)).is_none()
+                        !lockfile_keys.iter().any(|k| k.matches(range))
                     }
                 }
             })

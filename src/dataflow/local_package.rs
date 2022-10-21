@@ -45,17 +45,17 @@ impl<'a> LocalPackage<'a> {
             .into_iter()
             .map(|c| LockfileCommand::from_command(package_name, package_version.clone(), &c))
             .collect::<Result<Vec<LockfileCommand>, lockfile_command::Error>>()
-            .map_err(|e| Error::CouldNotExtractCommandsFromManifest(e))?;
+            .map_err(Error::CouldNotExtractCommandsFromManifest)?;
         let key = PackageKey::new_registry_package(package_name, package_version.clone());
         let data = LockfilePackage { modules, commands };
         Ok(LocalPackage { key, data })
     }
 }
 
-impl<'a> Into<LockfilePackages<'a>> for LocalPackage<'a> {
-    fn into(self) -> LockfilePackages<'a> {
+impl<'a> From<LocalPackage<'a>> for LockfilePackages<'a> {
+    fn from(local: LocalPackage<'a>) -> LockfilePackages<'a> {
         let mut packages = HashMap::new();
-        packages.insert(self.key, self.data);
+        packages.insert(local.key, local.data);
         LockfilePackages { packages }
     }
 }

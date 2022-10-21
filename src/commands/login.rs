@@ -48,8 +48,8 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
         u.to_string()
     } else {
         print!("Username: ");
-        stdout().flush().ok().expect("Could not flush stdout");
-    
+        stdout().flush().expect("Could not flush stdout");
+
         let buffer = &mut String::new();
         stdin().read_line(buffer)?;
         buffer.trim_end().to_string()
@@ -58,14 +58,10 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
     let password = if let Some(p) = login_options.password.as_ref() {
         p.to_string()
     } else {
-        rpassword::prompt_password("Password: ")
-        .expect("Can't get password")
+        rpassword::prompt_password("Password: ").expect("Can't get password")
     };
 
-    let q = LoginMutation::build_query(login_mutation::Variables {
-        username: username.to_string(),
-        password: password.to_string(),
-    });
+    let q = LoginMutation::build_query(login_mutation::Variables { username, password });
     let response: login_mutation::ResponseData = execute_query(&q)?;
     let token = match response.token_auth {
         Some(token_auth) => Some(token_auth.refresh_token),
@@ -81,7 +77,11 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
         );
         config.save()?;
         if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-            println!("Successfully logged into registry {:?} as user {:?}",  config.registry.get_current_registry(), u);
+            println!(
+                "Successfully logged into registry {:?} as user {:?}",
+                config.registry.get_current_registry(),
+                u
+            );
         }
     }
     Ok(())

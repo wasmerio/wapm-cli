@@ -93,13 +93,10 @@ fn add_key_pair_from_fs_to_database(
     public_key_location: String,
     private_key_location: String,
 ) -> anyhow::Result<()> {
-    let (pk_id, pk_v, tx) = add_personal_key_pair_to_database(
-        key_db,
-        public_key_location.clone(),
-        private_key_location.clone(),
-    )?;
+    let (pk_id, pk_v, tx) =
+        add_personal_key_pair_to_database(key_db, public_key_location, private_key_location)?;
     let q = PublishPublicKeyMutation::build_query(publish_public_key_mutation::Variables {
-        key_id: pk_id.clone(),
+        key_id: pk_id,
         key: pk_v,
         verifying_signature_id: None,
     });
@@ -148,12 +145,10 @@ pub fn keys(options: KeyOpt) -> anyhow::Result<()> {
                         );
                     }
                 }
+            } else if keys.is_empty() {
+                println!("No personal keys found");
             } else {
-                if keys.is_empty() {
-                    println!("No personal keys found");
-                } else {
-                    println!("{}", create_personal_key_table(keys)?);
-                }
+                println!("{}", create_personal_key_table(keys)?);
             }
         }
         KeyOpt::Register(Register {
@@ -167,8 +162,7 @@ pub fn keys(options: KeyOpt) -> anyhow::Result<()> {
             )?;
         }
         KeyOpt::Delete(Delete { public_key_id }) => {
-            let full_public_key =
-                get_full_personal_public_key_by_id(&key_db, public_key_id.clone())?;
+            let full_public_key = get_full_personal_public_key_by_id(&key_db, public_key_id)?;
             warn!(
                 "You are about to delete the key pair associated with {:?} from wapm.\nThis cannot be undone.",
                 &full_public_key
@@ -262,7 +256,8 @@ pub fn create_personal_key_table(keys: Vec<PersonalKey>) -> anyhow::Result<Strin
             key.public_key_id,
             key.active,
             key.public_key_value,
-            key.private_key_location.unwrap_or("None".to_string()),
+            key.private_key_location
+                .unwrap_or_else(|| "None".to_string()),
             time::strftime("%Y-%m-%d", &time::at(key.date_created))?
         ]);
     }

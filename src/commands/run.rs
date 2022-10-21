@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use structopt::StructOpt;
 use thiserror::Error;
+use wapm_toml::Manifest;
 #[cfg(target_os = "wasi")]
 use wasm_bus_process::prelude::Command;
 
@@ -82,20 +83,18 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
             log.append(&mut registry_error);
             return Err(anyhow!("{}", log.join("\r\n")));
         },
-        Err(find_command_result::Error::ErrorReadingLocalDirectory {
-            local_log,
+        Err(find_command_result::Error::ReadingLocalDirectory {
+            mut local_log,
             ..
         }) => {
-            let mut log = local_log.clone();
-            log.append(&mut registry_error);
-            return Err(anyhow!("{}", log.join("\r\n")));
+            local_log.append(&mut registry_error);
+            return Err(anyhow!("{}", local_log.join("\r\n")));
         },
         Err(find_command_result::Error::CommandNotFoundInLocalDirectoryAndErrorReadingGlobalDirectory {
-            local_log,
+            local_log: mut log,
             mut global_log,
             ..
         }) => {
-            let mut log = local_log.clone();
             log.append(&mut global_log);
             log.append(&mut registry_error);
             return Err(anyhow!("{}", log.join("\r\n")));
@@ -106,7 +105,7 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
     let run_dir = if is_global {
         Config::get_globals_directory().unwrap()
     } else {
-        current_dir.clone()
+        current_dir
     };
 
     let manifest_dir = run_dir.join(manifest_dir);
@@ -118,11 +117,12 @@ pub fn run(run_options: RunOpt) -> anyhow::Result<()> {
         command_name,
         &module_name,
         &run_options.pre_opened_directories,
-        &args,
+        args,
         prehashed_cache_key,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn do_run(
     run_dir: PathBuf,
     source_path_buf: PathBuf,
@@ -148,18 +148,10 @@ pub(crate) fn do_run(
 
     let wasmer_extra_flags: Option<Vec<OsString>> =
         match ManifestResult::find_in_directory(&manifest_dir) {
-            ManifestResult::Manifest(manifest) => {
-                manifest
-                    .package
-                    .wasmer_extra_flags
-                    .clone()
-                    .map(|extra_flags| {
-                        extra_flags
-                            .split_whitespace()
-                            .map(|str| OsString::from(str))
-                            .collect()
-                    })
-            }
+            ManifestResult::Manifest(manifest) => manifest
+                .package
+                .wasmer_extra_flags
+                .map(|extra_flags| extra_flags.split_whitespace().map(OsString::from).collect()),
             _ => None,
         };
 
@@ -170,22 +162,21 @@ pub(crate) fn do_run(
 
     let mut disable_command_rename = false;
 
-    match ManifestResult::find_in_directory(&manifest_dir) {
-        ManifestResult::Manifest(manifest) => {
-            disable_command_rename = manifest.package.disable_command_rename;
-            manifest.package.rename_commands_to_raw_command_name;
-            if let Some(ref fs) = manifest.fs {
-                // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
-                for (guest_path, host_path) in fs.iter() {
-                    wasi_preopened_dir_flags.push(OsString::from(format!(
-                        "--mapdir={}:{}",
-                        guest_path,
-                        manifest_dir.join(host_path).to_string_lossy(),
-                    )));
-                }
+    if let ManifestResult::Manifest(Manifest { package, fs, .. }) =
+        ManifestResult::find_in_directory(&manifest_dir)
+    {
+        disable_command_rename = package.disable_command_rename;
+
+        if let Some(ref fs) = fs {
+            // todo: normalize (rm `:` and newline, etc) these paths if we haven't yet
+            for (guest_path, host_path) in fs.iter() {
+                wasi_preopened_dir_flags.push(OsString::from(format!(
+                    "--mapdir={}:{}",
+                    guest_path,
+                    manifest_dir.join(host_path).to_string_lossy(),
+                )));
             }
         }
-        _ => (),
     }
 
     let (runtime, runtime_args) = get_runtime_with_args();
@@ -262,13 +253,13 @@ fn create_run_command<P: AsRef<Path>, P2: AsRef<Path>>(
     // for optional types, use an empty vec here:
     // an empty OsString may pass empty args to the child program which can cause issues
     Ok([
-        &command_vec[..],
-        &override_command_name[..],
-        &wasi_preopened_dir_flags[..],
-        &wasmer_extra_flags.unwrap_or_default()[..],
-        &prehashed_cache_key_flag[..],
+        command_vec.as_slice(),
+        &override_command_name,
+        &wasi_preopened_dir_flags,
+        wasmer_extra_flags.as_deref().unwrap_or_default(),
+        &prehashed_cache_key_flag,
         &[OsString::from("--")],
-        &args[..],
+        args,
     ]
     .concat())
 }
@@ -293,8 +284,7 @@ mod test {
                 .collect::<PathBuf>(),
         );
         fs::create_dir_all(&wapm_module_dir).unwrap();
-        let expected_dir: PathBuf = wapm_module_dir.clone();
-        let expected_dir = expected_dir.join("foo_entry.wasm");
+        let expected_dir = wapm_module_dir.join("foo_entry.wasm");
         let expected_command = vec![
             expected_dir.into_os_string(),
             OsString::from("--"),
@@ -305,7 +295,7 @@ mod test {
             .iter()
             .collect();
         let actual_command =
-            create_run_command(&args, None, vec![], &dir, wasm_relative_path, None, None).unwrap();
+            create_run_command(&args, None, vec![], dir, wasm_relative_path, None, None).unwrap();
         assert_eq!(expected_command, actual_command);
     }
 }

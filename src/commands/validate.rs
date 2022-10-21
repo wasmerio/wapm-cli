@@ -40,11 +40,11 @@ pub fn validate_manifest_and_modules(pkg_path: PathBuf) -> anyhow::Result<()> {
 
         let temp_out_dir = create_temp_dir()
             .map_err(|e| anyhow!("Could not create temporary directory: {}", e.to_string()))?;
-        let out_dir: &std::path::Path = temp_out_dir.as_ref();
+        let out_dir = temp_out_dir.path();
         let mut archive = Archive::new(archive_data.as_slice());
         // TODO: consider doing this entirely in memory with multiple passes
         archive
-            .unpack(&out_dir)
+            .unpack(out_dir)
             .map_err(|err| ValidationError::CannotUnpackArchive {
                 file: pkg_path.to_string_lossy().to_string(),
                 error: format!("{}", err),
