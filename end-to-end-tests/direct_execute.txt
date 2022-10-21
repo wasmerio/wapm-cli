@@ -1,7 +1,3 @@
-[INFO] Installing mark2/coreutils@0.0.3
-aGVsbG8K
-[INFO] Installing mark2/coreutils@0.0.3
-hello
 [INFO] Installing namespace-example/cowsay@0.2.0
 Package installed successfully to wapm_packages!
  _______
@@ -20,13 +16,12 @@ lolcat 1.0.1
 [INFO] Package "lolcat" is not installed.
 lolcat 1.0.1
 LOCAL PACKAGES:
- PACKAGE            | VERSION | MODULE | ABI 
- syrusakbary/lolcat | 0.1.1   | lolcat | wasi 
+ PACKAGE            | VERSION | MODULE | ABI
+ syrusakbary/lolcat | 0.1.1   | lolcat | wasi
 
 LOCAL COMMANDS:
- COMMAND | PACKAGE            | VERSION 
- lolcat  | syrusakbary/lolcat | 0.1.1 
+ COMMAND | PACKAGE            | VERSION
+ lolcat  | syrusakbary/lolcat | 0.1.1
 
 lolcat 1.0.1
 lolcat 1.0.1
-Success: command-name not found
