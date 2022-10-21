@@ -66,6 +66,7 @@ pub fn link_to_package_bindings(
         .filter_map(|bindings| match (language, bindings.on) {
             (Language::JavaScript, get_bindings_query::GetBindingsQueryPackageVersionBindingsOn::PackageVersionNPMBinding(b)) => Some((
                 bindings.module,
+                #[allow(deprecated)]
                 b.npm_default_install_package_name,
         )),
             (Language::Python, get_bindings_query::GetBindingsQueryPackageVersionBindingsOn::PackageVersionPythonBinding(b)) => Some((

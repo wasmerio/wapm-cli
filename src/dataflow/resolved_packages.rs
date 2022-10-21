@@ -110,9 +110,7 @@ impl<'a> Resolve<'a> for RegistryResolver {
             .package
             .into_iter()
             .flatten()
-            .map(|p| {
-                (p.name, p.versions)
-            })
+            .map(|p| (p.name, p.versions))
             .flat_map(|(n, vs)| {
                 vs.into_iter()
                     .flatten()
