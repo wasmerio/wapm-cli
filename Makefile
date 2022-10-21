@@ -106,3 +106,6 @@ regression-tests:
 	chmod +x end-to-end-tests/ci/init-and-add.sh
 	./end-to-end-tests/ci/init-and-add.sh
 	chmod -x end-to-end-tests/ci/init-and-add.sh
+
+update-schema:
+	curl --fail "$(shell wapm config get registry.url)/schema.graphql" > graphql/schema.graphql
