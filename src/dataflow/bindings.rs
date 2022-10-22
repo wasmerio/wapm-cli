@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fmt::{self, Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 
 use graphql_client::GraphQLQuery;
 
@@ -11,20 +8,14 @@ pub enum Error {
     Query(anyhow::Error),
     #[error("Package not found in the registry {registry:?}: {name}")]
     UnknownPackage { name: String, registry: String },
-    #[error("{package_name} v{version} doesn't have any {language} bindings for {module}")]
+    #[error("{package_name} v{version} doesn't have any {language} bindings")]
     MissingBindings {
         package_name: String,
         version: String,
-        module: String,
         language: Language,
     },
     #[error("The {package_name} package doesn't contain any bindings")]
     NoBindings { package_name: String },
-    #[error("The {package_name} package contains bindings for multiple modules. Please choose one of {available_modules:?}")]
-    MultipleBindings {
-        package_name: String,
-        available_modules: Vec<String>,
-    },
 }
 
 #[derive(graphql_client::GraphQLQuery)]
@@ -43,7 +34,6 @@ pub fn link_to_package_bindings(
     package_name: &str,
     version: Option<&str>,
     language: Language,
-    module: Option<&str>,
 ) -> Result<String, Error> {
     let q = GetBindingsQuery::build_query(get_bindings_query::Variables {
         name: package_name.to_string(),
@@ -61,50 +51,31 @@ pub fn link_to_package_bindings(
             registry: config.registry.get_current_registry(),
         })?;
 
-    let mut candidates: BTreeMap<_, _> = bindings.into_iter()
-        .flatten()
-        .filter_map(|bindings| match (language, bindings.on) {
-            (Language::JavaScript, get_bindings_query::GetBindingsQueryPackageVersionBindingsOn::PackageVersionNPMBinding(b)) => Some((
-                bindings.module,
-                #[allow(deprecated)]
-                b.npm_default_install_package_name,
-        )),
-            (Language::Python, get_bindings_query::GetBindingsQueryPackageVersionBindingsOn::PackageVersionPythonBinding(b)) => Some((
-                bindings.module,
-                b.python_default_install_package_name,
-        )),
-            _ => None,
-        })
-        .collect();
-
-    if candidates.is_empty() {
+    if bindings.is_empty() {
         return Err(Error::NoBindings {
             package_name: package_name.to_string(),
         });
     }
 
-    match module {
-        Some(m) => candidates.remove(m).ok_or_else(|| Error::MissingBindings {
+    let chosen_language = match language {
+        Language::JavaScript => get_bindings_query::ProgrammingLanguage::JAVASCRIPT,
+        Language::Python => get_bindings_query::ProgrammingLanguage::PYTHON,
+    };
+
+    let bindings = bindings
+        .into_iter()
+        .flatten()
+        .find(|b| b.language == chosen_language)
+        .ok_or_else(|| Error::MissingBindings {
             package_name: package_name.to_string(),
             version,
-            module: m.to_string(),
             language,
-        }),
-        None if candidates.len() == 1 => {
-            let (_, url) = candidates.into_iter().next().expect("");
-            Ok(url)
-        }
-        None => {
-            let available_modules = candidates.into_keys().collect();
-            Err(Error::MultipleBindings {
-                package_name: package_name.to_string(),
-                available_modules,
-            })
-        }
-    }
+        })?;
+
+    Ok(bindings.url)
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Language {
     JavaScript,
     Python,

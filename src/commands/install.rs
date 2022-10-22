@@ -43,10 +43,6 @@ pub struct InstallOpt {
     /// Add the Python bindings using "pip install".
     #[structopt(long, group = "bindings", conflicts_with = "global")]
     pip: bool,
-    /// The module to install bindings for (useful if a package contains more
-    /// than one)
-    #[structopt(long, requires = "bindings")]
-    module: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -104,13 +100,9 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     );
 
     match Target::from_options(&options) {
-        Some(language) => install_bindings(
-            language,
-            &options.packages,
-            options.module.as_deref(),
-            options.dev,
-            current_directory,
-        ),
+        Some(language) => {
+            install_bindings(language, &options.packages, options.dev, current_directory)
+        }
         None => wapm_install(options, current_directory),
     }
 }
@@ -118,7 +110,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
 fn install_bindings(
     target: Target,
     packages: &[String],
-    module: Option<&str>,
     dev: bool,
     current_directory: PathBuf,
 ) -> Result<(), anyhow::Error> {
@@ -128,8 +119,7 @@ fn install_bindings(
         [..] => anyhow::bail!("Bindings can only be installed for one package at a time"),
     };
 
-    let url =
-        dataflow::bindings::link_to_package_bindings(name, version, target.language(), module)?;
+    let url = dataflow::bindings::link_to_package_bindings(name, version, target.language())?;
 
     let mut cmd = target.command(url.as_str(), dev);
 
