@@ -15,11 +15,14 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
+
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::fs;
 use std::io::{Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
+
+use wapm_toml::Package;
 
 static UPLOAD: Emoji<'_, '_> = Emoji("⬆️  ", "");
 static PACKAGE: Emoji<'_, '_> = Emoji("📦  ", "");
@@ -34,8 +37,16 @@ pub struct PublishOpt {
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/queries/publish_package.graphql",
+    query_path = "graphql/queries/publish_package_chunked.graphql",
     response_derives = "Debug"
+)]
+struct PublishPackageMutationChunked;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/publish_package.graphql",
+    response_derives = "Debug, Clone"
 )]
 struct PublishPackageMutation;
 
@@ -43,7 +54,7 @@ struct PublishPackageMutation;
 #[graphql(
     schema_path = "graphql/schema.graphql",
     query_path = "graphql/queries/get_signed_url.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug, Clone"
 )]
 struct GetSignedUrl;
 
@@ -155,27 +166,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let _compressed_archive = gz_enc.finish().unwrap();
     let mut compressed_archive_reader = fs::File::open(&archive_path)?;
 
-    let maybe_signature_data = match sign_compressed_archive(&mut compressed_archive_reader)? {
-        SignArchiveResult::Ok {
-            public_key_id,
-            signature,
-        } => {
-            info!(
-                "Package successfully signed with public key: \"{}\"!",
-                &public_key_id
-            );
-            Some(publish_package_mutation::InputSignature {
-                public_key_key_id: public_key_id,
-                data: signature,
-            })
-        }
-        SignArchiveResult::NoKeyRegistered => {
-            // TODO: uncomment this when we actually want users to start using it
-            //warn!("Publishing package without a verifying signature. Consider registering a key pair with wapm");
-            None
-        }
-    };
-
+    let maybe_signature_data = sign_compressed_archive(&mut compressed_archive_reader)?;
     let archived_data_size = archive_path.metadata()?.len();
     let use_chunked_uploads = archived_data_size > 1242880;
 
@@ -198,147 +189,74 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     }
 
     // file is larger than 1MB, use chunked uploads
-    if use_chunked_uploads {
-        println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
-
-        let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
-            name: package.name.to_string(),
-            version: package.version.to_string(),
-        });
-
-        let _response: get_signed_url::ResponseData =
-            execute_query_modifier(&get_google_signed_url, |f| {
-                f.file(archive_name.clone(), archive_path.clone()).unwrap()
-            })?;
-
-        let url = _response.url.ok_or({
-            let e = anyhow!(
-                "could not get signed url for package {}@{}",
-                package.name,
-                package.version
-            );
-            #[cfg(feature = "telemetry")]
-            sentry::integrations::anyhow::capture_anyhow(&e);
-            e
-        })?;
-
-        let signed_url = url.url;
-        let url = url::Url::parse(&signed_url).unwrap();
-        let client = reqwest::blocking::Client::builder()
-            .default_headers(reqwest::header::HeaderMap::default())
-            .build()
-            .unwrap();
-
-        let res = client
-            .post(url)
-            .header(reqwest::header::CONTENT_LENGTH, "0")
-            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-            .header("x-goog-resumable", "start");
-
-        let result = res.send().unwrap();
-
-        if result.status() != reqwest::StatusCode::from_u16(201).unwrap() {
-            return Err(anyhow!(
-                "Uploading package failed: got HTTP {:?} when uploading",
-                result.status()
-            ));
-        }
-
-        let headers = result
-            .headers()
-            .into_iter()
-            .filter_map(|(k, v)| {
-                let k = k.to_string();
-                let v = v.to_str().ok()?.to_string();
-                Some((k.to_lowercase(), v))
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        let session_uri = headers.get("location").unwrap().clone();
-
-        let total = archived_data_size;
-
-        use indicatif::{ProgressBar, ProgressState, ProgressStyle};
-
-        // archive_path
-        let mut file = std::fs::OpenOptions::new()
-            .read(true)
-            .open(&archive_path)
-            .unwrap();
-
-        let pb = ProgressBar::new(archived_data_size);
-        pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
-        .unwrap()
-        .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
-            write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+    if std::env::var("WAPM_USE_CHUNKED_UPLOAD").is_ok() && use_chunked_uploads {
+        try_chunked_uploading(
+            package,
+            &manifest_string,
+            &license_file,
+            &readme,
+            &archive_name,
+            &archive_path,
+            &maybe_signature_data,
+            archived_data_size,
+        )
+        .or_else(|_| {
+            try_default_uploading(
+                package,
+                &manifest_string,
+                &license_file,
+                &readme,
+                &archive_name,
+                &archive_path,
+                &maybe_signature_data,
+                &publish_opts,
+            )
         })
-        .progress_chars("#>-"));
-
-        let chunk_size = 256 * 1024;
-        let file_pointer = 0;
-
-        loop {
-            let mut chunk = Vec::with_capacity(chunk_size);
-            let n = std::io::Read::by_ref(&mut file)
-                .take(chunk_size as u64)
-                .read_to_end(&mut chunk)?;
-            if n == 0 {
-                break;
-            }
-
-            let start = file_pointer;
-            let end = file_pointer + chunk.len().saturating_sub(1);
-            let content_range = format!("bytes {start}-{end}/{total}");
-
-            let client = reqwest::blocking::Client::builder()
-                .default_headers(reqwest::header::HeaderMap::default())
-                .build()
-                .unwrap();
-
-            let res = client
-                .put(&session_uri)
-                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-                .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
-                .header("Content-Range".to_string(), content_range)
-                .body(chunk.to_vec());
-
-            pb.set_position(file_pointer as u64);
-
-            let _response = res.send().unwrap();
-
-            if n < chunk_size {
-                break;
-            }
-        }
-
-        pb.finish_and_clear();
-
-        println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
-
-        let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
-            name: package.name.to_string(),
-            version: package.version.to_string(),
-            description: package.description.clone(),
-            manifest: manifest_string,
-            license: package.license.clone(),
-            license_file,
-            readme,
-            repository: package.repository.clone(),
-            homepage: package.homepage.clone(),
-            file_name: Some(archive_name),
-            signature: maybe_signature_data,
-            signed_url: Some(signed_url),
-        });
-
-        let _response: publish_package_mutation::ResponseData = crate::graphql::execute_query(&q)?;
-
-        println!(
-            "Successfully published package `{}@{}`",
-            package.name, package.version
-        );
-
-        return Ok(());
+    } else {
+        try_default_uploading(
+            package,
+            &manifest_string,
+            &license_file,
+            &readme,
+            &archive_name,
+            &archive_path,
+            &maybe_signature_data,
+            &publish_opts,
+        )
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_default_uploading(
+    package: &Package,
+    manifest_string: &String,
+    license_file: &Option<String>,
+    readme: &Option<String>,
+    archive_name: &String,
+    archive_path: &PathBuf,
+    maybe_signature_data: &SignArchiveResult,
+    publish_opts: &PublishOpt,
+) -> Result<(), anyhow::Error> {
+    let maybe_signature_data = match maybe_signature_data {
+        SignArchiveResult::Ok {
+            public_key_id,
+            signature,
+        } => {
+            info!(
+                "Package successfully signed with public key: \"{}\"!",
+                &public_key_id
+            );
+            Some(publish_package_mutation::InputSignature {
+                public_key_key_id: public_key_id.to_string(),
+                data: signature.to_string(),
+            })
+        }
+        SignArchiveResult::NoKeyRegistered => {
+            // TODO: uncomment this when we actually want users to start using it
+            //warn!("Publishing package without a verifying signature. Consider registering a key pair with wapm");
+            None
+        }
+    };
 
     println!("{} {}Publishing...", style("[1/1]").bold().dim(), PACKAGE,);
 
@@ -347,10 +265,10 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         name: package.name.to_string(),
         version: package.version.to_string(),
         description: package.description.clone(),
-        manifest: manifest_string,
+        manifest: manifest_string.to_string(),
         license: package.license.clone(),
-        license_file,
-        readme,
+        license_file: license_file.to_owned(),
+        readme: readme.to_owned(),
         repository: package.repository.clone(),
         homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
@@ -361,10 +279,186 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     assert!(archive_path.is_file());
 
     if !publish_opts.dry_run {
-        let _response: publish_package_mutation::ResponseData =
-            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())
-                .map_err(on_error)?;
+        let _response: publish_package_mutation::ResponseData = execute_query_modifier(&q, |f| {
+            f.file(archive_name.to_string(), archive_path).unwrap()
+        })
+        .map_err(on_error)?;
     }
+
+    println!(
+        "Successfully published package `{}@{}`",
+        package.name, package.version
+    );
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_chunked_uploading(
+    package: &Package,
+    manifest_string: &String,
+    license_file: &Option<String>,
+    readme: &Option<String>,
+    archive_name: &String,
+    archive_path: &PathBuf,
+    maybe_signature_data: &SignArchiveResult,
+    archived_data_size: u64,
+) -> Result<(), anyhow::Error> {
+    let maybe_signature_data = match maybe_signature_data {
+        SignArchiveResult::Ok {
+            public_key_id,
+            signature,
+        } => {
+            info!(
+                "Package successfully signed with public key: \"{}\"!",
+                &public_key_id
+            );
+            Some(publish_package_mutation_chunked::InputSignature {
+                public_key_key_id: public_key_id.to_string(),
+                data: signature.to_string(),
+            })
+        }
+        SignArchiveResult::NoKeyRegistered => {
+            // TODO: uncomment this when we actually want users to start using it
+            //warn!("Publishing package without a verifying signature. Consider registering a key pair with wapm");
+            None
+        }
+    };
+
+    println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
+
+    let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
+        name: package.name.to_string(),
+        version: package.version.to_string(),
+    });
+
+    let _response: get_signed_url::ResponseData =
+        execute_query_modifier(&get_google_signed_url, |f| {
+            f.file(archive_name.clone(), archive_path.clone()).unwrap()
+        })?;
+
+    let url = _response.url.ok_or({
+        let e = anyhow!(
+            "could not get signed url for package {}@{}",
+            package.name,
+            package.version
+        );
+        #[cfg(feature = "telemetry")]
+        sentry::integrations::anyhow::capture_anyhow(&e);
+        e
+    })?;
+
+    let signed_url = url.url;
+    let url = url::Url::parse(&signed_url).unwrap();
+    let client = reqwest::blocking::Client::builder()
+        .default_headers(reqwest::header::HeaderMap::default())
+        .build()
+        .unwrap();
+
+    let res = client
+        .post(url)
+        .header(reqwest::header::CONTENT_LENGTH, "0")
+        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .header("x-goog-resumable", "start");
+
+    let result = res.send().unwrap();
+
+    if result.status() != reqwest::StatusCode::from_u16(201).unwrap() {
+        return Err(anyhow!(
+            "Uploading package failed: got HTTP {:?} when uploading",
+            result.status()
+        ));
+    }
+
+    let headers = result
+        .headers()
+        .into_iter()
+        .filter_map(|(k, v)| {
+            let k = k.to_string();
+            let v = v.to_str().ok()?.to_string();
+            Some((k.to_lowercase(), v))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let session_uri = headers.get("location").unwrap().clone();
+
+    let total = archived_data_size;
+
+    use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+
+    // archive_path
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&archive_path)
+        .unwrap();
+
+    let pb = ProgressBar::new(archived_data_size);
+    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+    .unwrap()
+    .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
+        write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+    })
+    .progress_chars("#>-"));
+
+    let chunk_size = 256 * 1024;
+    let file_pointer = 0;
+
+    loop {
+        let mut chunk = Vec::with_capacity(chunk_size);
+        let n = std::io::Read::by_ref(&mut file)
+            .take(chunk_size as u64)
+            .read_to_end(&mut chunk)?;
+        if n == 0 {
+            break;
+        }
+
+        let start = file_pointer;
+        let end = file_pointer + chunk.len().saturating_sub(1);
+        let content_range = format!("bytes {start}-{end}/{total}");
+
+        let client = reqwest::blocking::Client::builder()
+            .default_headers(reqwest::header::HeaderMap::default())
+            .build()
+            .unwrap();
+
+        let res = client
+            .put(&session_uri)
+            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+            .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
+            .header("Content-Range".to_string(), content_range)
+            .body(chunk.to_vec());
+
+        pb.set_position(file_pointer as u64);
+
+        let _response = res.send().unwrap();
+
+        if n < chunk_size {
+            break;
+        }
+    }
+
+    pb.finish_and_clear();
+
+    println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
+
+    let q =
+        PublishPackageMutationChunked::build_query(publish_package_mutation_chunked::Variables {
+            name: package.name.to_string(),
+            version: package.version.to_string(),
+            description: package.description.clone(),
+            manifest: manifest_string.to_string(),
+            license: package.license.clone(),
+            license_file: license_file.to_owned(),
+            readme: readme.to_owned(),
+            repository: package.repository.clone(),
+            homepage: package.homepage.clone(),
+            file_name: Some(archive_name.to_string()),
+            signature: maybe_signature_data,
+            signed_url: Some(signed_url),
+        });
+
+    let _response: publish_package_mutation_chunked::ResponseData =
+        crate::graphql::execute_query(&q)?;
 
     println!(
         "Successfully published package `{}@{}`",
@@ -399,7 +493,7 @@ enum PublishError {
     PackageFileSystemEntryMustBeDirectory(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SignArchiveResult {
     Ok {
         public_key_id: String,
