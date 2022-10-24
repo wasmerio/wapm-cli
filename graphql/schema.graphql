@@ -829,10 +829,15 @@ type UserNotificationKindIncomingPackageInvite {
   packageInvite: PackageCollaboratorInvite!
 }
 
+type SignedUrl {
+  url: String!
+}
+
 type Query {
   viewer: User
   getUser(username: String!): User
   getPasswordResetToken(token: String!): GetPasswordResetToken
+  getSignedUrlForPackageUpload(name:String!,version:String!): SignedUrl
   packages(before: String, after: String, first: Int, last: Int): PackageConnection
   recentPackageVersions(curated: Boolean, offset: Int, before: String, after: String, first: Int, last: Int): PackageVersionConnection!
   getNamespace(name: String!): Namespace
