@@ -15,7 +15,6 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
-
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::fs;
