@@ -209,11 +209,6 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         let _response: get_signed_url::ResponseData =
             execute_query_modifier(&get_google_signed_url, |f| {
                 f.file(archive_name.clone(), archive_path.clone()).unwrap()
-            })
-            .map_err(|e| {
-                #[cfg(feature = "telemetry")]
-                sentry::integrations::anyhow::capture_anyhow(&e);
-                e
             })?;
 
         let url = _response.url.ok_or({
@@ -227,9 +222,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             e
         })?;
 
-        let signed_url = format!("{}", url.url);
+        let signed_url = url.url;
         let url = url::Url::parse(&signed_url).unwrap();
-        let mut client = reqwest::blocking::Client::builder()
+        let client = reqwest::blocking::Client::builder()
             .default_headers(reqwest::header::HeaderMap::default())
             .build()
             .unwrap();
@@ -280,7 +275,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         .progress_chars("#>-"));
 
         let chunk_size = 256 * 1024;
-        let mut file_pointer = 0;
+        let file_pointer = 0;
 
         loop {
             let mut chunk = Vec::with_capacity(chunk_size);
@@ -295,7 +290,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             let end = file_pointer + chunk.len().saturating_sub(1);
             let content_range = format!("bytes {start}-{end}/{total}");
 
-            let mut client = reqwest::blocking::Client::builder()
+            let client = reqwest::blocking::Client::builder()
                 .default_headers(reqwest::header::HeaderMap::default())
                 .build()
                 .unwrap();
@@ -309,7 +304,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
             pb.set_position(file_pointer as u64);
 
-            let response = res.send().unwrap();
+            let _response = res.send().unwrap();
 
             if n < chunk_size {
                 break;
@@ -330,17 +325,12 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             readme,
             repository: package.repository.clone(),
             homepage: package.homepage.clone(),
-            file_name: Some(archive_name.clone()),
+            file_name: Some(archive_name),
             signature: maybe_signature_data,
             signed_url: Some(signed_url),
         });
 
-        let _response: publish_package_mutation::ResponseData = crate::graphql::execute_query(&q)
-            .map_err(|e| {
-            #[cfg(feature = "telemetry")]
-            sentry::integrations::anyhow::capture_anyhow(&e);
-            e
-        })?;
+        let _response: publish_package_mutation::ResponseData = crate::graphql::execute_query(&q)?;
 
         println!(
             "Successfully published package `{}@{}`",
