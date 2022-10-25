@@ -123,6 +123,8 @@ fn install_bindings(
 
     let mut cmd = target.command(url.as_str());
 
+    log::debug!("Executing {cmd:?}");
+
     // Note: We explicitly want to show the command output to users so they can
     // troubleshoot any failures.
     let status = cmd
