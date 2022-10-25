@@ -34,6 +34,6 @@ else
 fi
 
 cd /tmp/largewasmfile
-# wapm login --token ${{ secrets.WAPM_DEV_TOKEN }}
-$SCRIPT_DIR/../target/release/wapm publish
+wapm login --token ${{ secrets.WAPM_DEV_TOKEN }}
+FORCE_WAPM_USE_CHUNKED_UPLOAD=1 $SCRIPT_DIR/../target/release/wapm publish
 cd $PWD
