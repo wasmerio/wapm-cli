@@ -121,7 +121,7 @@ fn install_bindings(
 
     let url = dataflow::bindings::link_to_package_bindings(name, version, target.language())?;
 
-    let mut cmd = target.command(url.as_str(), dev);
+    let mut cmd = target.command(url.as_str());
 
     // Note: We explicitly want to show the command output to users so they can
     // troubleshoot any failures.
@@ -270,18 +270,24 @@ fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::E
 
 #[derive(Debug)]
 enum Target {
-    Npm,
-    Yarn,
+    Npm { dev: bool },
+    Yarn { dev: bool },
     Pip,
 }
 
 impl Target {
     fn from_options(options: &InstallOpt) -> Option<Self> {
-        let InstallOpt { yarn, npm, pip, .. } = options;
+        let InstallOpt {
+            yarn,
+            npm,
+            pip,
+            dev,
+            ..
+        } = *options;
 
         match (yarn, npm, pip) {
-            (true, false, false) => Some(Target::Yarn),
-            (false, true, false) => Some(Target::Npm),
+            (true, false, false) => Some(Target::Yarn { dev }),
+            (false, true, false) => Some(Target::Npm { dev }),
             (false, false, true) => Some(Target::Pip),
             (false, false, false) => None,
             _ => unreachable!("Already rejected by clap"),
@@ -295,25 +301,13 @@ impl Target {
         }
     }
 
-    fn command(&self, url: &str, dev: bool) -> Command {
+    fn command(&self, url: &str) -> Command {
         let shell_command = match self {
-            Target::Npm => {
-                let mut cmd = format!("npm install {url}");
-                if dev {
-                    cmd.push_str(" --dev");
-                }
-                cmd
-            }
-            Target::Yarn => {
-                let mut cmd = format!("yarn add {url}");
-                if dev {
-                    cmd.push_str(" --dev");
-                }
-                cmd
-            }
-            Target::Pip => {
-                format!("pip install {url}")
-            }
+            Target::Npm { dev: false } => format!("npm install {url}"),
+            Target::Npm { dev: true } => format!("npm install --save-dev {url}"),
+            Target::Yarn { dev: false } => format!("yarn add {url}"),
+            Target::Yarn { dev: true } => format!("yarn add --dev {url}"),
+            Target::Pip => format!("pip install {url}"),
         };
 
         if cfg!(target_os = "windows") {
