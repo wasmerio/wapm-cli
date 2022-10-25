@@ -188,8 +188,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     }
 
     // file is larger than 1MB, use chunked uploads
-    if std::env::var("FORCE_WAPM_USE_CHUNKED_UPLOAD").is_ok() || 
-        (std::env::var("WAPM_USE_CHUNKED_UPLOAD").is_ok() && use_chunked_uploads) {
+    if std::env::var("FORCE_WAPM_USE_CHUNKED_UPLOAD").is_ok()
+        || (std::env::var("WAPM_USE_CHUNKED_UPLOAD").is_ok() && use_chunked_uploads)
+    {
         try_chunked_uploading(
             package,
             &manifest_string,
