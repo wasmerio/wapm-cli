@@ -100,9 +100,7 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     );
 
     match Target::from_options(&options) {
-        Some(language) => {
-            install_bindings(language, &options.packages, options.dev, current_directory)
-        }
+        Some(language) => install_bindings(language, &options.packages, current_directory),
         None => wapm_install(options, current_directory),
     }
 }
@@ -110,7 +108,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
 fn install_bindings(
     target: Target,
     packages: &[String],
-    dev: bool,
     current_directory: PathBuf,
 ) -> Result<(), anyhow::Error> {
     let VersionedPackage { name, version } = match packages {
@@ -298,7 +295,7 @@ impl Target {
 
     fn language(&self) -> Language {
         match self {
-            Target::Npm | Target::Yarn => Language::JavaScript,
+            Target::Npm { .. } | Target::Yarn { .. } => Language::JavaScript,
             Target::Pip => Language::Python,
         }
     }
