@@ -296,30 +296,34 @@ impl Target {
     }
 
     fn command(&self, url: &str, dev: bool) -> Command {
-        match self {
+        let shell_command = match self {
             Target::Npm => {
-                let mut cmd = Command::new("npm");
-                cmd.arg("install");
+                let mut cmd = format!("npm install {url}");
                 if dev {
-                    cmd.arg("--save-dev");
+                    cmd.push_str(" --dev");
                 }
-                cmd.arg(url);
                 cmd
             }
             Target::Yarn => {
-                let mut cmd = Command::new("yarn");
-                cmd.arg("add");
+                let mut cmd = format!("yarn add {url}");
                 if dev {
-                    cmd.arg("--dev");
+                    cmd.push_str(" --dev");
                 }
-                cmd.arg(url);
                 cmd
             }
             Target::Pip => {
-                let mut cmd = Command::new("pip");
-                cmd.arg("install").arg(url);
-                cmd
+                format!("pip install {url}")
             }
+        };
+
+        if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/C").arg(shell_command);
+            cmd
+        } else {
+            let mut cmd = Command::new("sh");
+            cmd.arg("-c").arg(shell_command);
+            cmd
         }
     }
 }
