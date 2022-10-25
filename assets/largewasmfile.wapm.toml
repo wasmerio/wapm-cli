@@ -1,0 +1,18 @@
+[package]
+name = "felix/largewasmfile"
+version = "RANDOMVERSION1.RANDOMVERSION2.RANDOMVERSION3"
+description = "large wasm file"
+license = "Apache-2.0"
+repository = ""
+
+[[module]]
+name = "largewasmfile"
+source = "largewasmfile.wasm"
+abi = "wasi"
+
+[module.interfaces]
+wasi = "0.0.0-unstable"
+
+[[command]]
+name = "largewasmfile"
+module = "largewasmfile"
