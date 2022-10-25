@@ -274,7 +274,6 @@ fn try_default_uploading(
         homepage: package.homepage.clone(),
         file_name: Some(archive_name.clone()),
         signature: maybe_signature_data,
-        signed_url: None,
     });
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
