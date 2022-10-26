@@ -189,6 +189,11 @@ jobs:
           tar -xzf `pwd`/artifacts/wapm-linux-amd64/wapm-cli.tar.gz
           cp ./bin/wapm /home/runner/.wasmer/bin/wapm
           chmod +x /home/runner/.wasmer/bin/wapm
+      - name: 'Regression test: multi-part-uploading works'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/chunked-upload.sh
+          ./end-to-end-tests/ci/chunked-upload.sh
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
