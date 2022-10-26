@@ -100,9 +100,7 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
     );
 
     match Target::from_options(&options) {
-        Some(language) => {
-            install_bindings(language, &options.packages, options.dev, current_directory)
-        }
+        Some(language) => install_bindings(language, &options.packages, current_directory),
         None => wapm_install(options, current_directory),
     }
 }
@@ -110,7 +108,6 @@ pub fn install(options: InstallOpt) -> anyhow::Result<()> {
 fn install_bindings(
     target: Target,
     packages: &[String],
-    dev: bool,
     current_directory: PathBuf,
 ) -> Result<(), anyhow::Error> {
     let VersionedPackage { name, version } = match packages {
@@ -121,7 +118,9 @@ fn install_bindings(
 
     let url = dataflow::bindings::link_to_package_bindings(name, version, target.language())?;
 
-    let mut cmd = target.command(url.as_str(), dev);
+    let mut cmd = target.command(url.as_str());
+
+    log::debug!("Executing {cmd:?}");
 
     // Note: We explicitly want to show the command output to users so they can
     // troubleshoot any failures.
@@ -270,18 +269,24 @@ fn local_install_from_lockfile(current_directory: &Path) -> Result<(), anyhow::E
 
 #[derive(Debug)]
 enum Target {
-    Npm,
-    Yarn,
+    Npm { dev: bool },
+    Yarn { dev: bool },
     Pip,
 }
 
 impl Target {
     fn from_options(options: &InstallOpt) -> Option<Self> {
-        let InstallOpt { yarn, npm, pip, .. } = options;
+        let InstallOpt {
+            yarn,
+            npm,
+            pip,
+            dev,
+            ..
+        } = *options;
 
         match (yarn, npm, pip) {
-            (true, false, false) => Some(Target::Yarn),
-            (false, true, false) => Some(Target::Npm),
+            (true, false, false) => Some(Target::Yarn { dev }),
+            (false, true, false) => Some(Target::Npm { dev }),
             (false, false, true) => Some(Target::Pip),
             (false, false, false) => None,
             _ => unreachable!("Already rejected by clap"),
@@ -290,36 +295,28 @@ impl Target {
 
     fn language(&self) -> Language {
         match self {
-            Target::Npm | Target::Yarn => Language::JavaScript,
+            Target::Npm { .. } | Target::Yarn { .. } => Language::JavaScript,
             Target::Pip => Language::Python,
         }
     }
 
-    fn command(&self, url: &str, dev: bool) -> Command {
-        match self {
-            Target::Npm => {
-                let mut cmd = Command::new("npm");
-                cmd.arg("install");
-                if dev {
-                    cmd.arg("--save-dev");
-                }
-                cmd.arg(url);
-                cmd
-            }
-            Target::Yarn => {
-                let mut cmd = Command::new("yarn");
-                cmd.arg("add");
-                if dev {
-                    cmd.arg("--dev");
-                }
-                cmd.arg(url);
-                cmd
-            }
-            Target::Pip => {
-                let mut cmd = Command::new("pip");
-                cmd.arg("install").arg(url);
-                cmd
-            }
+    fn command(&self, url: &str) -> Command {
+        let shell_command = match self {
+            Target::Npm { dev: false } => format!("npm install {url}"),
+            Target::Npm { dev: true } => format!("npm install --save-dev {url}"),
+            Target::Yarn { dev: false } => format!("yarn add {url}"),
+            Target::Yarn { dev: true } => format!("yarn add --dev {url}"),
+            Target::Pip => format!("pip install {url}"),
+        };
+
+        if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/C").arg(shell_command);
+            cmd
+        } else {
+            let mut cmd = Command::new("sh");
+            cmd.arg("-c").arg(shell_command);
+            cmd
         }
     }
 }
