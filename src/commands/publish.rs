@@ -31,6 +31,8 @@ pub struct PublishOpt {
     /// Run the publish logic without sending anything to the registry server
     #[structopt(long = "dry-run")]
     dry_run: bool,
+    #[structopt(long = "quiet")]
+    quiet: bool,
 }
 
 #[derive(GraphQLQuery)]
@@ -200,6 +202,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             &archive_path,
             &maybe_signature_data,
             archived_data_size,
+            publish_opts.quiet,
         )
         .or_else(|_| {
             try_default_uploading(
@@ -211,6 +214,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
                 &archive_path,
                 &maybe_signature_data,
                 &publish_opts,
+                publish_opts.quiet,
             )
         })
     } else {
@@ -223,6 +227,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
             &archive_path,
             &maybe_signature_data,
             &publish_opts,
+            publish_opts.quiet,
         )
     }
 }
@@ -237,6 +242,7 @@ fn try_default_uploading(
     archive_path: &PathBuf,
     maybe_signature_data: &SignArchiveResult,
     publish_opts: &PublishOpt,
+    quiet: bool,
 ) -> Result<(), anyhow::Error> {
     let maybe_signature_data = match maybe_signature_data {
         SignArchiveResult::Ok {
@@ -259,7 +265,9 @@ fn try_default_uploading(
         }
     };
 
-    println!("{} {}Publishing...", style("[1/1]").bold().dim(), PACKAGE,);
+    if !quiet {
+        println!("{} {}Publishing...", style("[1/1]").bold().dim(), PACKAGE,);
+    }
 
     // regular upload
     let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
@@ -303,6 +311,7 @@ fn try_chunked_uploading(
     archive_path: &PathBuf,
     maybe_signature_data: &SignArchiveResult,
     archived_data_size: u64,
+    quiet: bool,
 ) -> Result<(), anyhow::Error> {
     let maybe_signature_data = match maybe_signature_data {
         SignArchiveResult::Ok {
@@ -325,7 +334,9 @@ fn try_chunked_uploading(
         }
     };
 
-    println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
+    if !quiet {
+        println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
+    }
 
     let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
         name: package.name.to_string(),
@@ -442,7 +453,9 @@ fn try_chunked_uploading(
 
     pb.finish_and_clear();
 
-    println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
+    if !quiet {
+        println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
+    }
 
     let q =
         PublishPackageMutationChunked::build_query(publish_package_mutation_chunked::Variables {

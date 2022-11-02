@@ -2,7 +2,6 @@
 
 export RUST_BACKTRACE=1
 ln -sf `which wapm` wax
-wapm config set registry.url "https://registry.wapm.dev/graphql"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PWD=$(pwd -P)
@@ -34,6 +33,8 @@ else
 fi
 
 cd /tmp/largewasmfile
-wapm login --token ${{ secrets.WAPM_DEV_TOKEN }}
-FORCE_WAPM_USE_CHUNKED_UPLOAD=1 wapm publish
+if ! [[ -z "${WAPM_DEV_TOKEN}" ]]; then
+    wapm login --token "${WAPM_DEV_TOKEN}"
+fi
+FORCE_WAPM_USE_CHUNKED_UPLOAD=1 wapm publish --quiet
 cd $PWD

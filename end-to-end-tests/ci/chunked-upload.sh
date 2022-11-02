@@ -5,6 +5,7 @@ rm -f $WASMER_DIR/.wax_index.toml
 # TODO force clear cache
 rm -f wapm.toml
 rm -f wapm.lock
+wapm config set registry.url "https://registry.wapm.dev/graphql"
 chmod +x end-to-end-tests/chunked_upload.sh
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/chunked_upload.sh &> /tmp/chunked_upload.txt
