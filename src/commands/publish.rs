@@ -337,15 +337,12 @@ fn try_chunked_uploading(
             f.file(archive_name.clone(), archive_path.clone()).unwrap()
         })?;
 
-    let url = _response.url.ok_or({
-        let e = anyhow!(
+    let url = _response.url.ok_or_else(|| {
+        anyhow!(
             "could not get signed url for package {}@{}",
             package.name,
             package.version
-        );
-        #[cfg(feature = "telemetry")]
-        sentry::integrations::anyhow::capture_anyhow(&e);
-        e
+        )
     })?;
 
     let signed_url = url.url;
