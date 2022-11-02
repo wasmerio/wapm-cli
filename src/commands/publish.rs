@@ -387,7 +387,7 @@ fn try_chunked_uploading(
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .open(&archive_path)
-        .unwrap();
+        .map_err(|e| anyhow!("cannot open archive {}: {e}", archive_path.display()))?;
 
     let pb = ProgressBar::new(archived_data_size);
     pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
@@ -427,7 +427,9 @@ fn try_chunked_uploading(
 
         pb.set_position(file_pointer as u64);
 
-        let _response = res.send().unwrap();
+        let _response = res.send().map_err(|e| {
+            anyhow!("cannot send request to {session_uri} (chunk {}..{}): {e}", file_pointer, file_pointer + chunk_size)
+        })?;
 
         if n < chunk_size {
             break;
