@@ -198,7 +198,8 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         &maybe_signature_data,
         archived_data_size,
         publish_opts.quiet,
-    ).map_err(on_error)
+    )
+    .map_err(on_error)
 }
 
 #[allow(clippy::too_many_arguments)]
