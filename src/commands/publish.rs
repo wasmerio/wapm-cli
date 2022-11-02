@@ -169,7 +169,6 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
 
     let maybe_signature_data = sign_compressed_archive(&mut compressed_archive_reader)?;
     let archived_data_size = archive_path.metadata()?.len();
-    let use_chunked_uploads = archived_data_size > 1242880;
 
     assert!(archive_path.exists());
     assert!(archive_path.is_file());
@@ -189,116 +188,17 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // file is larger than 1MB, use chunked uploads
-    if std::env::var("FORCE_WAPM_USE_CHUNKED_UPLOAD").is_ok()
-        || (std::env::var("WAPM_USE_CHUNKED_UPLOAD").is_ok() && use_chunked_uploads)
-    {
-        try_chunked_uploading(
-            package,
-            &manifest_string,
-            &license_file,
-            &readme,
-            &archive_name,
-            &archive_path,
-            &maybe_signature_data,
-            archived_data_size,
-            publish_opts.quiet,
-        )
-        .or_else(|_| {
-            try_default_uploading(
-                package,
-                &manifest_string,
-                &license_file,
-                &readme,
-                &archive_name,
-                &archive_path,
-                &maybe_signature_data,
-                &publish_opts,
-                publish_opts.quiet,
-            )
-        })
-    } else {
-        try_default_uploading(
-            package,
-            &manifest_string,
-            &license_file,
-            &readme,
-            &archive_name,
-            &archive_path,
-            &maybe_signature_data,
-            &publish_opts,
-            publish_opts.quiet,
-        )
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn try_default_uploading(
-    package: &Package,
-    manifest_string: &String,
-    license_file: &Option<String>,
-    readme: &Option<String>,
-    archive_name: &String,
-    archive_path: &PathBuf,
-    maybe_signature_data: &SignArchiveResult,
-    publish_opts: &PublishOpt,
-    quiet: bool,
-) -> Result<(), anyhow::Error> {
-    let maybe_signature_data = match maybe_signature_data {
-        SignArchiveResult::Ok {
-            public_key_id,
-            signature,
-        } => {
-            info!(
-                "Package successfully signed with public key: \"{}\"!",
-                &public_key_id
-            );
-            Some(publish_package_mutation::InputSignature {
-                public_key_key_id: public_key_id.to_string(),
-                data: signature.to_string(),
-            })
-        }
-        SignArchiveResult::NoKeyRegistered => {
-            // TODO: uncomment this when we actually want users to start using it
-            //warn!("Publishing package without a verifying signature. Consider registering a key pair with wapm");
-            None
-        }
-    };
-
-    if !quiet {
-        println!("{} {}Publishing...", style("[1/1]").bold().dim(), PACKAGE,);
-    }
-
-    // regular upload
-    let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
-        name: package.name.to_string(),
-        version: package.version.to_string(),
-        description: package.description.clone(),
-        manifest: manifest_string.to_string(),
-        license: package.license.clone(),
-        license_file: license_file.to_owned(),
-        readme: readme.to_owned(),
-        repository: package.repository.clone(),
-        homepage: package.homepage.clone(),
-        file_name: Some(archive_name.clone()),
-        signature: maybe_signature_data,
-    });
-    assert!(archive_path.exists());
-    assert!(archive_path.is_file());
-
-    if !publish_opts.dry_run {
-        let _response: publish_package_mutation::ResponseData = execute_query_modifier(&q, |f| {
-            f.file(archive_name.to_string(), archive_path).unwrap()
-        })
-        .map_err(on_error)?;
-    }
-
-    println!(
-        "Successfully published package `{}@{}`",
-        package.name, package.version
-    );
-
-    Ok(())
+    try_chunked_uploading(
+        package,
+        &manifest_string,
+        &license_file,
+        &readme,
+        &archive_name,
+        &archive_path,
+        &maybe_signature_data,
+        archived_data_size,
+        publish_opts.quiet,
+    ).map_err(on_error)
 }
 
 #[allow(clippy::too_many_arguments)]
