@@ -34,7 +34,7 @@ fi
 
 cd /tmp/largewasmfile
 if ! [[ -z "${WAPM_DEV_TOKEN}" ]]; then
-    wapm login --token "${WAPM_DEV_TOKEN}"
+    wapm login --quiet "${WAPM_DEV_TOKEN}"
 fi
 FORCE_WAPM_USE_CHUNKED_UPLOAD=1 wapm publish --quiet
 cd $PWD
