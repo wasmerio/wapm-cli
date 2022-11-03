@@ -298,7 +298,7 @@ fn try_chunked_uploading(
     // archive_path
     let mut file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&archive_path)
+        .open(archive_path)
         .map_err(|e| anyhow!("cannot open archive {}: {e}", archive_path.display()))?;
 
     let pb = ProgressBar::new(archived_data_size);
