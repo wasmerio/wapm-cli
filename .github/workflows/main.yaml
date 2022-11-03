@@ -196,6 +196,7 @@ jobs:
           ./end-to-end-tests/ci/chunked-upload.sh
         env: 
           WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
+          WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
