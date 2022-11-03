@@ -1,1 +1,1 @@
-Successfully published package `felix/largewasmfile@RANDOMVERSION1.RANDOMVERSION2.RANDOMVERSION3`
+Successfully published package `WAPMUSERNAME/largewasmfile@RANDOMVERSION1.RANDOMVERSION2.RANDOMVERSION3`

@@ -24,6 +24,7 @@ if [ "$(uname)" == "Darwin" ]; then
     sed -i '' "s/RANDOMVERSION3/$RANDOMVERSION3/g" /tmp/chunked_upload_reference.txt
     sed -i '' "s/RANDOMVERSION2/$RANDOMVERSION2/g" /tmp/chunked_upload_reference.txt
     sed -i '' "s/RANDOMVERSION1/$RANDOMVERSION1/g" /tmp/chunked_upload_reference.txt
+    sed -i '' "s/WAPMUSERNAME/$WAPMUSERNAME/g" /tmp/chunked_upload_reference.txt
 else
     sed -i "s/RANDOMVERSION3/$RANDOMVERSION3/g" /tmp/largewasmfile/wapm.toml
     sed -i "s/RANDOMVERSION2/$RANDOMVERSION2/g" /tmp/largewasmfile/wapm.toml
@@ -33,6 +34,7 @@ else
     sed -i "s/RANDOMVERSION3/$RANDOMVERSION3/g" /tmp/chunked_upload_reference.txt
     sed -i "s/RANDOMVERSION2/$RANDOMVERSION2/g" /tmp/chunked_upload_reference.txt
     sed -i "s/RANDOMVERSION1/$RANDOMVERSION1/g" /tmp/chunked_upload_reference.txt
+    sed -i "s/WAPMUSERNAME/$WAPMUSERNAME/g" /tmp/chunked_upload_reference.txt
 fi
 
 cd /tmp/largewasmfile
