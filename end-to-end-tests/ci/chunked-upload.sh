@@ -1,6 +1,7 @@
 export PATH=$PATH:$HOME/.cargo/bin
 export PATH=$PATH:$HOME/.wasmer/bin
 export WAPM_DISABLE_COLOR=true
+export WAPM_DEV_USERNAME="${WAPM_DEV_USERNAME:-felix}"
 rm -f $WASMER_DIR/.wax_index.toml
 # TODO force clear cache
 rm -f wapm.toml
