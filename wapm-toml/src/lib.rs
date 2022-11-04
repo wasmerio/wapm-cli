@@ -359,7 +359,7 @@ pub struct WitBindings {
 #[serde(rename_all = "kebab-case")]
 pub struct WaiBindings {
     /// The version of the WAI format being used.
-    pub wai: Version,
+    pub wai_version: Version,
     /// The `*.wai` file defining the interface this package exposes.
     pub exports: Option<PathBuf>,
     /// The `*.wai` files for any functionality this package imports from the
@@ -849,7 +849,7 @@ module = "mod"
     #[test]
     fn parse_wai_bindings() {
         let table = toml::toml! {
-            "wai" = "0.1.0"
+            "wai-version" = "0.1.0"
             "exports" = "./file.wai"
             "imports" = ["a.wai", "../b.wai"]
         };
@@ -859,7 +859,7 @@ module = "mod"
         assert_eq!(
             bindings,
             Bindings::Wai(WaiBindings {
-                wai: "0.1.0".parse().unwrap(),
+                wai_version: "0.1.0".parse().unwrap(),
                 exports: Some(PathBuf::from("./file.wai")),
                 imports: vec![PathBuf::from("a.wai"), PathBuf::from("../b.wai")],
             }),
@@ -869,7 +869,7 @@ module = "mod"
     #[test]
     fn imports_and_exports_are_optional_with_wai() {
         let table = toml::toml! {
-            "wai" = "0.1.0"
+            "wai-version" = "0.1.0"
         };
 
         let bindings = Bindings::deserialize(table).unwrap();
@@ -877,7 +877,7 @@ module = "mod"
         assert_eq!(
             bindings,
             Bindings::Wai(WaiBindings {
-                wai: "0.1.0".parse().unwrap(),
+                wai_version: "0.1.0".parse().unwrap(),
                 exports: None,
                 imports: Vec::new(),
             }),
