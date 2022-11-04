@@ -96,13 +96,8 @@ fn validate_bindings(
     bindings: &wapm_toml::Bindings,
     base_directory_path: &Path,
 ) -> Result<(), ValidationError> {
-    for file in bindings.referenced_files(base_directory_path) {
-        if !file.exists() {
-            return Err(ValidationError::MissingFile {
-                file: file.display().to_string(),
-            });
-        }
-    }
+    // Note: checking for referenced files will make sure they all exist.
+    let _ = bindings.referenced_files(base_directory_path)?;
 
     Ok(())
 }
@@ -122,6 +117,8 @@ pub enum ValidationError {
     MiscCannotRead { file: String, error: String },
     #[error("Failed to unpack archive \"{file}\"! {error}")]
     CannotUnpackArchive { file: String, error: String },
+    #[error(transparent)]
+    Imports(#[from] wapm_toml::ImportsError),
 }
 
 // legacy function, validates wasm.  TODO: clean up
