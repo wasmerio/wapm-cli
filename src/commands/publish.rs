@@ -242,7 +242,7 @@ pub fn sign_compressed_archive(
     } else {
         return Ok(SignArchiveResult::NoKeyRegistered);
     };
-    let password = rpassword::prompt_password(&format!(
+    let password = rpassword::prompt_password(format!(
         "Please enter your password for the key pair {}:",
         &personal_key.public_key_id
     ))

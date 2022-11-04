@@ -196,7 +196,7 @@ pub fn add_personal_key_pair_to_database(
     private_key_location: String,
 ) -> anyhow::Result<(String, String, rusqlite::Transaction)> {
     let (public_key_id, public_key_value) = normalize_public_key(
-        fs::read_to_string(&public_key_location)
+        fs::read_to_string(public_key_location)
             .map_err(|e| anyhow!("Could not read public key: {}", e))?,
     )?;
     info!("Adding public key {:?} to local database", public_key_id);

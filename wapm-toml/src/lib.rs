@@ -379,7 +379,7 @@ impl WaiBindings {
         // imports.
 
         let initial_paths = exports
-            .into_iter()
+            .iter()
             .chain(imports)
             .map(|relative_path| base_directory.join(relative_path));
 
@@ -613,7 +613,7 @@ impl Manifest {
     pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
-        std::fs::write(manifest_path, &manifest_string)
+        std::fs::write(manifest_path, manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
     }
@@ -742,7 +742,7 @@ mod dependency_tests {
         let tmp_dir = tempfile::tempdir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         let manifest_path = tmp_dir_path.join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_path).unwrap();
+        let mut file = File::create(manifest_path).unwrap();
         let wapm_toml = toml! {
             [package]
             name = "_/test"

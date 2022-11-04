@@ -87,7 +87,7 @@ impl<'a> InstalledPackages<'a> {
             packages_result?
                 .into_iter()
                 .map(|(key, dir, download_url)| {
-                    let manifest = match ManifestResult::find_in_directory(&dir) {
+                    let manifest = match ManifestResult::find_in_directory(dir) {
                         ManifestResult::ManifestError(e) => {
                             return Err(Error::InstalledDependencyIsMissingManifest(
                                 key.clone().to_string(),
@@ -353,7 +353,7 @@ impl<'a> Install<'a> for RegistryInstaller {
             .read(true)
             .write(true)
             .create(true)
-            .open(&temp_tar_gz_path)
+            .open(temp_tar_gz_path)
             .map_err(|e| Error::IoCopy(key.to_string(), e.to_string()))?;
 
         io::copy(&mut response, &mut dest)

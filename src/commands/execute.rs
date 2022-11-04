@@ -699,7 +699,7 @@ pub fn execute(opt: ExecuteOpt) -> anyhow::Result<()> {
         }
 
         let _ = std::fs::copy(
-            &install_loc_original.join("wapm.lock"),
+            install_loc_original.join("wapm.lock"),
             install_loc.clone().join("wapm.lock"),
         );
     }
@@ -759,7 +759,7 @@ fn do_offline_run(command_name: &str, opt: &ExecuteOptInner) -> anyhow::Result<(
     let mut wax_index = wax_index::WaxIndex::open()?;
     if let Ok((package_name, version, _)) = wax_index.search_for_entry(command_name.to_string()) {
         let package_version_str = format!("{}@{}", &package_name, &version);
-        let location = wax_index.base_path().join(&package_version_str);
+        let location = wax_index.base_path().join(package_version_str);
 
         wax_index.save()?;
 
