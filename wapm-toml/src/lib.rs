@@ -383,18 +383,22 @@ impl WaiBindings {
             .chain(imports)
             .map(|relative_path| base_directory.join(relative_path));
 
-        let mut to_check: BTreeSet<PathBuf> = BTreeSet::new();
+        let mut to_check: Vec<PathBuf> = Vec::new();
 
         for path in initial_paths {
             if !path.exists() {
                 return Err(ImportsError::FileNotFound(path));
             }
-            to_check.insert(path);
+            to_check.push(path);
         }
 
         let mut files = BTreeSet::new();
 
-        while let Some(path) = to_check.pop_last() {
+        while let Some(path) = to_check.pop() {
+            if files.contains(&path) {
+                continue;
+            }
+
             to_check.extend(get_imported_wai_files(&path)?);
             files.insert(path);
         }
