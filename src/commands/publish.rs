@@ -18,7 +18,7 @@ use thiserror::Error;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::fs;
-use std::io::{Read, Write as IoWrite};
+use std::io::{BufRead, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
 use wapm_toml::Package;
@@ -310,14 +310,14 @@ fn try_chunked_uploading(
     .progress_chars("#>-"));
 
     let chunk_size = 256 * 1024;
-    let file_pointer = 0;
+    let mut file_pointer = 0;
 
-    loop {
-        let mut chunk = Vec::with_capacity(chunk_size);
-        let n = std::io::Read::by_ref(&mut file)
-            .take(chunk_size as u64)
-            .read_to_end(&mut chunk)?;
-        if n == 0 {
+    let mut reader = std::io::BufReader::with_capacity(chunk_size, &mut file);
+
+    while let Some(chunk) = reader.fill_buf().ok().map(|s| s.to_vec()) {
+        let n = chunk.len();
+
+        if chunk.is_empty() {
             break;
         }
 
@@ -350,6 +350,9 @@ fn try_chunked_uploading(
         if n < chunk_size {
             break;
         }
+
+        reader.consume(n);
+        file_pointer += n;
     }
 
     pb.finish_and_clear();
