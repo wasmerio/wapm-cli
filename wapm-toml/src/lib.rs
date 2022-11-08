@@ -2,7 +2,7 @@
 
 use semver::Version;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::hash_map::HashMap;
+use std::collections::{hash_map::HashMap, BTreeSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -314,31 +314,161 @@ pub struct Module {
 
 /// The interface exposed by a [`Module`].
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct Bindings {
-    /// The `*.wit` file's location on disk.
-    pub wit_exports: PathBuf,
-    /// The version of the WIT format being used.
-    pub wit_bindgen: Version,
+#[serde(rename_all = "kebab-case", untagged)]
+pub enum Bindings {
+    Wit(WitBindings),
+    Wai(WaiBindings),
 }
 
 impl Bindings {
-    /// Get all `*.wit` files that make up this interface.
+    /// Get all files that make up this interface.
     ///
-    /// This includes the [`Bindings::wit_exports`] field, but also anything it
-    /// may recursively depend on.
-    pub fn referenced_files(&self, base_directory: &Path) -> Vec<PathBuf> {
-        // TODO: Parse `self.wit` to find any `*.wit` files we might
-        // transitively depend on and resolve them relative to self.wit's
-        // parent directory.
-        //
-        // For now, any `*.wit` files that import other files will error out
-        // further down the track.
+    /// For all binding types except [`WitBindings`], this will recursively
+    /// look for any files that are imported.
+    ///
+    /// The caller can assume that any path that was referenced exists.
+    pub fn referenced_files(&self, base_directory: &Path) -> Result<Vec<PathBuf>, ImportsError> {
+        match self {
+            Bindings::Wit(WitBindings { wit_exports, .. }) => {
+                // Note: we explicitly don't support imported files with WIT
+                // because wit-bindgen's wit-parser crate isn't on crates.io.
 
-        // Note: Joining with an absolute path will just use that path, so no
-        // need for checking if wit_exports.is_absolute()
-        vec![base_directory.join(&self.wit_exports)]
+                let path = base_directory.join(wit_exports);
+
+                if path.exists() {
+                    Ok(vec![path])
+                } else {
+                    Err(ImportsError::FileNotFound(path))
+                }
+            }
+            Bindings::Wai(wai) => wai.referenced_files(base_directory),
+        }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WitBindings {
+    /// The version of the WIT format being used.
+    pub wit_bindgen: Version,
+    /// The `*.wit` file's location on disk.
+    pub wit_exports: PathBuf,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WaiBindings {
+    /// The version of the WAI format being used.
+    pub wai_version: Version,
+    /// The `*.wai` file defining the interface this package exposes.
+    pub exports: Option<PathBuf>,
+    /// The `*.wai` files for any functionality this package imports from the
+    /// host.
+    #[serde(default)]
+    pub imports: Vec<PathBuf>,
+}
+
+impl WaiBindings {
+    fn referenced_files(&self, base_directory: &Path) -> Result<Vec<PathBuf>, ImportsError> {
+        let WaiBindings {
+            exports, imports, ..
+        } = self;
+
+        // Note: WAI files may import other WAI files, so we start with all
+        // WAI files mentioned in the wapm.toml then recursively add their
+        // imports.
+
+        let initial_paths = exports
+            .iter()
+            .chain(imports)
+            .map(|relative_path| base_directory.join(relative_path));
+
+        let mut to_check: Vec<PathBuf> = Vec::new();
+
+        for path in initial_paths {
+            if !path.exists() {
+                return Err(ImportsError::FileNotFound(path));
+            }
+            to_check.push(path);
+        }
+
+        let mut files = BTreeSet::new();
+
+        while let Some(path) = to_check.pop() {
+            if files.contains(&path) {
+                continue;
+            }
+
+            to_check.extend(get_imported_wai_files(&path)?);
+            files.insert(path);
+        }
+
+        Ok(files.into_iter().collect())
+    }
+}
+
+/// Parse a `*.wai` file to find the absolute path for any other `*.wai` files
+/// it may import, relative to the original `*.wai` file.
+///
+/// This function makes sure any imported files exist.
+fn get_imported_wai_files(path: &Path) -> Result<Vec<PathBuf>, ImportsError> {
+    let _wai_src = std::fs::read_to_string(path).map_err(|error| ImportsError::Read {
+        path: path.to_path_buf(),
+        error,
+    })?;
+
+    let parent_dir = path.parent()
+            .expect("All paths should have a parent directory because we joined them relative to the base directory");
+
+    // TODO(Michael-F-Bryan): update the wai-parser crate to give you access to
+    // the imported interfaces. For now, we just pretend there are no import
+    // statements in the *.wai file.
+    let raw_imports: Vec<String> = Vec::new();
+
+    // Note: imported paths in a *.wai file are all relative, so we need to
+    // resolve their absolute path relative to the original *.wai file.
+    let mut resolved_paths = Vec::new();
+
+    for imported in raw_imports {
+        let absolute_path = parent_dir.join(imported);
+
+        if !absolute_path.exists() {
+            return Err(ImportsError::ImportedFileNotFound {
+                path: absolute_path,
+                referenced_by: path.to_path_buf(),
+            });
+        }
+
+        resolved_paths.push(absolute_path);
+    }
+
+    Ok(resolved_paths)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ImportsError {
+    #[error(
+        "The \"{}\" mentioned in the manifest doesn't exist",
+        _0.display(),
+    )]
+    FileNotFound(PathBuf),
+    #[error(
+        "The \"{}\" imported by \"{}\" doesn't exist",
+        path.display(),
+        referenced_by.display(),
+    )]
+    ImportedFileNotFound {
+        path: PathBuf,
+        referenced_by: PathBuf,
+    },
+    #[error("Unable to parse \"{}\" as a WAI file", path.display())]
+    WaiParse { path: PathBuf },
+    #[error("Unable to read \"{}\"", path.display())]
+    Read {
+        path: PathBuf,
+        #[source]
+        error: std::io::Error,
+    },
 }
 
 /// The manifest represents the file used to describe a Wasm package.
@@ -483,7 +613,7 @@ impl Manifest {
     pub fn save(&self) -> anyhow::Result<()> {
         let manifest_string = self.to_string()?;
         let manifest_path = self.manifest_path();
-        std::fs::write(manifest_path, &manifest_string)
+        std::fs::write(manifest_path, manifest_string)
             .map_err(|e| ManifestError::CannotSaveManifest(e.to_string()))?;
         Ok(())
     }
@@ -612,7 +742,7 @@ mod dependency_tests {
         let tmp_dir = tempfile::tempdir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         let manifest_path = tmp_dir_path.join(MANIFEST_FILE_NAME);
-        let mut file = File::create(&manifest_path).unwrap();
+        let mut file = File::create(manifest_path).unwrap();
         let wapm_toml = toml! {
             [package]
             name = "_/test"
@@ -650,6 +780,8 @@ mod dependency_tests {
 
 #[cfg(test)]
 mod manifest_tests {
+    use serde::Deserialize;
+
     use super::*;
 
     #[test]
@@ -692,11 +824,67 @@ module = "mod"
                 interfaces: None,
                 #[cfg(feature = "package")]
                 fs: None,
-                bindings: Some(Bindings {
+                bindings: Some(Bindings::Wit(WitBindings {
                     wit_exports: PathBuf::from("exports.wit"),
                     wit_bindgen: "0.0.0".parse().unwrap()
-                }),
+                })),
             },
+        );
+    }
+
+    #[test]
+    fn parse_wit_bindings() {
+        let table = toml::toml! {
+            "wit-bindgen" = "0.1.0"
+            "wit-exports" = "./file.wit"
+        };
+
+        let bindings = Bindings::deserialize(table).unwrap();
+
+        assert_eq!(
+            bindings,
+            Bindings::Wit(WitBindings {
+                wit_bindgen: "0.1.0".parse().unwrap(),
+                wit_exports: PathBuf::from("./file.wit"),
+            }),
+        );
+    }
+
+    #[test]
+    fn parse_wai_bindings() {
+        let table = toml::toml! {
+            "wai-version" = "0.1.0"
+            "exports" = "./file.wai"
+            "imports" = ["a.wai", "../b.wai"]
+        };
+
+        let bindings = Bindings::deserialize(table).unwrap();
+
+        assert_eq!(
+            bindings,
+            Bindings::Wai(WaiBindings {
+                wai_version: "0.1.0".parse().unwrap(),
+                exports: Some(PathBuf::from("./file.wai")),
+                imports: vec![PathBuf::from("a.wai"), PathBuf::from("../b.wai")],
+            }),
+        );
+    }
+
+    #[test]
+    fn imports_and_exports_are_optional_with_wai() {
+        let table = toml::toml! {
+            "wai-version" = "0.1.0"
+        };
+
+        let bindings = Bindings::deserialize(table).unwrap();
+
+        assert_eq!(
+            bindings,
+            Bindings::Wai(WaiBindings {
+                wai_version: "0.1.0".parse().unwrap(),
+                exports: None,
+                imports: Vec::new(),
+            }),
         );
     }
 }

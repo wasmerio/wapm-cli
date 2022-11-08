@@ -52,7 +52,7 @@ impl Lockfile {
         let lockfile_string = toml::to_string(self)?;
         let lockfile_string = format!("{}\n{}", LOCKFILE_HEADER, lockfile_string);
         let lockfile_path = directory.as_ref().join(LOCKFILE_NAME);
-        let mut file = File::create(&lockfile_path)?;
+        let mut file = File::create(lockfile_path)?;
         file.write_all(lockfile_string.as_bytes())?;
         Ok(())
     }
