@@ -353,7 +353,7 @@ impl Config {
     pub fn from_file() -> Result<Self, GlobalConfigError> {
         use std::{fs::File, io::Read};
         let path = Self::get_file_location()?;
-        match File::open(&path) {
+        match File::open(path) {
             Ok(mut file) => {
                 let mut config_toml = String::new();
                 file.read_to_string(&mut config_toml)
@@ -559,7 +559,7 @@ mod test {
         let tmp_dir = create_temp_dir().unwrap();
         let tmp_dir_path: &std::path::Path = tmp_dir.as_ref();
         let manifest_absolute_path = tmp_dir_path.join(GLOBAL_CONFIG_FILE_NAME);
-        let mut file = File::create(&manifest_absolute_path).unwrap();
+        let mut file = File::create(manifest_absolute_path).unwrap();
         let config = Config::default();
         let config_string = toml::to_string(&config).unwrap();
         file.write_all(config_string.as_bytes()).unwrap();
