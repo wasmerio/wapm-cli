@@ -242,6 +242,7 @@ fn try_chunked_uploading(
     let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
         name: package.name.to_string(),
         version: package.version.to_string(),
+        expires_after_seconds: Some(60 * 30),
     });
 
     let _response: get_signed_url::ResponseData =
@@ -312,6 +313,11 @@ fn try_chunked_uploading(
 
     let mut reader = std::io::BufReader::with_capacity(chunk_size, &mut file);
 
+    let client = reqwest::blocking::Client::builder()
+        .default_headers(reqwest::header::HeaderMap::default())
+        .build()
+        .unwrap();
+
     while let Some(chunk) = reader.fill_buf().ok().map(|s| s.to_vec()) {
         let n = chunk.len();
 
@@ -322,11 +328,6 @@ fn try_chunked_uploading(
         let start = file_pointer;
         let end = file_pointer + chunk.len().saturating_sub(1);
         let content_range = format!("bytes {start}-{end}/{total}");
-
-        let client = reqwest::blocking::Client::builder()
-            .default_headers(reqwest::header::HeaderMap::default())
-            .build()
-            .unwrap();
 
         let res = client
             .put(&session_uri)
