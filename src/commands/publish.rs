@@ -245,9 +245,7 @@ fn try_chunked_uploading(
     });
 
     let _response: get_signed_url::ResponseData =
-        execute_query_modifier(&get_google_signed_url, |f| {
-            f.file(archive_name.clone(), archive_path.clone()).unwrap()
-        })?;
+        execute_query_modifier(&get_google_signed_url, |f| f)?;
 
     let url = _response.url.ok_or_else(|| {
         anyhow!(
