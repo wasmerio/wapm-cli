@@ -167,6 +167,10 @@ jobs:
       - name: Release to crates.io
         if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest'
         run: |
+          cargo publish --allow-dirty --manifest-path="wapm-toml/Cargo.toml" --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Release to crates.io
+        if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest'
+        run: |
           cargo publish --allow-dirty --token ${{ secrets.CRATES_IO_TOKEN }}
 
   regression_tests:
