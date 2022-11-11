@@ -161,7 +161,7 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     fs::create_dir(archive_dir_path.join("wapm_package"))?;
     let archive_path = archive_dir_path.join("wapm_package").join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
-    let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
+    let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::best());
 
     gz_enc.write_all(&tar_archive_data).unwrap();
     let _compressed_archive = gz_enc.finish().unwrap();
@@ -308,7 +308,7 @@ fn try_chunked_uploading(
     })
     .progress_chars("#>-"));
 
-    let chunk_size = 256 * 1024;
+    let chunk_size = 1_048_576; // 1MB - 315s / 100MB
     let mut file_pointer = 0;
 
     let mut reader = std::io::BufReader::with_capacity(chunk_size, &mut file);
@@ -346,7 +346,7 @@ fn try_chunked_uploading(
                     file_pointer,
                     file_pointer + chunk_size
                 )
-            })?;
+            })??;
 
         if n < chunk_size {
             break;
