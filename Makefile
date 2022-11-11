@@ -83,6 +83,8 @@ integration-tests:
 	$(CARGO_BINARY) test --features "integration_tests" integration_tests::
 
 regression-tests:
+	chmod +x end-to-end-tests/ci/chunked-upload.sh
+	./end-to-end-tests/ci/chunked-upload.sh
 	chmod +x end-to-end-tests/ci/direct-execution.sh
 	./end-to-end-tests/ci/direct-execution.sh
 	chmod -x end-to-end-tests/ci/direct-execution.sh

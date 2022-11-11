@@ -11,6 +11,9 @@ use graphql_client::*;
 pub struct LoginOpt {
     /// Provide the token
     token: Option<String>,
+    /// Whether the CLI should print the username and registry
+    #[structopt(long = "quiet")]
+    quiet: bool,
     /// Username
     #[structopt(long)]
     user: Option<String>,
@@ -36,10 +39,12 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
             UpdateRegistry::Update,
         );
         config.save()?;
-        if let Some(s) = crate::util::get_username().ok().and_then(|o| o) {
-            println!("Login for WAPM user {:?} saved", s);
-        } else {
-            println!("Login for WAPM user saved");
+        if !login_options.quiet {
+            if let Some(s) = crate::util::get_username().ok().and_then(|o| o) {
+                println!("Login for WAPM user {:?} saved", s);
+            } else {
+                println!("Login for WAPM user saved");
+            }
         }
         return Ok(());
     }
@@ -76,12 +81,15 @@ pub fn login(login_options: LoginOpt) -> anyhow::Result<()> {
             UpdateRegistry::Update,
         );
         config.save()?;
-        if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
-            println!(
-                "Successfully logged into registry {:?} as user {:?}",
-                config.registry.get_current_registry(),
-                u
-            );
+
+        if !login_options.quiet {
+            if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
+                println!(
+                    "Successfully logged into registry {:?} as user {:?}",
+                    config.registry.get_current_registry(),
+                    u
+                );
+            }
         }
     }
     Ok(())

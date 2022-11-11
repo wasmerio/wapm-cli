@@ -7,6 +7,7 @@ use crate::keys;
 use crate::util::create_temp_dir;
 use crate::validate;
 
+use console::{style, Emoji};
 use flate2::{write::GzEncoder, Compression};
 use graphql_client::*;
 use rpassword_wasi as rpassword;
@@ -14,24 +15,49 @@ use structopt::StructOpt;
 use tar::Builder;
 use thiserror::Error;
 
+use std::collections::BTreeMap;
+use std::fmt::Write;
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, Write as IoWrite};
 use std::path::{Path, PathBuf};
+
+use wapm_toml::Package;
+
+static UPLOAD: Emoji<'_, '_> = Emoji("⬆️  ", "");
+static PACKAGE: Emoji<'_, '_> = Emoji("📦  ", "");
 
 #[derive(StructOpt, Debug)]
 pub struct PublishOpt {
     /// Run the publish logic without sending anything to the registry server
     #[structopt(long = "dry-run")]
     dry_run: bool,
+    #[structopt(long = "quiet")]
+    quiet: bool,
 }
 
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/queries/publish_package.graphql",
+    query_path = "graphql/queries/publish_package_chunked.graphql",
     response_derives = "Debug"
 )]
+struct PublishPackageMutationChunked;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/publish_package.graphql",
+    response_derives = "Debug, Clone"
+)]
 struct PublishPackageMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/queries/get_signed_url.graphql",
+    response_derives = "Debug, Clone"
+)]
+struct GetSignedUrl;
 
 fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
     let mut out = PathBuf::from(cwd);
@@ -135,13 +161,60 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     fs::create_dir(archive_dir_path.join("wapm_package"))?;
     let archive_path = archive_dir_path.join("wapm_package").join(&archive_name);
     let mut compressed_archive = fs::File::create(&archive_path).unwrap();
-    let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::default());
+    let mut gz_enc = GzEncoder::new(&mut compressed_archive, Compression::best());
 
     gz_enc.write_all(&tar_archive_data).unwrap();
     let _compressed_archive = gz_enc.finish().unwrap();
     let mut compressed_archive_reader = fs::File::open(&archive_path)?;
 
-    let maybe_signature_data = match sign_compressed_archive(&mut compressed_archive_reader)? {
+    let maybe_signature_data = sign_compressed_archive(&mut compressed_archive_reader)?;
+    let archived_data_size = archive_path.metadata()?.len();
+
+    assert!(archive_path.exists());
+    assert!(archive_path.is_file());
+
+    if publish_opts.dry_run {
+        // dry run: publish is done here
+
+        println!(
+            "Successfully published package `{}@{}`",
+            package.name, package.version
+        );
+
+        info!(
+            "Publish succeeded, but package was not published because it was run in dry-run mode"
+        );
+
+        return Ok(());
+    }
+
+    try_chunked_uploading(
+        package,
+        &manifest_string,
+        &license_file,
+        &readme,
+        &archive_name,
+        &archive_path,
+        &maybe_signature_data,
+        archived_data_size,
+        publish_opts.quiet,
+    )
+    .map_err(on_error)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_chunked_uploading(
+    package: &Package,
+    manifest_string: &String,
+    license_file: &Option<String>,
+    readme: &Option<String>,
+    archive_name: &String,
+    archive_path: &PathBuf,
+    maybe_signature_data: &SignArchiveResult,
+    archived_data_size: u64,
+    quiet: bool,
+) -> Result<(), anyhow::Error> {
+    let maybe_signature_data = match maybe_signature_data {
         SignArchiveResult::Ok {
             public_key_id,
             signature,
@@ -150,9 +223,9 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
                 "Package successfully signed with public key: \"{}\"!",
                 &public_key_id
             );
-            Some(publish_package_mutation::InputSignature {
-                public_key_key_id: public_key_id,
-                data: signature,
+            Some(publish_package_mutation_chunked::InputSignature {
+                public_key_key_id: public_key_id.to_string(),
+                data: signature.to_string(),
             })
         }
         SignArchiveResult::NoKeyRegistered => {
@@ -162,38 +235,157 @@ pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
         }
     };
 
-    let q = PublishPackageMutation::build_query(publish_package_mutation::Variables {
+    if !quiet {
+        println!("{} {} Uploading...", style("[1/2]").bold().dim(), UPLOAD);
+    }
+
+    let get_google_signed_url = GetSignedUrl::build_query(get_signed_url::Variables {
         name: package.name.to_string(),
         version: package.version.to_string(),
-        description: package.description.clone(),
-        manifest: manifest_string,
-        license: package.license.clone(),
-        license_file,
-        readme,
-        repository: package.repository.clone(),
-        homepage: package.homepage.clone(),
-        file_name: Some(archive_name.clone()),
-        signature: maybe_signature_data,
+        expires_after_seconds: Some(60 * 30),
     });
-    assert!(archive_path.exists());
-    assert!(archive_path.is_file());
 
-    if !publish_opts.dry_run {
-        let _response: publish_package_mutation::ResponseData =
-            execute_query_modifier(&q, |f| f.file(archive_name, archive_path).unwrap())
-                .map_err(on_error)?;
+    let _response: get_signed_url::ResponseData =
+        execute_query_modifier(&get_google_signed_url, |f| f)?;
+
+    let url = _response.url.ok_or_else(|| {
+        anyhow!(
+            "could not get signed url for package {}@{}",
+            package.name,
+            package.version
+        )
+    })?;
+
+    let signed_url = url.url;
+    let url = url::Url::parse(&signed_url).unwrap();
+    let client = reqwest::blocking::Client::builder()
+        .default_headers(reqwest::header::HeaderMap::default())
+        .build()
+        .unwrap();
+
+    let res = client
+        .post(url)
+        .header(reqwest::header::CONTENT_LENGTH, "0")
+        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .header("x-goog-resumable", "start");
+
+    let result = res.send().unwrap();
+
+    if result.status() != reqwest::StatusCode::from_u16(201).unwrap() {
+        return Err(anyhow!(
+            "Uploading package failed: got HTTP {:?} when uploading",
+            result.status()
+        ));
     }
+
+    let headers = result
+        .headers()
+        .into_iter()
+        .filter_map(|(k, v)| {
+            let k = k.to_string();
+            let v = v.to_str().ok()?.to_string();
+            Some((k.to_lowercase(), v))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let session_uri = headers.get("location").unwrap().clone();
+
+    let total = archived_data_size;
+
+    use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+
+    // archive_path
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(archive_path)
+        .map_err(|e| anyhow!("cannot open archive {}: {e}", archive_path.display()))?;
+
+    let pb = ProgressBar::new(archived_data_size);
+    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+    .unwrap()
+    .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
+        write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+    })
+    .progress_chars("#>-"));
+
+    let chunk_size = 1_048_576; // 1MB - 315s / 100MB
+    let mut file_pointer = 0;
+
+    let mut reader = std::io::BufReader::with_capacity(chunk_size, &mut file);
+
+    let client = reqwest::blocking::Client::builder()
+        .default_headers(reqwest::header::HeaderMap::default())
+        .build()
+        .unwrap();
+
+    while let Some(chunk) = reader.fill_buf().ok().map(|s| s.to_vec()) {
+        let n = chunk.len();
+
+        if chunk.is_empty() {
+            break;
+        }
+
+        let start = file_pointer;
+        let end = file_pointer + chunk.len().saturating_sub(1);
+        let content_range = format!("bytes {start}-{end}/{total}");
+
+        let res = client
+            .put(&session_uri)
+            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+            .header(reqwest::header::CONTENT_LENGTH, format!("{}", chunk.len()))
+            .header("Content-Range".to_string(), content_range)
+            .body(chunk.to_vec());
+
+        pb.set_position(file_pointer as u64);
+
+        res.send()
+            .map(|response| response.error_for_status())
+            .map_err(|e| {
+                anyhow!(
+                    "cannot send request to {session_uri} (chunk {}..{}): {e}",
+                    file_pointer,
+                    file_pointer + chunk_size
+                )
+            })??;
+
+        if n < chunk_size {
+            break;
+        }
+
+        reader.consume(n);
+        file_pointer += n;
+    }
+
+    pb.finish_and_clear();
+
+    if !quiet {
+        println!("{} {}Publishing...", style("[2/2]").bold().dim(), PACKAGE,);
+    }
+
+    let q =
+        PublishPackageMutationChunked::build_query(publish_package_mutation_chunked::Variables {
+            name: package.name.to_string(),
+            version: package.version.to_string(),
+            description: package.description.clone(),
+            manifest: manifest_string.to_string(),
+            license: package.license.clone(),
+            license_file: license_file.to_owned(),
+            readme: readme.to_owned(),
+            repository: package.repository.clone(),
+            homepage: package.homepage.clone(),
+            file_name: Some(archive_name.to_string()),
+            signature: maybe_signature_data,
+            signed_url: Some(signed_url),
+        });
+
+    let _response: publish_package_mutation_chunked::ResponseData =
+        crate::graphql::execute_query(&q)?;
 
     println!(
         "Successfully published package `{}@{}`",
         package.name, package.version
     );
 
-    if publish_opts.dry_run {
-        info!(
-            "Publish succeeded, but package was not published because it was run in dry-run mode"
-        );
-    }
     Ok(())
 }
 
@@ -222,7 +414,7 @@ enum PublishError {
     PackageFileSystemEntryMustBeDirectory(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SignArchiveResult {
     Ok {
         public_key_id: String,
