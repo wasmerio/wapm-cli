@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "wapm-toml"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "semver 1.0.13",

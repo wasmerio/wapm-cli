@@ -1,6 +1,6 @@
 [package]
 name = "wapm-toml"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Package to parse wapm.toml files from wapm.io"
 license = "MIT"
