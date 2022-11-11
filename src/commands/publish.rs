@@ -337,13 +337,14 @@ fn try_chunked_uploading(
 
         pb.set_position(file_pointer as u64);
 
-        let _response = res.send().map_err(|e| {
-            anyhow!(
-                "cannot send request to {session_uri} (chunk {}..{}): {e}",
+        res
+            .send()
+            .map(|response| response.error_for_status())
+            .map_err(|e| anyhow!(
+               "cannot send request to {session_uri} (chunk {}..{}): {e}",
                 file_pointer,
                 file_pointer + chunk_size
-            )
-        })?;
+            ))?;
 
         if n < chunk_size {
             break;
