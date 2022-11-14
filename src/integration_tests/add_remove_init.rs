@@ -4,6 +4,7 @@ use maplit::hashmap;
 
 use super::prelude::*;
 
+/*
 #[test]
 fn it_works() {
     let _t = set_test_dir_to_new_temp_dir();
@@ -52,3 +53,5 @@ fn it_works() {
         );
     }
 }
+
+*/
