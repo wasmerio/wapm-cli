@@ -438,6 +438,9 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
             if config.registry.get_current_registry() != value {
                 config.registry.set_current_registry(&value);
             }
+            if !crate::util::allow_debug_output() {
+                return Ok(());
+            }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
                 println!(
                     "Successfully logged into registry {:?} as user {:?}",
@@ -452,6 +455,9 @@ pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()
                 &value,
                 UpdateRegistry::LeaveAsIs,
             );
+            if !crate::util::allow_debug_output() {
+                return Ok(());
+            }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
                 println!(
                     "Successfully logged into registry {:?} as user {:?}",

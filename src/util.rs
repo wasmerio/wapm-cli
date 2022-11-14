@@ -81,6 +81,17 @@ pub fn get_username() -> anyhow::Result<Option<String>> {
     Ok(response.viewer.map(|viewer| viewer.username))
 }
 
+pub fn allow_debug_output() -> bool {
+    #[cfg(target_os = "wasi")]
+    {
+        true
+    }
+    #[cfg(not(target_os = "wasi"))]
+    {
+        atty::is(atty::Stream::Stdout)
+    }
+}
+
 #[cfg(feature = "telemetry")]
 pub fn telemetry_is_enabled() -> bool {
     let mut config = if let Ok(c) = crate::config::Config::from_file() {
