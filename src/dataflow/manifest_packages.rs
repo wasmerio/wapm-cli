@@ -33,15 +33,11 @@ impl ManifestResult {
     pub fn find_in_directory<P: AsRef<Path>>(directory: P) -> Self {
         let directory = directory.as_ref();
         if !directory.is_dir() {
-            return ManifestResult::ManifestError(Error::Io(
-                format!("ManifestResult: Manifest must be a file named `wapm.toml` (directory.is_dir() failed on {})", directory.display()),
-            ));
+            return ManifestResult::NoManifest;
         }
         let manifest_path_buf = directory.join(MANIFEST_FILE_NAME);
         if !manifest_path_buf.is_file() {
-            return ManifestResult::ManifestError(Error::Io(
-                format!("ManifestResult: Manifest must be a file named `wapm.toml` (manifest_path_buf.is_file() failed on {})", manifest_path_buf.display()),
-            ));
+            return ManifestResult::NoManifest;
         }
         let source = match fs::read_to_string(&manifest_path_buf) {
             Ok(s) => s,
