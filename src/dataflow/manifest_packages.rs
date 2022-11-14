@@ -12,8 +12,6 @@ use thiserror::Error;
 pub enum Error {
     #[error("Could not parse manifest because {0}.")]
     ManifestTomlParse(String),
-    #[error("Could not parse manifest because {0}.")]
-    Io(String),
     #[error(
         "Version {0} for package {1} must be a semantic version or a semantic version requirement."
     )]
