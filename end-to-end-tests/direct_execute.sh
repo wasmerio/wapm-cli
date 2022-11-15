@@ -2,7 +2,6 @@
 
 export RUST_BACKTRACE=1
 ln -sf `which wapm` wax
-wapm config set registry.url "https://registry.wapm.dev"
 
 # echo "hello" | wapm execute base64
 # ./wax echo "hello"

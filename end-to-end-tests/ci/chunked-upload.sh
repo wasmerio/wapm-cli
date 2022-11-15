@@ -8,6 +8,9 @@ rm -f wapm.toml
 rm -f wapm.lock
 wapm config set registry.url "https://registry.wapm.dev/graphql"
 chmod +x end-to-end-tests/chunked_upload.sh
+if ! [[ -z "${WAPM_DEV_TOKEN}" ]]; then
+    wapm login "${WAPM_DEV_TOKEN}"
+fi
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/chunked_upload.sh &> /tmp/chunked_upload.txt
 echo "GENERATED OUTPUT:"

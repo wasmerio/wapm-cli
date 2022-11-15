@@ -435,6 +435,7 @@ pub enum ConfigError {
 pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()> {
     match key.as_ref() {
         "registry.url" => {
+            let value = format_graphql(&value);
             if config.registry.get_current_registry() != value {
                 config.registry.set_current_registry(&value);
             }

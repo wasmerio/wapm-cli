@@ -1,7 +1,5 @@
 #!/bin/sh
 
-wapm config set registry.url "https://registry.wapm.dev"
-
 # test that the command name is overriden by default
 wapm install -g mark2/binary-name-matters@0.0.3 -y
 wapm run binary-name-matters

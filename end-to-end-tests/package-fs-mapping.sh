@@ -1,7 +1,6 @@
 #!/bin/sh
 
 export RUST_BACKTRACE=1
-wapm config set registry.url "https://registry.wapm.dev"
 wapm install -g mark2/dog2@0.0.13 --force-yes
 wapm run dog -- data
 wapm uninstall -g mark2/dog2

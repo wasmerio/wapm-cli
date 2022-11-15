@@ -1,6 +1,5 @@
 #!/bin/sh
 
-wapm config set registry.url "https://registry.wapm.dev"
 wapm install namespace-example/cowsay@0.1.2
 wapm install namespace-example/cowsay@0.1.2
 wapm run cowsay "hello, world"

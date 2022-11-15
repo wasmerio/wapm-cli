@@ -7,6 +7,7 @@ rm -f wapm.lock
 rm -f wapm.toml
 rm -rf wapm_packages
 chmod +x end-to-end-tests/validate-global.sh
+wapm config set registry.url "https://registry.wapm.dev"
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/validate-global.sh &> /tmp/validate-global-out.txt
 echo "GENERATED OUTPUT:"

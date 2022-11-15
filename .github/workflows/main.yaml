@@ -201,8 +201,8 @@ jobs:
           chmod +x end-to-end-tests/ci/chunked-upload.sh
           ./end-to-end-tests/ci/chunked-upload.sh
         env: 
-          WAPM_DEV_TOKEN: ${{ secrets.WAPM_CLI_TOKEN }}
-          WAPM_DEV_USERNAME: ${{ secrets.WAPM_CLI_USERNAME }}
+          WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
+          WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
       - name: 'Regression test: direct execution works'
         shell: bash
         run: |
@@ -238,6 +238,9 @@ jobs:
         run: |
           chmod +x end-to-end-tests/ci/init-and-add.sh
           ./end-to-end-tests/ci/init-and-add.sh
+        env: 
+          WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
+          WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
 
   linux_aarch64:
     name: Linux aarch64
