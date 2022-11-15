@@ -140,6 +140,7 @@ impl Registries {
     /// Sets the current (active) registry URL
     pub fn set_current_registry(&mut self, registry: &str) {
         let registry = format_graphql(registry);
+        println!("setting current registry: {registry}");
         if let Err(e) = test_if_registry_present(&registry) {
             println!("Error when trying to ping registry {registry:?}: {e}");
             if registry.contains("wapm.dev") {
@@ -155,6 +156,8 @@ impl Registries {
             Registries::Single(s) => s.url = registry,
             Registries::Multi(m) => m.current = registry,
         }
+
+        println!("after set current registry: {:#?}", self);
     }
 
     /// Returns the login token for the registry
