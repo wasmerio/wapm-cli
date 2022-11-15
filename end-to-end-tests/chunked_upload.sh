@@ -38,6 +38,5 @@ else
 fi
 
 cd /tmp/largewasmfile
-wapm login --quiet "${WAPM_DEV_TOKEN}"
 wapm publish --quiet
 cd $PWD
