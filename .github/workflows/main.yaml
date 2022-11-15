@@ -238,6 +238,9 @@ jobs:
         run: |
           chmod +x end-to-end-tests/ci/init-and-add.sh
           ./end-to-end-tests/ci/init-and-add.sh
+        env: 
+          WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
+          WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
 
   linux_aarch64:
     name: Linux aarch64
