@@ -178,7 +178,7 @@ jobs:
   regression_tests:
     strategy:
       fail-fast: false
-    needs: [setup]
+    needs: [setup, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
