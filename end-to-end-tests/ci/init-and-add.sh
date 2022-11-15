@@ -1,6 +1,7 @@
 export PATH=$PATH:$HOME/.cargo/bin
 export PATH=$PATH:$HOME/.wasmer/bin
 export WAPM_DISABLE_COLOR=true
+export WAPM_DEV_USERNAME="${WAPM_DEV_USERNAME:-felix}"
 rm -f $WASMER_DIR/wapm.sqlite
 rm -f $WASMER_DIR/globals/wapm.lock
 rm -rf wapm_packages
@@ -17,8 +18,15 @@ echo "ADJUSTING OUTPUT"
 tail -n +3 /tmp/init-and-add-out.txt > /tmp/init-and-add-out2.txt
 cat /tmp/init-and-add-out2.txt
 mv /tmp/init-and-add-out2.txt /tmp/init-and-add-out.txt
+cat end-to-end-tests/init-and-add.txt > /tmp/init-and-add-original.txt
+WAPMUSERNAME=$WAPM_DEV_USERNAME
+if [ "$(uname)" == "Darwin" ]; then
+    sed -i '' "s/WAPMUSERNAME/$WAPMUSERNAME/g" /tmp/init-and-add-original.txt
+else
+    sed -i "s/WAPMUSERNAME/$WAPMUSERNAME/g" /tmp/init-and-add-original.txt
+fi
 echo "COMPARING..."
-diff -Bba end-to-end-tests/init-and-add.txt /tmp/init-and-add-out.txt
+diff -Bba /tmp/init-and-add-original.txt /tmp/init-and-add-out.txt
 export OUT=$?
 if ( [ -d globals ] || [ -f wapm.log ] ) then { echo "globals or wapm.log found; these files should not be in the working directory"; exit 1; } else { true; } fi
 rm -f wapm.lock

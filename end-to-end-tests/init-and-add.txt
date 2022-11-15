@@ -1,8 +1,8 @@
 
 [package]
-name = "test-package"
+name = "WAPMUSERNAME/test-package"
 version = "1.0.0"
-description = "Package description for test-package"
+description = "Package description for WAPMUSERNAME/test-package"
 license = "ISC"
 
 [[module]]
@@ -10,7 +10,7 @@ name = "entry"
 source = "entry.wasm"
 
 
-Successfully initialized project "test-package"
+Successfully initialized project "WAPMUSERNAME/test-package"
 [ERROR] Package "this-package-does-not-exist" was not found
 Error: There were problems adding packages
 [INFO] Adding mark2/python@0.0.4
