@@ -78,7 +78,7 @@ fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
 pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let mut builder = Builder::new(Vec::new());
     let cwd = crate::config::Config::get_current_dir()?;
-    
+
     validate::validate_directory(cwd.clone())?;
 
     let manifest = Manifest::find_in_directory(&cwd)?;
