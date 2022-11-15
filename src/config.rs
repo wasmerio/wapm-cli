@@ -140,7 +140,6 @@ impl Registries {
     /// Sets the current (active) registry URL
     pub fn set_current_registry(&mut self, registry: &str) {
         let registry = format_graphql(registry);
-        println!("setting current registry: {registry}");
         if let Err(e) = test_if_registry_present(&registry) {
             println!("Error when trying to ping registry {registry:?}: {e}");
             if registry.contains("wapm.dev") {
@@ -156,8 +155,6 @@ impl Registries {
             Registries::Single(s) => s.url = registry,
             Registries::Multi(m) => m.current = registry,
         }
-
-        println!("after set current registry: {:#?}", self);
     }
 
     /// Returns the login token for the registry
@@ -436,12 +433,10 @@ pub enum ConfigError {
 }
 
 pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()> {
-    println!("wapm config.set.{key} = {value}");
     match key.as_ref() {
         "registry.url" => {
             let value = format_graphql(&value);
             if config.registry.get_current_registry() != value {
-                println!("set current registry!");
                 config.registry.set_current_registry(&value);
             }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {

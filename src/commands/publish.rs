@@ -78,8 +78,6 @@ fn normalize_path(cwd: &Path, path: &Path) -> PathBuf {
 pub fn publish(publish_opts: PublishOpt) -> anyhow::Result<()> {
     let mut builder = Builder::new(Vec::new());
     let cwd = crate::config::Config::get_current_dir()?;
-
-    println!("publish: config from file: {:#?}", crate::config::Config::from_file());
     
     validate::validate_directory(cwd.clone())?;
 
