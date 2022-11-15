@@ -436,9 +436,12 @@ pub enum ConfigError {
 }
 
 pub fn set(config: &mut Config, key: String, value: String) -> anyhow::Result<()> {
+    println!("wapm config.set.{key} = {value}");
     match key.as_ref() {
         "registry.url" => {
+            let value = format_graphql(&value);
             if config.registry.get_current_registry() != value {
+                println!("set current registry!");
                 config.registry.set_current_registry(&value);
             }
             if let Some(u) = crate::util::get_username().ok().and_then(|o| o) {
