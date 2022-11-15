@@ -1,7 +1,6 @@
 #!/bin/sh
 
 export RUST_BACKTRACE=1
-wapm config set registry.url "https://registry.wapm.dev"
 echo '[package]\nname="test"\nversion="0.0.0"\ndescription="this is a test"\n[[command]]\nname="test"\nmodule="test-module"\n[fs]\n"wapm_file"="src/bin"' > wapm.toml
 wapm publish --dry-run
 # get a wasm module so we forget the abi field

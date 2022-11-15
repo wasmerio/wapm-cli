@@ -7,6 +7,7 @@ rm -rf wapm_packages
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/install.sh
+wapm config set registry.url "https://registry.wapm.dev"
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/install.sh &> /tmp/install-out.txt
 echo "GENERATED OUTPUT:"

@@ -6,6 +6,7 @@ rm -f $WASMER_DIR/.wax_index.toml
 rm -f wapm.toml
 rm -f wapm.lock
 chmod +x end-to-end-tests/direct_execute.sh
+wapm config set registry.url "https://registry.wapm.dev"
 echo "RUNNING SCRIPT..."
 ./end-to-end-tests/direct_execute.sh &> /tmp/direct_execute.txt
 echo "GENERATED OUTPUT:"
