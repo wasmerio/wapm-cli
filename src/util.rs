@@ -255,10 +255,12 @@ pub fn get_latest_runtime_version(runtime: &str) -> Result<String, String> {
 
 #[cfg(feature = "update-notifications")]
 /// Returns `None` if versions can't be taken out of the string.
-/// Returns `Some(bool)` where `bool` is whether or not the old version
+/// Returns `Some(bool)` where `bool` is whether or not the new version
 /// is greater than or equal to the old version.  This is useful for checking
 /// if there needs to be an update.
 pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
+    let old = if old.starts_with("v") { &old[1..] } else { old };
+    let new = if new.starts_with("v") { &new[1..] } else { new };
     let old_ver_pieces = old.split('.').collect::<Vec<&str>>();
     let new_ver_pieces = new.split('.').collect::<Vec<&str>>();
 
@@ -345,6 +347,10 @@ mod test {
         assert_eq!(compare_versions("1.1.6", "2.0.0"), Some(false));
         assert_eq!(compare_versions("0.1.1", "0.1.0"), Some(true));
         assert_eq!(compare_versions("0.1.1", "0.2.0"), Some(false));
+
+        assert_eq!(compare_versions("v0.1.0", "v0.1.0"), Some(true));
+        assert_eq!(compare_versions("v1.1.0", "v0.1.0"), Some(true));
+        assert_eq!(compare_versions("v1.1.6", "v2.0.0"), Some(false));
     }
 
     #[test]
