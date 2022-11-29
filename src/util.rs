@@ -253,31 +253,30 @@ pub fn get_latest_runtime_version(runtime: &str) -> Result<String, String> {
     }
 }
 
-#[cfg(feature = "update-notifications")]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub enum VersionComparison {
+    // new > old,
+    NewIsGreater,
+    // new < old
+    NewIsLesser,
+    // new == old
+    NewIsEqual,
+}
+
 /// Returns `None` if versions can't be taken out of the string.
 /// Returns `Some(bool)` where `bool` is whether or not the new version
 /// is greater than or equal to the old version.  This is useful for checking
 /// if there needs to be an update.
-pub fn compare_versions(old: &str, new: &str) -> Option<bool> {
-    let old = if old.starts_with("v") { &old[1..] } else { old };
-    let new = if new.starts_with("v") { &new[1..] } else { new };
-    let old_ver_pieces = old.split('.').collect::<Vec<&str>>();
-    let new_ver_pieces = new.split('.').collect::<Vec<&str>>();
+pub fn compare_versions(old: &str, new: &str) -> Result<VersionComparison, semver::Error> {
+    let old: semver::Version = old.strip_prefix('v').unwrap_or(old).parse()?;
+    let new: semver::Version = new.strip_prefix('v').unwrap_or(new).parse()?;
 
-    if !(old_ver_pieces.len() == 3 && new_ver_pieces.len() == 3) {
-        return None;
-    }
-    let parse = |pieces: Vec<&str>| -> Option<(usize, usize, usize)> {
-        Some((
-            pieces[0].parse::<usize>().ok()?,
-            pieces[1].parse::<usize>().ok()?,
-            pieces[2].parse::<usize>().ok()?,
-        ))
-    };
-    if let (Some(old_ver), Some(new_ver)) = (parse(old_ver_pieces), parse(new_ver_pieces)) {
-        Some(old_ver >= new_ver)
+    if new > old {
+        Ok(VersionComparison::NewIsGreater)
+    } else if new == old {
+        Ok(VersionComparison::NewIsEqual)
     } else {
-        None
+        Ok(VersionComparison::NewIsLesser)
     }
 }
 
@@ -338,19 +337,28 @@ mod test {
     #[cfg(feature = "update-notifications")]
     #[test]
     pub fn compare_ver_test() {
-        assert_eq!(compare_versions("0.1.0", "0.1.0"), Some(true));
-        assert_eq!(compare_versions("1.1.0", "0.1.0"), Some(true));
-        assert_eq!(compare_versions("1.0.0", "0.2.5"), Some(true));
-        assert_eq!(compare_versions("1.0.0", "2.2.5"), Some(false));
-        assert_eq!(compare_versions("1.0.0", "2.0.5"), Some(false));
-        assert_eq!(compare_versions("1.1.0", "2.0.5"), Some(false));
-        assert_eq!(compare_versions("1.1.6", "2.0.0"), Some(false));
-        assert_eq!(compare_versions("0.1.1", "0.1.0"), Some(true));
-        assert_eq!(compare_versions("0.1.1", "0.2.0"), Some(false));
+        use super::VersionComparison::*;
+        assert_eq!(compare_versions("0.1.0", "0.1.0").unwrap(), NewIsEqual);
+        assert_eq!(compare_versions("1.1.0", "0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("1.0.0", "0.2.5").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("1.0.0", "2.2.5").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("1.0.0", "2.0.5").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("1.1.0", "2.0.5").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("1.1.6", "2.0.0").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("0.1.1", "0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("0.1.1", "0.2.0").unwrap(), NewIsGreater);
 
-        assert_eq!(compare_versions("v0.1.0", "v0.1.0"), Some(true));
-        assert_eq!(compare_versions("v1.1.0", "v0.1.0"), Some(true));
-        assert_eq!(compare_versions("v1.1.6", "v2.0.0"), Some(false));
+        assert_eq!(compare_versions("v0.1.0", "v0.1.0").unwrap(), NewIsEqual);
+        assert_eq!(compare_versions("v1.1.0", "v0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("v1.1.6", "v2.0.0").unwrap(), NewIsGreater);
+
+        assert_eq!(compare_versions("0.1.0", "v0.1.0").unwrap(), NewIsEqual);
+        assert_eq!(compare_versions("1.1.0", "v0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("1.1.6", "v2.0.0").unwrap(), NewIsGreater);
+
+        assert_eq!(compare_versions("v0.1.0", "0.1.0").unwrap(), NewIsEqual);
+        assert_eq!(compare_versions("v1.1.0", "0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("v1.1.6", "2.0.0").unwrap(), NewIsGreater);
     }
 
     #[test]

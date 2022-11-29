@@ -102,16 +102,9 @@ impl WapmUpdate {
                 let old_version = util::get_latest_runtime_version("wasmer")?;
 
                 if !force_update_notification {
-                    if let Some(b) = util::compare_versions(&old_version, &new_version) {
-                        if b {
-                            return Ok(());
-                        }
-                    } else {
-                        // fall back to direct comparison
-                        // If we are in the same version
-                        if old_version == new_version {
-                            return Ok(());
-                        }
+                    let compare = util::compare_versions(&old_version, &new_version);
+                    if let Ok(crate::util::VersionComparison::NewIsGreater) = compare {
+                        return Ok(());
                     }
                 }
 
