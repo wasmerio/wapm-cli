@@ -271,12 +271,10 @@ pub fn compare_versions(old: &str, new: &str) -> Result<VersionComparison, semve
     let old: semver::Version = old.strip_prefix('v').unwrap_or(old).parse()?;
     let new: semver::Version = new.strip_prefix('v').unwrap_or(new).parse()?;
 
-    if new > old {
-        Ok(VersionComparison::NewIsGreater)
-    } else if new == old {
-        Ok(VersionComparison::NewIsEqual)
-    } else {
-        Ok(VersionComparison::NewIsLesser)
+    match new.cmp(&old) {
+        std::cmp::Ordering::Less => Ok(VersionComparison::NewIsLesser),
+        std::cmp::Ordering::Equal => Ok(VersionComparison::NewIsEqual),
+        std::cmp::Ordering::Greater => Ok(VersionComparison::NewIsGreater),
     }
 }
 
