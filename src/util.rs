@@ -268,17 +268,13 @@ pub enum VersionComparison {
 /// is greater than or equal to the old version.  This is useful for checking
 /// if there needs to be an update.
 pub fn compare_versions(old: &str, new: &str) -> Result<VersionComparison, semver::Error> {
-    println!("compare versions: {old} - {new}");
     let old: semver::Version = old.strip_prefix('v').unwrap_or(old).parse()?;
     let new: semver::Version = new.strip_prefix('v').unwrap_or(new).parse()?;
-    println!("compare versions after stripping: {old:?}, {new:?}");
-    let r = match new.cmp(&old) {
+    match new.cmp(&old) {
         std::cmp::Ordering::Less => Ok(VersionComparison::NewIsLesser),
         std::cmp::Ordering::Equal => Ok(VersionComparison::NewIsEqual),
         std::cmp::Ordering::Greater => Ok(VersionComparison::NewIsGreater),
-    };
-    println!("result: {:?}", r);
-    r
+    }
 }
 
 /// Returns the value of the WAPM_RUNTIME env var if it exists.
