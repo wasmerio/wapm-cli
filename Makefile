@@ -85,13 +85,13 @@ integration-tests:
 
 regression-tests:
 	chmod +x end-to-end-tests/ci/chunked-upload.sh
-	end-to-end-tests/ci/chunked-upload.sh
+	./end-to-end-tests/ci/chunked-upload.sh
 	chmod +x end-to-end-tests/ci/direct-execution.sh
-	end-to-end-tests/ci/direct-execution.sh
+	./end-to-end-tests/ci/direct-execution.sh
 	chmod -x end-to-end-tests/ci/direct-execution.sh
 	echo "\n - name: 'Regression test: Install, Uninstall, Run, and List'"
 	chmod +x end-to-end-tests/ci/install.sh
-	end-to-end-tests/ci/install.sh
+	./end-to-end-tests/ci/install.sh
 	chmod -x end-to-end-tests/ci/install.sh
 	echo "\nname: 'Regression test: verification and public key management'"
 	chmod +x end-to-end-tests/ci/verification.sh
