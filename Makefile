@@ -110,8 +110,10 @@ regression-tests:
 	./end-to-end-tests/ci/init-and-add.sh
 	chmod -x end-to-end-tests/ci/init-and-add.sh
 
-test: integration-tests regression-tests 
+test: integration-tests
 	cargo test --features "update-notifications" -- --test-threads=1
+    cargo test --manifest-path lib/wasm-interface/Cargo.toml
+	cargo check --features "telemetry update-notifications"
 
 update-schema:
 	curl --fail "$(shell wapm config get registry.url)/schema.graphql" > graphql/schema.graphql

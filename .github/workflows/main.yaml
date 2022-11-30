@@ -127,19 +127,7 @@ jobs:
       - name: Tests
         if: matrix.target != 'aarch64-apple-darwin'
         run: |
-          cargo test --verbose --features "update-notifications" -- --test-threads=1
-      - name: Integration Tests
-        if: matrix.target != 'aarch64-apple-darwin'
-        run: |
-          make integration-tests
-      - name: Tests (Wasm Interface)
-        if: matrix.target != 'aarch64-apple-darwin'
-        run: |
-          cargo test --manifest-path lib/wasm-interface/Cargo.toml
-      - name: Check
-        if: matrix.target != 'aarch64-apple-darwin'
-        run: |
-          cargo check --features "telemetry update-notifications"
+          make test
       - name: Build binary
         run: |
           make release
