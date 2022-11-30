@@ -353,6 +353,15 @@ mod test {
         assert_eq!(compare_versions("1.1.0", "v0.1.0").unwrap(), NewIsLesser);
         assert_eq!(compare_versions("1.1.6", "v2.0.0").unwrap(), NewIsGreater);
 
+        assert_eq!(compare_versions("v0.1.0", "v0.1.0").unwrap(), NewIsEqual);
+        assert_eq!(compare_versions("v1.1.0", "v0.1.0").unwrap(), NewIsLesser);
+        assert_eq!(compare_versions("v1.1.6", "v2.0.0").unwrap(), NewIsGreater);
+
+        assert_eq!(compare_versions("v0.1.0-alpha.1", "v0.1.0-beta.2").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("v0.1.0-beta.2", "v0.1.0").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("v1.1.0-beta.3", "v1.1.0-beta.4").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("v1.1.6-beta.2", "v1.1.6-rc.3").unwrap(), NewIsGreater);
+
         assert_eq!(compare_versions("v0.1.0", "0.1.0").unwrap(), NewIsEqual);
         assert_eq!(compare_versions("v1.1.0", "0.1.0").unwrap(), NewIsLesser);
         assert_eq!(compare_versions("v1.1.6", "2.0.0").unwrap(), NewIsGreater);
