@@ -357,6 +357,7 @@ mod test {
         assert_eq!(compare_versions("v0.1.0", "0.1.0").unwrap(), NewIsEqual);
         assert_eq!(compare_versions("v1.1.0", "0.1.0").unwrap(), NewIsLesser);
         assert_eq!(compare_versions("v1.1.6", "2.0.0").unwrap(), NewIsGreater);
+        assert_eq!(compare_versions("3.0.2", "v3.0.2").unwrap(), NewIsEqual);
     }
 
     #[test]
