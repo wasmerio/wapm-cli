@@ -127,7 +127,19 @@ jobs:
       - name: Tests
         if: matrix.target != 'aarch64-apple-darwin'
         run: |
-          make test
+          cargo test --verbose --features "update-notifications" -- --test-threads=1
+      - name: Integration Tests
+        if: matrix.target != 'aarch64-apple-darwin'
+        run: |
+          make integration-tests
+      - name: Tests (Wasm Interface)
+        if: matrix.target != 'aarch64-apple-darwin'
+        run: |
+          cargo test --manifest-path lib/wasm-interface/Cargo.toml
+      - name: Check
+        if: matrix.target != 'aarch64-apple-darwin'
+        run: |
+          cargo check --features "telemetry update-notifications"
       - name: Build binary
         run: |
           make release
@@ -183,10 +195,49 @@ jobs:
           tar -xzf `pwd`/artifacts/wapm-linux-amd64/wapm-cli.tar.gz
           cp ./bin/wapm /home/runner/.wasmer/bin/wapm
           chmod +x /home/runner/.wasmer/bin/wapm
-      - name: Regression tests
+      - name: 'Regression test: multi-part-uploading works'
         shell: bash
         run: |
-          make regression-tests
+          chmod +x end-to-end-tests/ci/chunked-upload.sh
+          ./end-to-end-tests/ci/chunked-upload.sh
+        env: 
+          WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
+          WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
+      - name: 'Regression test: direct execution works'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/direct-execution.sh
+          ./end-to-end-tests/ci/direct-execution.sh
+      - name: 'Regression test: Install, Uninstall, Run, and List'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/install.sh
+          ./end-to-end-tests/ci/install.sh
+      - name: 'Regression test: verification and public key management'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/verification.sh
+          ./end-to-end-tests/ci/verification.sh
+#      - name: 'Regression test: pkg_fs works globally and when installed locally'
+#        shell: bash
+#        run: |
+#          chmod +x end-to-end-tests/ci/package-fs-mapping.sh
+#          ./end-to-end-tests/ci/package-fs-mapping.sh
+      - name: 'Regression test: manifest validation rejects invalid manifests'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/manifest-validation.sh
+          ./end-to-end-tests/ci/manifest-validation.sh
+      - name: 'Regression test: package fs and command rename'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/validate-global.sh
+          ./end-to-end-tests/ci/validate-global.sh
+      - name: 'Regression test: Init a Manifest and Add some dependencies'
+        shell: bash
+        run: |
+          chmod +x end-to-end-tests/ci/init-and-add.sh
+          ./end-to-end-tests/ci/init-and-add.sh
         env: 
           WAPM_DEV_TOKEN: ${{ secrets.WAPM_DEV_TOKEN }}
           WAPM_DEV_USERNAME: ${{ secrets.WAPM_DEV_USERNAME }}
