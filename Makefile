@@ -81,7 +81,6 @@ endif
 
 integration-tests:
 	$(CARGO_BINARY) test --features "integration_tests" integration_tests::
-	$(CARGO_BINARY) test --all-features
 
 regression-tests:
 	chmod +x end-to-end-tests/ci/chunked-upload.sh
