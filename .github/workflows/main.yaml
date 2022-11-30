@@ -18,7 +18,7 @@ on:
 jobs:
   setup:
     name: Set up
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     outputs:
       VERSION: ${{ steps.setup.outputs.VERSION }}
       DOING_RELEASE: ${{ steps.setup.outputs.DOING_RELEASE }}
@@ -43,7 +43,7 @@ jobs:
         build: [linux, macos-x86_64, macos-aarch64, windows]
         include:
           - build: linux
-            os: ubuntu-latest
+            os: ubuntu-latest-8-cores
             rust: stable
             artifact_name: 'wapm-linux-amd64'
           - build: macos-x86_64
@@ -57,11 +57,11 @@ jobs:
             target: aarch64-apple-darwin
             artifact_name: 'wapm-darwin-aarch64'
           - build: windows
-            os: windows-latest
+            os: windows-latest-8-cores
             rust: stable
             artifact_name: 'wapm-windows-amd64'
          #- build: linux-musl-x64
-         #  os: ubuntu-latest
+         #  os: ubuntu-latest-8-cores
          #  container: alpine:latest
          #  rust: stable
          #  artifact_name: 'wapm-linux-musl-amd64'
@@ -106,7 +106,7 @@ jobs:
      #  run: |
      #      apk add build-base musl-dev curl make libtool libffi-dev gcc automake autoconf git openssl-dev g++ libxkbcommon-dev wayland-dev
       - name: Install Cmake (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest-8-cores'
         run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
       - name: Install cmake (macOS)
         if: matrix.target == 'x86_64-apple-darwin'
@@ -118,7 +118,7 @@ jobs:
           export CMAKE_BIN_PATH="`pwd`/cmake-3.4.1-Darwin-x86_64/CMake.app/Contents/bin"
           export PATH=$CMAKE_BIN_PATH:$PATH
       - name: Install cmake (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest-8-cores'
         run: |
           curl -O https://cmake.org/files/v3.4/cmake-3.4.1-Linux-x86_64.tar.gz
           tar xf cmake-3.4.1-Linux-x86_64.tar.gz
@@ -165,12 +165,12 @@ jobs:
 #          restore-keys: |
 #            ${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('Cargo.lock') }}
       - name: Release wapm-toml to crates.io
-        if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest'
+        if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest-8-cores'
         continue-on-error: true
         run: |
           cargo publish --allow-dirty --manifest-path="wapm-toml/Cargo.toml" --token ${{ secrets.CRATES_IO_TOKEN }}
       - name: Release to crates.io
-        if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest'
+        if: (needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != '') && matrix.os == 'ubuntu-latest-8-cores'
         continue-on-error: true
         run: |
           cargo publish --allow-dirty --token ${{ secrets.CRATES_IO_TOKEN }}
@@ -179,7 +179,7 @@ jobs:
     strategy:
       fail-fast: false
     needs: [setup, test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@v2
       - name: Install Wasmer
@@ -205,7 +205,7 @@ jobs:
 
   linux_aarch64:
     name: Linux aarch64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@stable
@@ -237,7 +237,7 @@ jobs:
           retention-days: 2
   release:
     needs: [setup, test, linux_aarch64] #, regression_tests]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     if: needs.setup.outputs.DOING_RELEASE == '1' || github.event.inputs.release != ''
     steps:
       - name: Download the Artifacts
@@ -317,7 +317,7 @@ jobs:
 
   lints:
     name: Linting and Formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@v2
       - name: Rust Cache
