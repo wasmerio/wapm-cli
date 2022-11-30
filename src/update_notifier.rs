@@ -103,8 +103,9 @@ impl WapmUpdate {
 
                 if !force_update_notification {
                     let compare = util::compare_versions(&old_version, &new_version);
-                    if let Ok(crate::util::VersionComparison::NewIsGreater) = compare {
-                        return Ok(());
+                    match compare {
+                        Ok(crate::util::VersionComparison::NewIsGreater) => { },
+                        _ => return Ok(()),
                     }
                 }
 
