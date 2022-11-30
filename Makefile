@@ -117,3 +117,8 @@ test: integration-tests
 
 update-schema:
 	curl --fail "$(shell wapm config get registry.url)/schema.graphql" > graphql/schema.graphql
+
+clean:
+	rm -rf ./dist
+	rm -rf ./package
+	rm -rf ./target
