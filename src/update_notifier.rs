@@ -114,7 +114,7 @@ impl WapmUpdate {
                 Billboard::builder()
                     .border_style(BorderStyle::Round)
                     .build()
-                    .display(&message);
+                    .print(message);
                 self.last_notified = Some(now);
                 self.save()
             }

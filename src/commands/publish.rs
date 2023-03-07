@@ -463,7 +463,6 @@ pub fn sign_compressed_archive(
             )?),
             &private_key,
             compressed_archive,
-            false,
             None,
             None,
         )?

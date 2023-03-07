@@ -14,6 +14,7 @@ use std::{
 };
 use thiserror::Error;
 use wasmer_wasm_interface::{validate, Interface};
+use wasmparser::{Validator, WasmFeatures};
 
 #[cfg(feature = "full")]
 pub fn validate_directory(pkg_path: PathBuf) -> anyhow::Result<()> {
@@ -123,31 +124,35 @@ pub enum ValidationError {
 
 // legacy function, validates wasm.  TODO: clean up
 pub fn validate_wasm_and_report_errors_old(wasm: &[u8], file_name: String) -> anyhow::Result<()> {
-    use wasmparser::WasmDecoder;
-    let mut parser = wasmparser::ValidatingParser::new(
-        wasm,
-        Some(wasmparser::ValidatingParserConfig {
-            operator_config: wasmparser::OperatorValidatorConfig {
-                enable_threads: true,
-                enable_reference_types: true,
-                enable_simd: true,
-                enable_bulk_memory: true,
-                enable_multi_value: true,
-            },
-        }),
-    );
-    loop {
-        let state = parser.read();
-        match state {
-            wasmparser::ParserState::EndWasm => return Ok(()),
-            wasmparser::ParserState::Error(e) => {
-                return Err(ValidationError::InvalidWasm {
-                    file: file_name,
-                    error: format!("{}", e),
-                }
-                .into());
-            }
-            _ => {}
+    let mut v = Validator::new_with_features(WasmFeatures {
+        mutable_global: true,
+        saturating_float_to_int: true,
+        sign_extension: true,
+        reference_types: true,
+        multi_value: true,
+        bulk_memory: true,
+        simd: true,
+        relaxed_simd: true,
+        threads: true,
+        tail_call: true,
+        floats: true,
+        multi_memory: true,
+        exceptions: true,
+        memory64: true,
+        extended_const: true,
+        component_model: true,
+        function_references: true,
+        memory_control: true,
+    });
+
+    match v.validate_all(wasm) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let error = ValidationError::InvalidWasm {
+                file: file_name,
+                error: e.to_string(),
+            };
+            Err(error.into())
         }
     }
 }
