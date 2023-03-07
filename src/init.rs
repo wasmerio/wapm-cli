@@ -5,7 +5,7 @@ use crate::data::manifest::MANIFEST_FILE_NAME;
 use crate::data::manifest::{Command, CommandV2, Manifest, Module, Package};
 use crate::util;
 
-use dialoguer::{Confirmation, Input, Select};
+use dialoguer::{Confirm, Input, Select};
 use semver::Version;
 use std::{
     any::Any,
@@ -283,8 +283,8 @@ Press ^C at any time to quit."
                         all_commands.extend(module_commands);
                     }
 
-                    let continue_loop = Confirmation::new()
-                        .with_text("Add more commands? (no)")
+                    let continue_loop = Confirm::new()
+                        .with_prompt("Add more commands? (no)")
                         .default(false)
                         .interact()?;
 
@@ -321,8 +321,8 @@ Press ^C at any time to quit."
     );
 
     if force_yes
-        || Confirmation::new()
-            .with_text("Is this OK? (yes)")
+        || Confirm::new()
+            .with_prompt("Is this OK? (yes)")
             .default(true)
             .interact()?
     {

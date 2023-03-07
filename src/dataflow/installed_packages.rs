@@ -429,6 +429,6 @@ fn verify_signature_on_package(
     let sig_box = minisign::SignatureBox::from_string(signature_to_use)
         .map_err(|e| anyhow!("Error with downloaded signature: {}", e.to_string()))?;
 
-    minisign::verify(&public_key, &sig_box, dest, true, false)
+    minisign::verify(&public_key, &sig_box, dest, true, false, true)
         .map_err(|e| anyhow!("Could not validate signature: {}", e.to_string()))
 }

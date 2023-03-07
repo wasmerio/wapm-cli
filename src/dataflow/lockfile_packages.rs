@@ -29,9 +29,10 @@ pub enum LockfileError {
 }
 
 /// A ternary for a lockfile: Some, None, Error.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum LockfileResult {
     Lockfile(Lockfile),
+    #[default]
     NoLockfile,
     LockfileError(LockfileError),
 }
@@ -69,12 +70,6 @@ impl LockfileResult {
                 LockfileVersion::V4(lockfile_v4) => return LockfileResult::Lockfile(lockfile_v4),
             }
         }
-    }
-}
-
-impl Default for LockfileResult {
-    fn default() -> Self {
-        LockfileResult::NoLockfile
     }
 }
 

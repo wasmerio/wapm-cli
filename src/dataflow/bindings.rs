@@ -22,7 +22,7 @@ pub enum Error {
 #[graphql(
     schema_path = "graphql/schema.graphql",
     query_path = "graphql/queries/get_bindings.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,PartialEq"
 )]
 struct GetBindingsQuery;
 
