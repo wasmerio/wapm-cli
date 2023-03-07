@@ -29,8 +29,7 @@ pub enum LockfileError {
 }
 
 /// A ternary for a lockfile: Some, None, Error.
-#[derive(Debug)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum LockfileResult {
     Lockfile(Lockfile),
     #[default]
@@ -73,8 +72,6 @@ impl LockfileResult {
         }
     }
 }
-
-
 
 /// A convenient structure containing all modules and commands for a package stored lockfile.
 #[derive(Clone, Debug, Default)]
